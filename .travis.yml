@@ -1,0 +1,12 @@
+language: go
+
+go:
+  - 1.x
+  - master
+
+before_install:
+  - go get -v github.com/alecthomas/gometalinter
+
+script:
+  - go test -v ./...
+  - $GOPATH/bin/gometalinter --vendor ./...

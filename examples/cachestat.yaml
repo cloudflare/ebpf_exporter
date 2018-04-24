@@ -1,0 +1,29 @@
+programs:
+  - name: cachestat
+    metrics:
+      counters:
+        - name: page_cache_ops_total
+          help: Page cache operation counters by type
+          table: counts
+          labels:
+            - name: op
+              decoders:
+                - name: ksym
+    kprobes:
+      add_to_page_cache_lru: do_count
+      mark_page_accessed: do_count
+      account_page_dirtied: do_count
+      mark_buffer_dirty: do_count
+    code: |
+      #include <uapi/linux/ptrace.h>
+      struct key_t {
+          u64 ip;
+      };
+      BPF_HASH(counts, struct key_t);
+      int do_count(struct pt_regs *ctx) {
+          struct key_t key = { .ip = PT_REGS_IP(ctx) };
+          u64 zero = 0, *val;
+          val = counts.lookup_or_init(&key, &zero);
+          (*val)++;
+          return 0;
+      }
