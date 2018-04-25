@@ -1,3 +1,6 @@
+# We need this for full bcc support
+dist: xenial
+
 language: go
 
 go:
@@ -5,6 +8,13 @@ go:
   - master
 
 before_install:
+  # Install bcc
+  - sudo apt-get update && sudo apt-get install -y lsb-release
+  - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648A4A16A23015EEF4A66B8E4052245BD4284CDD
+  - echo "deb https://repo.iovisor.org/apt/$(lsb_release --short --codename) $(lsb_release --short --codename) main" | sudo tee /etc/apt/sources.list.d/iovisor.list
+  - sudo apt-get update && sudo apt-get install -y libbcc linux-headers-$(uname -r)
+  - sudo dpkg -L libbcc
+  # Install linter tools
   - go get -v github.com/alecthomas/gometalinter
 
 script:
