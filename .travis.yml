@@ -16,6 +16,7 @@ before_install:
   - sudo dpkg -L libbcc
   # Install linter tools
   - go get -v github.com/alecthomas/gometalinter
+  - $GOPATH/bin/gometalinter --install
 
 script:
   - go test -v ./...
