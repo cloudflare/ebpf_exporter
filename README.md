@@ -1,5 +1,7 @@
 # ebpf_exporter
 
+[![Build Status](https://travis-ci.org/cloudflare/ebpf_exporter.svg?branch=master)](https://travis-ci.org/cloudflare/ebpf_exporter)
+
 Prometheus exporter for custom eBPF metrics.
 
 Motivation of this exporter is to allow you to write eBPF code and export
