@@ -40,20 +40,23 @@ func New(config config.Config) *Exporter {
 func (e *Exporter) Attach() error {
 	for _, program := range e.config.Programs {
 		if _, ok := e.modules[program.Name]; ok {
-			return fmt.Errorf("multiple programs with name %s", program.Name)
+			return fmt.Errorf("multiple programs with name %q", program.Name)
 		}
 
 		module := bcc.NewModule(program.Code, []string{})
+		if module == nil {
+			return fmt.Errorf("error compiling module for program %q", program.Name)
+		}
 
 		for kprobeName, targetName := range program.Kprobes {
 			target, err := module.LoadKprobe(targetName)
 			if err != nil {
-				return fmt.Errorf("failed to load target %s in program %s: %s", targetName, program.Name, err)
+				return fmt.Errorf("failed to load target %q in program %q: %s", targetName, program.Name, err)
 			}
 
 			err = module.AttachKprobe(kprobeName, target)
 			if err != nil {
-				return fmt.Errorf("failed to attach kprobe %s to %s in program %s: %s", kprobeName, targetName, program.Name, err)
+				return fmt.Errorf("failed to attach kprobe %q to %q in program %q: %s", kprobeName, targetName, program.Name, err)
 			}
 		}
 
@@ -157,7 +160,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 
 				leUint, err := strconv.ParseUint(metricValue.labels[len(metricValue.labels)-1], 0, 64)
 				if err != nil {
-					log.Printf("Error parsing float value for bucket %#v in table %s of program %s: %s", metricValue.labels, histogram.Table, program.Name, err)
+					log.Printf("Error parsing float value for bucket %#v in table %q of program %q: %s", metricValue.labels, histogram.Table, program.Name, err)
 					skip = true
 					break
 				}
@@ -244,7 +247,7 @@ func (e Exporter) exportTables() (map[string]map[string][]metricValue, error) {
 	for _, program := range e.config.Programs {
 		module := e.modules[program.Name]
 		if module == nil {
-			return nil, fmt.Errorf("module for program %s is not attached", program.Name)
+			return nil, fmt.Errorf("module for program %q is not attached", program.Name)
 		}
 
 		if _, ok := tables[program.Name]; !ok {
