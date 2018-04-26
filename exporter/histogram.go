@@ -15,18 +15,18 @@ type histogramWithLabels struct {
 type histogramKeyer func(bucket float64) float64
 
 func histogramKeyerMaker(histogram config.Histogram) (histogramKeyer, error) {
+	multiplier := histogram.BucketMultiplier
+	if multiplier == 0 {
+		multiplier = 1
+	}
+
 	switch histogram.BucketType {
 	case config.HistogramBucketExp2:
 		return func(bucket float64) float64 {
-			return math.Exp2(bucket)
+			return math.Exp2(bucket) * multiplier
 		}, nil
 	case config.HistogramBucketLinear:
 		return func(bucket float64) float64 {
-			multiplier := histogram.BucketMultiplier
-			if multiplier == 0 {
-				multiplier = 1
-			}
-
 			return bucket * multiplier
 		}, nil
 	default:
