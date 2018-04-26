@@ -62,6 +62,13 @@ Skip to [format](#configuration-file-format) to see the full specification.
 
 You can find additional examples in [examples](examples) directory.
 
+Unless otherwise specified, all examples are expected to work on Linux 4.14,
+which is the latest LTS release at the time of writing.
+
+In general, exported to work from Linux 4.1. See BCC docs for more details:
+
+* https://github.com/iovisor/bcc/blob/master/INSTALL.md#kernel-configuration
+
 #### Page cache operations for `syslog-ng` and `systemd-journald` (counters)
 
 This program attaches to kernel functions responsible for managing
