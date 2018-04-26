@@ -44,6 +44,9 @@ func (e *Exporter) Attach() error {
 		}
 
 		module := bcc.NewModule(program.Code, []string{})
+		if module == nil {
+			return fmt.Errorf("error compiling module for program %s", program.Name)
+		}
 
 		for kprobeName, targetName := range program.Kprobes {
 			target, err := module.LoadKprobe(targetName)
