@@ -93,6 +93,12 @@ programs:
               return 0; // missed issue
           }
 
+          // There are write request with zero length on sector zero,
+          // which do not seem to be real writes to device.
+          if (req->__sector == 0 && req->__data_len == 0) {
+            return 0;
+          }
+
           // Delta in nanoseconds
           delta = bpf_ktime_get_ns() - *tsp;
 
