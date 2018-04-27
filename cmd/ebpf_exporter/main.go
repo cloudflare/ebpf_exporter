@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests").Default(":9123").String()
+	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests").Default(":9435").String()
 	configFile := kingpin.Flag("config.file", "Config file path").Default("config.yaml").File()
 	debug := kingpin.Flag("debug", "Enable debug").Bool()
 	kingpin.Version(version.Print("ebpf_exporter"))
