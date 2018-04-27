@@ -296,10 +296,11 @@ programs:
                 - name: string
             - name: operation
               decoders:
+                - name: uint64
                 - name: static_map
                   static_map:
-                    0x1: read
-                    0x2: write
+                    1: read
+                    2: write
             - name: bucket
               decoders:
                 - name: uint64
@@ -316,10 +317,11 @@ programs:
                 - name: string
             - name: operation
               decoders:
+                - name: uint64
                 - name: static_map
                   static_map:
-                    0x1: read
-                    0x2: write
+                    1: read
+                    2: write
             - name: bucket
               decoders:
                 - name: uint64

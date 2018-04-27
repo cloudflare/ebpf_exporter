@@ -11,11 +11,12 @@ programs:
           labels:
             - name: op
               decoders:
+                - name: uint
                 - name: static_map
                   static_map:
-                    0x1: refs
-                    0x2: slow
-                    0x3: miss
+                    1: refs
+                    2: slow
+                    3: miss
             - name: command
               decoders:
                 - name: string
