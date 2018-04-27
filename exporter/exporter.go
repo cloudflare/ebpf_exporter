@@ -60,6 +60,18 @@ func (e *Exporter) Attach() error {
 			}
 		}
 
+		for kretprobeName, targetName := range program.Kretprobes {
+			target, err := module.LoadKprobe(targetName)
+			if err != nil {
+				return fmt.Errorf("failed to load target %s in program %s: %s", targetName, program.Name, err)
+			}
+
+			err = module.AttachKretprobe(kretprobeName, target)
+			if err != nil {
+				return fmt.Errorf("failed to attach kretprobe %s to %s in program %s: %s", kretprobeName, targetName, program.Name, err)
+			}
+		}
+
 		e.modules[program.Name] = module
 	}
 

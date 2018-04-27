@@ -7,10 +7,11 @@ type Config struct {
 
 // Program is an eBPF program with optional metrics attached to it
 type Program struct {
-	Name    string            `yaml:"name"`
-	Metrics Metrics           `yaml:"metrics"`
-	Kprobes map[string]string `yaml:"kprobes"`
-	Code    string            `yaml:"code"`
+	Name       string            `yaml:"name"`
+	Metrics    Metrics           `yaml:"metrics"`
+	Kprobes    map[string]string `yaml:"kprobes"`
+	Kretprobes map[string]string `yaml:"kretprobes"`
+	Code       string            `yaml:"code"`
 }
 
 // Metrics is a collection of metrics attached to a program

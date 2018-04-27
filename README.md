@@ -606,8 +606,11 @@ name: <program name>
 # Metrics attached to the program
 [ metrics: metrics ]
 # Kprobes (kernel functions) and their targets (eBPF functions)
-krpobes:
-  [ krpobename: target ... ]
+kprobes:
+  [ kprobename: target ... ]
+# Kretprobes (kernel functions) and their targets (eBPF functions)
+kretprobes:
+  [ kprobename: target ...]
 # Actual eBPF program code to inject in the kernel
 code: [ code ]
 ```

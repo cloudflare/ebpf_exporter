@@ -1,0 +1,72 @@
+programs:
+  # See:
+  # * https://github.com/iovisor/bcc/blob/master/tools/dcstat.py
+  # * https://github.com/iovisor/bcc/blob/master/tools/dcstat_example.txt
+  - name: dcstat
+    metrics:
+      counters:
+        - name: dcache_ops_total
+          help: Directory cache entry ops
+          table: counts
+          labels:
+            - name: op
+              decoders:
+                - name: static_map
+                  static_map:
+                    0x1: refs
+                    0x2: slow
+                    0x3: miss
+            - name: command
+              decoders:
+                - name: string
+    kprobes:
+      lookup_fast: count_fast
+    kretprobes:
+      d_lookup: count_lookup
+    code: |
+      #include <uapi/linux/ptrace.h>
+
+      enum stats {
+          S_REFS = 1,
+          S_SLOW = 2,
+          S_MISS = 3,
+      };
+
+      struct key_t {
+          int op;
+          char command[128];
+      };
+
+      BPF_HASH(counts, struct key_t);
+
+      int count_fast(struct pt_regs *ctx) {
+          struct key_t key = { .op = S_REFS };
+
+          bpf_get_current_comm(&key.command, sizeof(key.command));
+
+          u64 zero = 0, *val;
+          val = counts.lookup_or_init(&key, &zero);
+          (*val)++;
+
+          return 0;
+      }
+
+      int count_lookup(struct pt_regs *ctx) {
+          u64 zero = 0, *val;
+
+          struct key_t key = { .op = S_SLOW };
+
+          bpf_get_current_comm(&key.command, sizeof(key.command));
+
+          val = counts.lookup_or_init(&key, &zero);
+          (*val)++;
+
+          if (PT_REGS_RC(ctx) == 0) {
+              key.op = S_MISS;
+
+              val = counts.lookup_or_init(&key, &zero);
+              (*val)++;
+          }
+
+          return 0;
+      }
