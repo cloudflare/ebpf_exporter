@@ -81,16 +81,16 @@ This is an adapted version of `cachestat` from bcc tools:
 Resulting metrics:
 
 ```
-# HELP ebpf_exporter_page_cache_ops Page cache operation counters by type
-# TYPE ebpf_exporter_page_cache_ops counter
-ebpf_exporter_page_cache_ops{command="syslog-ng",op="account_page_dirtied"} 1531
-ebpf_exporter_page_cache_ops{command="syslog-ng",op="add_to_page_cache_lru"} 1092
-ebpf_exporter_page_cache_ops{command="syslog-ng",op="mark_buffer_dirty"} 31205
-ebpf_exporter_page_cache_ops{command="syslog-ng",op="mark_page_accessed"} 54846
-ebpf_exporter_page_cache_ops{command="systemd-journal",op="account_page_dirtied"} 104681
-ebpf_exporter_page_cache_ops{command="systemd-journal",op="add_to_page_cache_lru"} 7330
-ebpf_exporter_page_cache_ops{command="systemd-journal",op="mark_buffer_dirty"} 125486
-ebpf_exporter_page_cache_ops{command="systemd-journal",op="mark_page_accessed"} 898214
+# HELP ebpf_exporter_page_cache_ops_total Page cache operation counters by type
+# TYPE ebpf_exporter_page_cache_ops_total counter
+ebpf_exporter_page_cache_ops_total{command="syslog-ng",op="account_page_dirtied"} 1531
+ebpf_exporter_page_cache_ops_total{command="syslog-ng",op="add_to_page_cache_lru"} 1092
+ebpf_exporter_page_cache_ops_total{command="syslog-ng",op="mark_buffer_dirty"} 31205
+ebpf_exporter_page_cache_ops_total{command="syslog-ng",op="mark_page_accessed"} 54846
+ebpf_exporter_page_cache_ops_total{command="systemd-journal",op="account_page_dirtied"} 104681
+ebpf_exporter_page_cache_ops_total{command="systemd-journal",op="add_to_page_cache_lru"} 7330
+ebpf_exporter_page_cache_ops_total{command="systemd-journal",op="mark_buffer_dirty"} 125486
+ebpf_exporter_page_cache_ops_total{command="systemd-journal",op="mark_page_accessed"} 898214
 ```
 
 You can check out `cachestat` source code to see how these translate:
