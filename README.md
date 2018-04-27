@@ -123,20 +123,23 @@ programs:
       mark_buffer_dirty: do_count
     code: |
       #include <uapi/linux/ptrace.h>
+
       struct key_t {
           u64 ip;
           char command[128];
       };
-      BPF_HASH(counts, struct key_t);
-      int do_count(struct pt_regs *ctx) {
-          struct key_t key = {};
 
-          key.ip = PT_REGS_IP(ctx);
+      BPF_HASH(counts, struct key_t);
+
+      int do_count(struct pt_regs *ctx) {
+          struct key_t key = { .ip = PT_REGS_IP(ctx) };
+
           bpf_get_current_comm(&key.command, sizeof(key.command));
 
           u64 zero = 0, *val;
           val = counts.lookup_or_init(&key, &zero);
           (*val)++;
+
           return 0;
       }
 ```
