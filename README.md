@@ -163,122 +163,112 @@ influenced by the experimental exporter from Daniel Swarbrick:
 Resulting metrics:
 
 ```
-# HELP ebpf_exporter_bio_latency Block IO latency histogram with microsecond buckets
-# TYPE ebpf_exporter_bio_latency histogram
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="1"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="2"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="4"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="8"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="16"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="32"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="64"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="128"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="256"} 135
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="512"} 203
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="1024"} 264
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="2048"} 318
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="4096"} 366
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="8192"} 381
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="16384"} 392
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="32768"} 397
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="65536"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="131072"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="262144"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="524288"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="1.048576e+06"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="2.097152e+06"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="4.194304e+06"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="8.388608e+06"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="1.6777216e+07"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="3.3554432e+07"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="6.7108864e+07"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="1.34217728e+08"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="2.68435456e+08"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="5.36870912e+08"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="1.073741824e+09"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="2.147483648e+09"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="read",le="+Inf"} 398
-ebpf_exporter_bio_latency_sum{device="sda",operation="read"} 0
-ebpf_exporter_bio_latency_count{device="sda",operation="read"} 398
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="1"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="2"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="4"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="8"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="16"} 0
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="32"} 6
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="64"} 43
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="128"} 108
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="256"} 150
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="512"} 207
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="1024"} 225
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="2048"} 292
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="4096"} 489
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="8192"} 685
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="16384"} 837
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="32768"} 951
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="65536"} 1001
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="131072"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="262144"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="524288"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="1.048576e+06"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="2.097152e+06"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="4.194304e+06"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="8.388608e+06"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="1.6777216e+07"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="3.3554432e+07"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="6.7108864e+07"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="1.34217728e+08"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="2.68435456e+08"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="5.36870912e+08"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="1.073741824e+09"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="2.147483648e+09"} 1014
-ebpf_exporter_bio_latency_bucket{device="sda",operation="write",le="+Inf"} 1014
-ebpf_exporter_bio_latency_sum{device="sda",operation="write"} 0
-ebpf_exporter_bio_latency_count{device="sda",operation="write"} 1014
+# HELP ebpf_exporter_bio_latency_seconds Block IO latency histogram
+# TYPE ebpf_exporter_bio_latency_seconds histogram
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="1e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="2e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="4e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="8e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="1.6e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="3.2e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="6.4e-05"} 2
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.000128"} 388
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.000256"} 20086
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.000512"} 21601
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.001024"} 22487
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.002048"} 25592
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.004096"} 26891
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.008192"} 27835
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.016384"} 28540
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.032768"} 28725
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.065536"} 28776
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.131072"} 28786
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.262144"} 28790
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.524288"} 28792
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="1.048576"} 28792
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="2.097152"} 28792
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="4.194304"} 28792
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="8.388608"} 28792
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="16.777216"} 28792
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="33.554432"} 28792
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="67.108864"} 28792
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="+Inf"} 28792
+ebpf_exporter_bio_latency_seconds_sum{device="sda",operation="read"} 0
+ebpf_exporter_bio_latency_seconds_count{device="sda",operation="read"} 28792
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="1e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="2e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="4e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="8e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="1.6e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="3.2e-05"} 508
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="6.4e-05"} 2828
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.000128"} 5701
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.000256"} 8520
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.000512"} 11975
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.001024"} 12448
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.002048"} 16798
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.004096"} 26909
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.008192"} 41248
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.016384"} 59030
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.032768"} 86501
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.065536"} 118934
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.131072"} 122148
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.262144"} 122373
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.524288"} 122462
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="1.048576"} 122470
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="2.097152"} 122470
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="4.194304"} 122470
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="8.388608"} 122470
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="16.777216"} 122470
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="33.554432"} 122470
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="67.108864"} 122470
+ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="+Inf"} 122470
+ebpf_exporter_bio_latency_seconds_sum{device="sda",operation="write"} 0
+ebpf_exporter_bio_latency_seconds_count{device="sda",operation="write"} 122470
 ...
 ```
 
 ```
-# HELP ebpf_exporter_bio_size Block IO size histogram with kibibyte buckets
-# TYPE ebpf_exporter_bio_size histogram
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="1"} 0
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="2"} 0
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="4"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="8"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="16"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="32"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="64"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="128"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="256"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="512"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="1024"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="2048"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="4096"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="8192"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="16384"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="32768"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="read",le="+Inf"} 398
-ebpf_exporter_bio_size_sum{device="sda",operation="read"} 0
-ebpf_exporter_bio_size_count{device="sda",operation="read"} 398
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="1"} 25
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="2"} 74
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="4"} 227
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="8"} 284
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="16"} 321
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="32"} 338
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="64"} 342
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="128"} 354
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="256"} 395
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="512"} 609
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="1024"} 1014
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="2048"} 1014
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="4096"} 1014
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="8192"} 1014
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="16384"} 1014
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="32768"} 1014
-ebpf_exporter_bio_size_bucket{device="sda",operation="write",le="+Inf"} 1014
-ebpf_exporter_bio_size_sum{device="sda",operation="write"} 0
-ebpf_exporter_bio_size_count{device="sda",operation="write"} 1014
+# HELP ebpf_exporter_bio_size_bytes Block IO size histogram with kibibyte buckets
+# TYPE ebpf_exporter_bio_size_bytes histogram
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="1024"} 14
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="2048"} 14
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="4096"} 28778
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="8192"} 28778
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="16384"} 28778
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="32768"} 28778
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="65536"} 28779
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="131072"} 28781
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="262144"} 28785
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="524288"} 28792
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="1.048576e+06"} 28792
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="2.097152e+06"} 28792
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="4.194304e+06"} 28792
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="8.388608e+06"} 28792
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="1.6777216e+07"} 28792
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="3.3554432e+07"} 28792
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="+Inf"} 28792
+ebpf_exporter_bio_size_bytes_sum{device="sda",operation="read"} 0
+ebpf_exporter_bio_size_bytes_count{device="sda",operation="read"} 28792
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="1024"} 1507
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="2048"} 4007
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="4096"} 15902
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="8192"} 17726
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="16384"} 18429
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="32768"} 19639
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="65536"} 19676
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="131072"} 20367
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="262144"} 21952
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="524288"} 49636
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="1.048576e+06"} 122470
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="2.097152e+06"} 122470
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="4.194304e+06"} 122470
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="8.388608e+06"} 122470
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="1.6777216e+07"} 122470
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="3.3554432e+07"} 122470
+ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="+Inf"} 122470
+ebpf_exporter_bio_size_bytes_sum{device="sda",operation="write"} 0
+ebpf_exporter_bio_size_bytes_count{device="sda",operation="write"} 122470
 ...
 ```
 
@@ -286,7 +276,7 @@ To nicely plot these in Grafana, you'll need v5.1:
 
 * https://github.com/grafana/grafana/pull/11087
 
-![Histogram](https://user-images.githubusercontent.com/89186/39159149-fbecb752-4718-11e8-8afe-0872e0996776.png)
+![Histogram](examples/bio.write.latency.png)
 
 ```yaml
 programs:
