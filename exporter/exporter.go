@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/decoder"
@@ -237,23 +238,31 @@ func (e *Exporter) tableValues(module *bcc.Module, tableName string, labels []co
 }
 
 func (e Exporter) extractLabels(key string, labels []config.Label) (decoded []string, skip bool, err error) {
-	elements := strings.Fields(strings.Trim(key, "{ }"))
-	if len(elements) != len(labels) {
-		return nil, false, fmt.Errorf("key %q has %d elements, but we expect %d", key, len(elements), len(labels))
-	}
-
-	for i, label := range labels {
-		v, err := e.decoders.Decode(elements[i], label)
+	elements := strings.Trim(key, "{ }")
+	index := nextValidToken(elements, 0)
+	for _, label := range labels {
+		v, advanced, err := e.decoders.Decode(elements[index:], label)
 		if err != nil {
 			if err == decoder.ErrSkipLabelSet {
 				return decoded, true, nil
 			}
-			return nil, false, fmt.Errorf("error decoding %q for label %q: %s", elements[i], label.Name, err)
+			return nil, false, fmt.Errorf("error decoding %q at index %d for label %q: %s", elements, index, label.Name, err)
 		}
-
+		index = nextValidToken(elements, index+advanced+1)
 		decoded = append(decoded, v)
 	}
+	if len(decoded) != len(labels) {
+		return nil, false, fmt.Errorf("key %s has %d elements, but we expect %d", key, len(elements), len(labels))
+	}
 	return decoded, false, nil
+}
+
+// nextValidToken returns the index of next non-space rune in string
+func nextValidToken(s string, index int) int {
+	for index < len(s) && unicode.IsSpace(rune(s[index])) {
+		index++
+	}
+	return index
 }
 
 func (e Exporter) exportTables() (map[string]map[string][]metricValue, error) {

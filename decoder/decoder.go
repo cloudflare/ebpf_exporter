@@ -10,9 +10,10 @@ import (
 // ErrSkipLabelSet instructs exporter to skip label set
 var ErrSkipLabelSet = errors.New("this label set should be skipped")
 
-// Decoder transforms one string value into anoter string value
+// Decoder transforms value into another string value and
+// return the number of runes it decoded
 type Decoder interface {
-	Decode(string, config.Decoder) (string, error)
+	Decode(string, config.Decoder) (string, int, error)
 }
 
 // Set is a set of decoders that may be applied to produce a label
@@ -34,24 +35,28 @@ func NewSet() *Set {
 }
 
 // Decode transforms input string according to label configuration
-func (s *Set) Decode(in string, label config.Label) (string, error) {
-	result := in
-
+func (s *Set) Decode(in string, label config.Label) (input string, index int, err error) {
+	input = in
+	var advanced bool
 	for _, decoder := range label.Decoders {
 		if _, ok := s.decoders[decoder.Name]; !ok {
-			return result, fmt.Errorf("unknown decoder %q", decoder.Name)
+			return input, index, fmt.Errorf("unknown decoder %q", decoder.Name)
 		}
 
-		decoded, err := s.decoders[decoder.Name].Decode(result, decoder)
+		var i int
+		input, i, err = s.decoders[decoder.Name].Decode(input, decoder)
 		if err != nil {
 			if err == ErrSkipLabelSet {
-				return decoded, err
+				return input, index, err
 			}
-			return decoded, fmt.Errorf("error decoding with decoder %q: %s", decoder.Name, err)
+			return input, index, fmt.Errorf("error decoding with decoder %q: %s", decoder.Name, err)
 		}
-
-		result = decoded
+		// only advance index once when we get the first meaningful pass out of the
+		// original input. The rest of the decoders will not change index.
+		if i > 0 && !advanced {
+			index = i
+		}
 	}
 
-	return result, nil
+	return input, index, nil
 }

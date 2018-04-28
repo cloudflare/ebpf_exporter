@@ -13,26 +13,30 @@ type KSym struct {
 }
 
 // Decode transforms kernel address to a function name
-func (k *KSym) Decode(in string, conf config.Decoder) (string, error) {
+func (k *KSym) Decode(in string, conf config.Decoder) (string, int, error) {
 	if k.cache == nil {
 		k.cache = map[string]string{}
 	}
 
-	num, err := strconv.ParseUint(in, 0, 64)
-	if err != nil {
-		return fmt.Sprintf("invalid:%s", in), err
+	var val string
+	if _, err := fmt.Sscan(in, &val); err != nil {
+		return "", 0, err
 	}
 
-	in = fmt.Sprintf("%x", num-1)
+	num, err := strconv.ParseUint(val, 0, 64)
+	if err != nil {
+		return fmt.Sprintf("invalid:%s", val), len(val), err
+	}
+	sym := fmt.Sprintf("%x", num-1)
 
-	if _, ok := k.cache[in]; !ok {
-		name, err := Ksym(in)
+	if _, ok := k.cache[sym]; !ok {
+		name, err := Ksym(sym)
 		if err != nil {
-			return fmt.Sprintf("unknown:%s", in), nil
+			return fmt.Sprintf("unknown:%s", sym), len(val), nil
 		}
 
-		k.cache[in] = name
+		k.cache[sym] = name
 	}
 
-	return k.cache[in], nil
+	return k.cache[sym], len(val), nil
 }

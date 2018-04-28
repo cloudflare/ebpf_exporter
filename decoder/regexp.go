@@ -14,36 +14,33 @@ type Regexp struct {
 }
 
 // Decode only allows inputs matching regexp
-func (r *Regexp) Decode(in string, conf config.Decoder) (string, error) {
+func (r *Regexp) Decode(in string, conf config.Decoder) (string, int, error) {
 	if conf.Regexps == nil {
-		return "", errors.New("no regexps defined in config")
+		return "", 0, errors.New("no regexps defined in config")
 	}
 
 	if r.cache == nil {
 		r.cache = map[string]*regexp.Regexp{}
 	}
 
-	matched := false
-
+	var matchedLocation []int
 	for _, expr := range conf.Regexps {
 		if _, ok := r.cache[expr]; !ok {
 			compiled, err := regexp.Compile(expr)
 			if err != nil {
-				return "", fmt.Errorf("error compiling regexp %q: %s", expr, err)
+				return "", 0, fmt.Errorf("error compiling regexp %q: %s", expr, err)
 			}
 
 			r.cache[expr] = compiled
 		}
 
-		if r.cache[expr].MatchString(in) {
-			matched = true
+		matchedLocation = r.cache[expr].FindStringIndex(in)
+		if matchedLocation != nil {
 			break
 		}
 	}
-
-	if !matched {
-		return "", ErrSkipLabelSet
+	if matchedLocation != nil {
+		return in[matchedLocation[0]:matchedLocation[1]], matchedLocation[1] - matchedLocation[0], nil
 	}
-
-	return in, nil
+	return "", 0, ErrSkipLabelSet
 }

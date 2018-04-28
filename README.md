@@ -564,8 +564,8 @@ An example to report metrics only for `systemd-journal` and `syslog-ng`:
     - name: string
     - name: regexp
       regexps:
-        - ^systemd-journal$
-        - ^syslog-ng$
+        - systemd-journal\b
+        - syslog-ng\b
 ```
 
 #### `static_map`

@@ -56,8 +56,24 @@ func TestDecodeLabel(t *testing.T) {
 			e := &Exporter{decoders: decoder.NewSet()}
 			decoded, _, err := e.extractLabels(tc.key, tc.labels)
 			if !reflect.DeepEqual(decoded, tc.expected) {
-				t.Errorf("failed to decode: expected(%v), got decoded=%v, err=%q", tc.expected, decoded, err)
+				t.Errorf("failed to decode: expected(%v), got decoded=%v, err=%v", tc.expected, decoded, err)
 			}
 		})
+	}
+}
+
+func TestNextValidToken(t *testing.T) {
+	for _, tc := range []struct {
+		s        string
+		i        int
+		expected int
+	}{
+		{"asd ", 0, 0},
+		{"asd h", 3, 4},
+		{"  h", 0, 2},
+	} {
+		if res := nextValidToken(tc.s, tc.i); res != tc.expected {
+			t.Errorf("failed s=%q, i=%d, res=%d, expected=%d", tc.s, tc.i, res, tc.expected)
+		}
 	}
 }
