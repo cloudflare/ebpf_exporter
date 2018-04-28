@@ -210,35 +210,18 @@ func (e *Exporter) tableValues(module *bcc.Module, tableName string, labels []co
 	table := bcc.NewTable(module.TableId(tableName), module)
 
 	for entry := range table.Iter() {
-		elements := strings.Fields(strings.Trim(entry.Key, "{ }"))
-
-		if len(elements) != len(labels) {
-			return nil, fmt.Errorf("key %q has %d elements, but we expect %d", entry.Key, len(elements), len(labels))
-		}
-
 		mv := metricValue{
-			raw:    entry.Key,
-			labels: make([]string, len(labels)),
+			raw: entry.Key,
 		}
 
-		skip := false
-
-		for i, label := range labels {
-			decoded, err := e.decoders.Decode(elements[i], label)
-			if err != nil {
-				if err == decoder.ErrSkipLabelSet {
-					skip = true
-					break
-				}
-				return nil, fmt.Errorf("error decoding %q for label %q: %s", elements[i], label.Name, err)
-			}
-
-			mv.labels[i] = decoded
+		decodedLabels, skip, err := e.extractLabels(entry.Key, labels)
+		if err != nil {
+			return nil, err
 		}
-
 		if skip {
 			continue
 		}
+		mv.labels = decodedLabels
 
 		value, err := strconv.ParseUint(entry.Value, 0, 64)
 		if err != nil {
@@ -251,6 +234,26 @@ func (e *Exporter) tableValues(module *bcc.Module, tableName string, labels []co
 	}
 
 	return values, nil
+}
+
+func (e Exporter) extractLabels(key string, labels []config.Label) (decoded []string, skip bool, err error) {
+	elements := strings.Fields(strings.Trim(key, "{ }"))
+	if len(elements) != len(labels) {
+		return nil, false, fmt.Errorf("key %q has %d elements, but we expect %d", key, len(elements), len(labels))
+	}
+
+	for i, label := range labels {
+		v, err := e.decoders.Decode(elements[i], label)
+		if err != nil {
+			if err == decoder.ErrSkipLabelSet {
+				return decoded, true, nil
+			}
+			return nil, false, fmt.Errorf("error decoding %q for label %q: %s", elements[i], label.Name, err)
+		}
+
+		decoded = append(decoded, v)
+	}
+	return decoded, false, nil
 }
 
 func (e Exporter) exportTables() (map[string]map[string][]metricValue, error) {
