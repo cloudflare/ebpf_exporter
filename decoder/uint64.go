@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/cloudflare/ebpf_exporter/config"
@@ -10,11 +11,15 @@ import (
 type UInt64 struct{}
 
 // Decode transforms hex numbers into regular numbers
-func (u *UInt64) Decode(in string, conf config.Decoder) (string, error) {
-	num, err := strconv.ParseUint(in, 0, 64)
+func (u *UInt64) Decode(in string, conf config.Decoder) (string, int, error) {
+	var val string
+	if _, err := fmt.Sscan(in, &val); err != nil {
+		return "", 0, err
+	}
+	num, err := strconv.ParseUint(val, 0, 64)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
-	return strconv.Itoa(int(num)), nil
+	return strconv.Itoa(int(num)), len(val), nil
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/decoder"
@@ -210,35 +211,18 @@ func (e *Exporter) tableValues(module *bcc.Module, tableName string, labels []co
 	table := bcc.NewTable(module.TableId(tableName), module)
 
 	for entry := range table.Iter() {
-		elements := strings.Fields(strings.Trim(entry.Key, "{ }"))
-
-		if len(elements) != len(labels) {
-			return nil, fmt.Errorf("key %q has %d elements, but we expect %d", entry.Key, len(elements), len(labels))
-		}
-
 		mv := metricValue{
-			raw:    entry.Key,
-			labels: make([]string, len(labels)),
+			raw: entry.Key,
 		}
 
-		skip := false
-
-		for i, label := range labels {
-			decoded, err := e.decoders.Decode(elements[i], label)
-			if err != nil {
-				if err == decoder.ErrSkipLabelSet {
-					skip = true
-					break
-				}
-				return nil, fmt.Errorf("error decoding %q for label %q: %s", elements[i], label.Name, err)
-			}
-
-			mv.labels[i] = decoded
+		decodedLabels, skip, err := e.extractLabels(entry.Key, labels)
+		if err != nil {
+			return nil, err
 		}
-
 		if skip {
 			continue
 		}
+		mv.labels = decodedLabels
 
 		value, err := strconv.ParseUint(entry.Value, 0, 64)
 		if err != nil {
@@ -251,6 +235,34 @@ func (e *Exporter) tableValues(module *bcc.Module, tableName string, labels []co
 	}
 
 	return values, nil
+}
+
+func (e Exporter) extractLabels(key string, labels []config.Label) (decoded []string, skip bool, err error) {
+	elements := strings.Trim(key, "{ }")
+	index := nextValidToken(elements, 0)
+	for _, label := range labels {
+		v, advanced, err := e.decoders.Decode(elements[index:], label)
+		if err != nil {
+			if err == decoder.ErrSkipLabelSet {
+				return decoded, true, nil
+			}
+			return nil, false, fmt.Errorf("error decoding %q at index %d for label %q: %s", elements, index, label.Name, err)
+		}
+		index = nextValidToken(elements, index+advanced+1)
+		decoded = append(decoded, v)
+	}
+	if len(decoded) != len(labels) {
+		return nil, false, fmt.Errorf("key %s has %d elements, but we expect %d", key, len(elements), len(labels))
+	}
+	return decoded, false, nil
+}
+
+// nextValidToken returns the index of next non-space rune in string
+func nextValidToken(s string, index int) int {
+	for index < len(s) && unicode.IsSpace(rune(s[index])) {
+		index++
+	}
+	return index
 }
 
 func (e Exporter) exportTables() (map[string]map[string][]metricValue, error) {

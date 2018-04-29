@@ -7,6 +7,8 @@ go:
   - 1.x
   - master
 
+go_import_path: github.com/cloudflare/ebpf_exporter
+
 before_install:
   # Install bcc
   - sudo apt-get update && sudo apt-get install -y lsb-release
