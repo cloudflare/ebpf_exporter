@@ -23,7 +23,7 @@ func (k *KSym) Decode(in string, conf config.Decoder) (string, error) {
 		return fmt.Sprintf("invalid:%s", in), err
 	}
 
-	in = fmt.Sprintf("%x", num-1)
+	in = fmt.Sprintf("%x", num)
 
 	if _, ok := k.cache[in]; !ok {
 		name, err := Ksym(in)

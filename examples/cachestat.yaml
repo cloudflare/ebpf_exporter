@@ -1,4 +1,7 @@
 programs:
+  # See:
+  # * https://github.com/iovisor/bcc/blob/master/tools/cachestat.py
+  # * https://github.com/iovisor/bcc/blob/master/tools/cachestat_example.txt
   - name: cachestat
     metrics:
       counters:
@@ -17,18 +20,9 @@ programs:
     code: |
       #include <uapi/linux/ptrace.h>
 
-      struct key_t {
-          u64 ip;
-      };
-
-      BPF_HASH(counts, struct key_t);
+      BPF_HASH(counts, u64);
 
       int do_count(struct pt_regs *ctx) {
-          struct key_t key = { .ip = PT_REGS_IP(ctx) };
-
-          u64 zero = 0, *val;
-          val = counts.lookup_or_init(&key, &zero);
-          (*val)++;
-
+          counts.increment(PT_REGS_IP(ctx) - 1);
           return 0;
       }

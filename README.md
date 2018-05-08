@@ -99,6 +99,9 @@ You can check out `cachestat` source code to see how these translate:
 
 ```yaml
 programs:
+  # See:
+  # * https://github.com/iovisor/bcc/blob/master/tools/cachestat.py
+  # * https://github.com/iovisor/bcc/blob/master/tools/cachestat_example.txt
   - name: cachestat
     metrics:
       counters:
@@ -132,13 +135,10 @@ programs:
       BPF_HASH(counts, struct key_t);
 
       int do_count(struct pt_regs *ctx) {
-          struct key_t key = { .ip = PT_REGS_IP(ctx) };
-
+          struct key_t key = { .ip = PT_REGS_IP(ctx) - 1 };
           bpf_get_current_comm(&key.command, sizeof(key.command));
 
-          u64 zero = 0, *val;
-          val = counts.lookup_or_init(&key, &zero);
-          (*val)++;
+          counts.increment(key);
 
           return 0;
       }
@@ -544,7 +544,9 @@ Below are decoders we have built in.
 KSym decoder takes kernel address and converts that to the function name.
 
 In your eBPF program you can use `PT_REGS_IP(ctx)` to get the address
-of the kprobe you attached to as a `u64` variable.
+of the kprobe you attached to as a `u64` variable. Note that sometimes
+you can observe `PT_REGS_IP` being off by one. You can subtract 1 in your code
+to make it point to the right instruction that can be found `/proc/kallsyms`.
 
 #### `regexp`
 
