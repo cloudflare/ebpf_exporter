@@ -22,6 +22,8 @@ import (
 	"sync"
 	"syscall"
 	"unsafe"
+
+	"github.com/iovisor/gobpf/pkg/cpuonline"
 )
 
 /*
@@ -39,6 +41,7 @@ type Module struct {
 	kprobes     map[string]int
 	uprobes     map[string]int
 	tracepoints map[string]int
+	perfEvents  map[string][]int
 }
 
 type compileRequest struct {
@@ -92,6 +95,7 @@ func newModule(code string, cflags []string) *Module {
 		kprobes:     make(map[string]int),
 		uprobes:     make(map[string]int),
 		tracepoints: make(map[string]int),
+		perfEvents:  make(map[string][]int),
 	}
 }
 
@@ -136,6 +140,11 @@ func (bpf *Module) Close() {
 		C.free(unsafe.Pointer(tpCategoryCS))
 		C.free(unsafe.Pointer(tpNameCS))
 	}
+	for _, vs := range bpf.perfEvents {
+		for _, v := range vs {
+			C.bpf_close_perf_event_fd((C.int)(v))
+		}
+	}
 	for _, fd := range bpf.funcs {
 		syscall.Close(fd)
 	}
@@ -154,6 +163,11 @@ func (bpf *Module) LoadKprobe(name string) (int, error) {
 // LoadTracepoint loads a program of type BPF_PROG_TYPE_TRACEPOINT
 func (bpf *Module) LoadTracepoint(name string) (int, error) {
 	return bpf.Load(name, C.BPF_PROG_TYPE_TRACEPOINT, 0, 0)
+}
+
+// LoadPerfEvent loads a program of type BPF_PROG_TYPE_PERF_EVENT
+func (bpf *Module) LoadPerfEvent(name string) (int, error) {
+	return bpf.Load(name, C.BPF_PROG_TYPE_PERF_EVENT, 0, 0)
 }
 
 // LoadUprobe loads a program of type BPF_PROG_TYPE_KPROBE.
@@ -271,6 +285,46 @@ func (bpf *Module) AttachTracepoint(name string, fd int) error {
 		return fmt.Errorf("failed to attach BPF tracepoint: %v", err)
 	}
 	bpf.tracepoints[name] = int(res)
+	return nil
+}
+
+// AttachPerfEvent attaches a perf event fd to a function
+// Argument 'evType' is a member of 'perf_type_id' enum in the kernel
+// header 'include/uapi/linux/perf_event.h'. Argument 'evConfig'
+// is one of PERF_COUNT_* constants in the same file.
+func (bpf *Module) AttachPerfEvent(evType, evConfig int, samplePeriod int, sampleFreq int, pid, cpu, groupFd, fd int) error {
+	key := fmt.Sprintf("%d:%d", evType, evConfig)
+	if _, ok := bpf.perfEvents[key]; ok {
+		return nil
+	}
+
+	res := []int{}
+
+	if cpu > 0 {
+		r, err := C.bpf_attach_perf_event(C.int(fd), C.uint(evType), C.uint(evConfig), C.ulong(samplePeriod), C.ulong(sampleFreq), C.int(pid), C.int(cpu), C.int(groupFd))
+		if r < 0 {
+			return fmt.Errorf("failed to attach BPF perf event: %v", err)
+		}
+
+		res = append(res, int(r))
+	} else {
+		cpus, err := cpuonline.Get()
+		if err != nil {
+			return fmt.Errorf("failed to determine online cpus: %v", err)
+		}
+
+		for _, i := range cpus {
+			r, err := C.bpf_attach_perf_event(C.int(fd), C.uint(evType), C.uint(evConfig), C.ulong(samplePeriod), C.ulong(sampleFreq), C.int(pid), C.int(i), C.int(groupFd))
+			if r < 0 {
+				return fmt.Errorf("failed to attach BPF perf event: %v", err)
+			}
+
+			res = append(res, int(r))
+		}
+	}
+
+	bpf.perfEvents[key] = res
+
 	return nil
 }
 

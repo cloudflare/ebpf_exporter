@@ -622,8 +622,22 @@ kretprobes:
 # Tracepoints and their targets (eBPF functions)
 tracepoints:
   [ tracepoint: target ...]
+# Perf events configuration
+perf_events:
+  [ - perf_event ]
 # Actual eBPF program code to inject in the kernel
 code: [ code ]
+```
+
+#### `perf_event`
+
+See [llcstat](examples/llcstat.yaml) as an example.
+
+```
+- type: [ perf event type code ]
+  name: [ perf event name code ]
+  target: [ target eBPF function ]
+  sample_period: [ sample period ]
 ```
 
 #### `metrics`
