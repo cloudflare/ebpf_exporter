@@ -25,6 +25,7 @@ func NewSet() *Set {
 	return &Set{
 		decoders: map[string]Decoder{
 			"ksym":       &KSym{},
+			"majorminor": &MajorMinor{},
 			"regexp":     &Regexp{},
 			"static_map": &StaticMap{},
 			"string":     &String{},
