@@ -1,0 +1,89 @@
+programs:
+  # See:
+  # * https://github.com/iovisor/bcc/blob/master/tools/runqlat.py
+  # * https://github.com/iovisor/bcc/blob/master/tools/runqlat_example.txt
+  - name: runqlat
+    metrics:
+      histograms:
+        - name: run_queue_latency_seconds
+          help: Run queue latency histogram
+          table: run_queue_latencty
+          bucket_type: exp2
+          bucket_min: 0
+          bucket_max: 26
+          bucket_multiplier: 0.000001 # microseconds to seconds
+          labels:
+            - name: bucket
+              decoders:
+                - name: uint64
+    kprobes:
+      ttwu_do_wakeup: trace_ttwu_do_wakeup
+      wake_up_new_task: trace_wake_up_new_task
+      finish_task_switch: trace_run
+    code: |
+      #include <uapi/linux/ptrace.h>
+      #include <linux/sched.h>
+
+      // 27 buckets for latency, max range is 33.6s .. 67.1s
+      const u8 max_latency_slot = 26;
+
+      // Histograms to record latencies
+      BPF_HISTOGRAM(run_queue_latencty, u64, max_latency_slot + 1);
+
+      // Pid to enqueue time map
+      BPF_HASH(start, u32);
+
+      // Record enqueue timestamp
+      static int trace_enqueue(u32 tgid, u32 pid) {
+          if (tgid == 0 && pid == 0) {
+              // Skip swapper kthread
+              return 0;
+          }
+
+          u64 ts = bpf_ktime_get_ns();
+          start.update(&pid, &ts);
+
+          return 0;
+      }
+
+      int trace_wake_up_new_task(struct pt_regs *ctx, struct task_struct *p) {
+          return trace_enqueue(p->tgid, p->pid);
+      }
+
+      int trace_ttwu_do_wakeup(struct pt_regs *ctx, void* rq, struct task_struct *p, int wake_flags) {
+          return trace_enqueue(p->tgid, p->pid);
+      }
+
+      // Calculate latency
+      int trace_run(struct pt_regs *ctx, struct task_struct *prev) {
+          // Treat like an enqueue event and store timestamp
+          if (prev->state == TASK_RUNNING) {
+              trace_enqueue(prev->tgid, prev->pid);
+          }
+
+          u32 tgid = bpf_get_current_pid_tgid() >> 32;
+          u32 pid = bpf_get_current_pid_tgid();
+
+          // Fetch timestamp and calculate delta
+          u64 *tsp = start.lookup(&pid);
+          if (tsp == 0) {
+              // Missed enqueue
+              return 0;
+          }
+
+          // Latency histogram key
+          u64 latency_slot = bpf_log2l((bpf_ktime_get_ns() - *tsp) / 1000);
+
+          // Cap latency bucket at max value
+          if (latency_slot > max_latency_slot) {
+              latency_slot = max_latency_slot;
+          }
+
+          // Increment bucket key
+          run_queue_latencty.increment(latency_slot);
+
+          // Remove enqueued task
+          start.delete(&pid);
+
+          return 0;
+      }
