@@ -63,12 +63,24 @@ func (e *Exporter) Attach() error {
 		for kretprobeName, targetName := range program.Kretprobes {
 			target, err := module.LoadKprobe(targetName)
 			if err != nil {
-				return fmt.Errorf("failed to load target %s in program %s: %s", targetName, program.Name, err)
+				return fmt.Errorf("failed to load target %q in program %q: %s", targetName, program.Name, err)
 			}
 
 			err = module.AttachKretprobe(kretprobeName, target)
 			if err != nil {
-				return fmt.Errorf("failed to attach kretprobe %s to %s in program %s: %s", kretprobeName, targetName, program.Name, err)
+				return fmt.Errorf("failed to attach kretprobe %q to %q in program %q: %s", kretprobeName, targetName, program.Name, err)
+			}
+		}
+
+		for tracepointName, targetName := range program.Tracepoints {
+			target, err := module.LoadTracepoint(targetName)
+			if err != nil {
+				return fmt.Errorf("failed to load target %q in program %q: %s", targetName, program.Name, err)
+			}
+
+			err = module.AttachTracepoint(tracepointName, target)
+			if err != nil {
+				return fmt.Errorf("failed to attach tracepoint %q to %q in program %q: %s", tracepointName, targetName, program.Name, err)
 			}
 		}
 
