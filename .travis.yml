@@ -15,9 +15,11 @@ before_install:
   - sudo apt-get update && sudo apt-get install -y libbcc linux-headers-$(uname -r)
   - sudo dpkg -L libbcc
   # Install linter tools
-  - go get -v github.com/alecthomas/gometalinter
+  - go get -u -v github.com/alecthomas/gometalinter
   - $GOPATH/bin/gometalinter --install
+  - go get -u -v github.com/golang/dep/cmd/dep
 
 script:
+  - $GOPATH/bin/dep status
   - go test -v ./...
   - $GOPATH/bin/gometalinter --vendor ./...
