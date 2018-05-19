@@ -54,7 +54,6 @@ programs:
       blk_mq_start_request: trace_req_start
       blk_account_io_completion: trace_req_completion
     code: |
-      #include <uapi/linux/ptrace.h>
       #include <linux/blkdev.h>
       #include <linux/blk_types.h>
 
