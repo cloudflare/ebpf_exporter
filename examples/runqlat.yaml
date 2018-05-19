@@ -21,7 +21,6 @@ programs:
       wake_up_new_task: trace_wake_up_new_task
       finish_task_switch: trace_run
     code: |
-      #include <uapi/linux/ptrace.h>
       #include <linux/sched.h>
 
       // 27 buckets for latency, max range is 33.6s .. 67.1s
