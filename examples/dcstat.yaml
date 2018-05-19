@@ -11,7 +11,7 @@ programs:
           labels:
             - name: op
               decoders:
-                - name: uint
+                - name: uint64
                 - name: static_map
                   static_map:
                     1: refs
