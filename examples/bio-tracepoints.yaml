@@ -1,9 +1,9 @@
 programs:
-  # See:
-  # * https://github.com/iovisor/bcc/blob/master/tools/biolatency.py
-  # * https://github.com/iovisor/bcc/blob/master/tools/biolatency_example.txt
+  # Like bio, but with tracepoints. It may catch more than just bio, especially
+  # if you have RAID, because requests are getting split and remapped.
   #
-  # See also: bio-tracepoints.yaml
+  # See:
+  # * https://github.com/iovisor/bcc/issues/826
   - name: bio
     metrics:
       histograms:
@@ -17,7 +17,7 @@ programs:
           labels:
             - name: device
               decoders:
-                - name: string
+                - name: majorminor
             - name: operation
               decoders:
                 - name: uint64
@@ -38,7 +38,7 @@ programs:
           labels:
             - name: device
               decoders:
-                - name: string
+                - name: majorminor
             - name: operation
               decoders:
                 - name: uint64
@@ -49,17 +49,14 @@ programs:
             - name: bucket
               decoders:
                 - name: uint64
-    kprobes:
-      blk_start_request: trace_req_start
-      blk_mq_start_request: trace_req_start
-      blk_account_io_completion: trace_req_completion
+    tracepoints:
+      block:block_rq_issue: tracepoint__block__block_rq_issue
+      block:block_rq_complete: tracepoint__block__block_rq_complete
     code: |
-      #include <uapi/linux/ptrace.h>
       #include <linux/blkdev.h>
-      #include <linux/blk_types.h>
 
       typedef struct disk_key {
-          char disk[DISK_NAME_LEN];
+          u32 dev;
           u8 op;
           u64 slot;
       } disk_key_t;
@@ -73,44 +70,61 @@ programs:
       // 16 buckets per disk in kib, max range is 16mib .. 32mib
       const u8 max_size_slot = 15;
 
-      // Hash to temporily hold the start time of each bio request, max 10k in-flight by default
-      BPF_HASH(start, struct request *);
-
       // Histograms to record latencies
       BPF_HISTOGRAM(io_latency, disk_key_t, (max_latency_slot + 1) * max_disks);
 
       // Histograms to record sizes
       BPF_HISTOGRAM(io_size, disk_key_t, (max_size_slot + 1) * max_disks);
 
-      // Record start time of a request
-      int trace_req_start(struct pt_regs *ctx, struct request *req) {
-          u64 ts = bpf_ktime_get_ns();
-          start.update(&req, &ts);
+      struct key_t {
+          dev_t dev;
+          sector_t sector;
+      };
+
+      struct val_t {
+          u64 start;
+          u64 bytes;
+      };
+
+      // Hash to temporily hold the start time of each bio request, max 10k in-flight by default
+      BPF_HASH(start, struct key_t, struct val_t);
+
+      // Generates function tracepoint__block__block_rq_issue
+      TRACEPOINT_PROBE(block, block_rq_issue) {
+          struct key_t key = {};
+          key.dev = args->dev;
+          key.sector = args->sector;
+
+          if (key.sector == -1) {
+             key.sector = 0;
+          }
+
+          struct val_t val = {};
+          val.start = bpf_ktime_get_ns();
+          val.bytes = args->bytes;
+
+          start.update(&key, &val);
 
           return 0;
       }
 
-      // Calculate request duration and store in appropriate histogram bucket
-      int trace_req_completion(struct pt_regs *ctx, struct request *req, unsigned int bytes) {
-          u64 *tsp, delta;
+      // Generates function tracepoint__block__block_rq_complete
+      TRACEPOINT_PROBE(block, block_rq_complete) {
+          struct key_t key = {};
+          key.dev = args->dev;
+          key.sector = args->sector;
 
-          // Fetch timestamp and calculate delta
-          tsp = start.lookup(&req);
-          if (tsp == 0) {
+          if (key.sector == -1) {
+             key.sector = 0;
+          }
+
+          struct val_t *valp = start.lookup(&key);
+          if (valp == 0) {
               return 0; // missed issue
           }
 
-          // There are write request with zero length on sector zero,
-          // which do not seem to be real writes to device.
-          if (req->__sector == 0 && req->__data_len == 0) {
-            return 0;
-          }
-
-          // Delta in nanoseconds
-          delta = bpf_ktime_get_ns() - *tsp;
-
-          // Convert to microseconds
-          delta /= 1000;
+          // Delta in microseconds
+          u64 delta = (bpf_ktime_get_ns() - valp->start) / 1000;
 
           // Latency histogram key
           u64 latency_slot = bpf_log2l(delta);
@@ -120,21 +134,23 @@ programs:
               latency_slot = max_latency_slot;
           }
 
-          disk_key_t latency_key = { .slot = latency_slot };
-          bpf_probe_read(&latency_key.disk, sizeof(latency_key.disk), req->rq_disk->disk_name);
+          disk_key_t latency_key = {};
+          latency_key.slot = latency_slot;
+          latency_key.dev = new_encode_dev(args->dev);
 
           // Request size histogram key
-          u64 size_slot = bpf_log2(bytes / 1024);
+          u64 size_slot = bpf_log2(valp->bytes / 1024);
 
           // Cap latency bucket at max value
           if (size_slot > max_size_slot) {
               size_slot = max_size_slot;
           }
 
-          disk_key_t size_key = { .slot = size_slot };
-          bpf_probe_read(&size_key.disk, sizeof(size_key.disk), req->rq_disk->disk_name);
+          disk_key_t size_key = {};
+          size_key.slot = size_slot;
+          size_key.dev = new_encode_dev(args->dev);
 
-          if ((req->cmd_flags & REQ_OP_MASK) == REQ_OP_WRITE) {
+          if (args->rwbs[0] == 'W' || args->rwbs[0] == 'S' || args->rwbs[0] == 'F' || args->rwbs[1] == 'W' || args->rwbs[1] == 'S' || args->rwbs[1] == 'F') {
               latency_key.op = 2;
               size_key.op    = 2;
           } else {
@@ -145,7 +161,7 @@ programs:
           io_latency.increment(latency_key);
           io_size.increment(size_key);
 
-          start.delete(&req);
+          start.delete(&key);
 
           return 0;
       }
