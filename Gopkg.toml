@@ -4,8 +4,8 @@
   non-go = true
 
 [[constraint]]
-  branch = "master"
   name = "github.com/iovisor/gobpf"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/prometheus/client_golang"

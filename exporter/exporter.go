@@ -48,28 +48,16 @@ func (e *Exporter) Attach() error {
 			return fmt.Errorf("error compiling module for program %q", program.Name)
 		}
 
-		for kprobeName, targetName := range program.Kprobes {
-			target, err := module.LoadKprobe(targetName)
-			if err != nil {
-				return fmt.Errorf("failed to load target %q in program %q: %s", targetName, program.Name, err)
-			}
-
-			err = module.AttachKprobe(kprobeName, target)
-			if err != nil {
-				return fmt.Errorf("failed to attach kprobe %q to %q in program %q: %s", kprobeName, targetName, program.Name, err)
-			}
+		if err := attachKprobes(module, program.Kprobes); err != nil {
+			return fmt.Errorf("failed to attach kprobes to program %q: %s", program.Name, err)
 		}
 
-		for kretprobeName, targetName := range program.Kretprobes {
-			target, err := module.LoadKprobe(targetName)
-			if err != nil {
-				return fmt.Errorf("failed to load target %s in program %s: %s", targetName, program.Name, err)
-			}
+		if err := attachKretprobes(module, program.Kretprobes); err != nil {
+			return fmt.Errorf("failed to attach kretprobes to program %q: %s", program.Name, err)
+		}
 
-			err = module.AttachKretprobe(kretprobeName, target)
-			if err != nil {
-				return fmt.Errorf("failed to attach kretprobe %s to %s in program %s: %s", kretprobeName, targetName, program.Name, err)
-			}
+		if err := attachTracepoints(module, program.Tracepoints); err != nil {
+			return fmt.Errorf("failed to attach tracepoints to program %q: %s", program.Name, err)
 		}
 
 		e.modules[program.Name] = module

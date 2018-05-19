@@ -620,6 +620,9 @@ kprobes:
 # Kretprobes (kernel functions) and their targets (eBPF functions)
 kretprobes:
   [ kprobename: target ...]
+# Tracepoints and their targets (eBPF functions)
+tracepoints:
+  [ tracepoint: target ...]
 # Actual eBPF program code to inject in the kernel
 code: [ code ]
 ```

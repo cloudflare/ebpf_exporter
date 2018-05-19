@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"regexp"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -34,10 +35,11 @@ import "C"
 
 // Module type
 type Module struct {
-	p       unsafe.Pointer
-	funcs   map[string]int
-	kprobes map[string]unsafe.Pointer
-	uprobes map[string]unsafe.Pointer
+	p           unsafe.Pointer
+	funcs       map[string]int
+	kprobes     map[string]unsafe.Pointer
+	uprobes     map[string]unsafe.Pointer
+	tracepoints map[string]unsafe.Pointer
 }
 
 type compileRequest struct {
@@ -86,10 +88,11 @@ func newModule(code string, cflags []string) *Module {
 		return nil
 	}
 	return &Module{
-		p:       c,
-		funcs:   make(map[string]int),
-		kprobes: make(map[string]unsafe.Pointer),
-		uprobes: make(map[string]unsafe.Pointer),
+		p:           c,
+		funcs:       make(map[string]int),
+		kprobes:     make(map[string]unsafe.Pointer),
+		uprobes:     make(map[string]unsafe.Pointer),
+		tracepoints: make(map[string]unsafe.Pointer),
 	}
 }
 
@@ -125,6 +128,15 @@ func (bpf *Module) Close() {
 		C.bpf_detach_uprobe(evNameCS)
 		C.free(unsafe.Pointer(evNameCS))
 	}
+	for k, v := range bpf.tracepoints {
+		C.perf_reader_free(v)
+		parts := strings.SplitN(k, ":", 2)
+		tpCategoryCS := C.CString(parts[0])
+		tpNameCS := C.CString(parts[1])
+		C.bpf_detach_tracepoint(tpCategoryCS, tpNameCS)
+		C.free(unsafe.Pointer(tpCategoryCS))
+		C.free(unsafe.Pointer(tpNameCS))
+	}
 	for _, fd := range bpf.funcs {
 		syscall.Close(fd)
 	}
@@ -138,6 +150,11 @@ func (bpf *Module) LoadNet(name string) (int, error) {
 // LoadKprobe loads a program of type BPF_PROG_TYPE_KPROBE.
 func (bpf *Module) LoadKprobe(name string) (int, error) {
 	return bpf.Load(name, C.BPF_PROG_TYPE_KPROBE, 0, 0)
+}
+
+// LoadTracepoint loads a program of type BPF_PROG_TYPE_TRACEPOINT
+func (bpf *Module) LoadTracepoint(name string) (int, error) {
+	return bpf.Load(name, C.BPF_PROG_TYPE_TRACEPOINT, 0, 0)
 }
 
 // LoadUprobe loads a program of type BPF_PROG_TYPE_KPROBE.
@@ -229,6 +246,33 @@ func (bpf *Module) AttachKretprobe(fnName string, fd int) error {
 	evName := "r_" + kprobeRegexp.ReplaceAllString(fnName, "_")
 
 	return bpf.attachProbe(evName, BPF_PROBE_RETURN, fnName, fd)
+}
+
+// AttachTracepoint attaches a tracepoint fd to a function
+// The 'name' argument is in the format 'category:name'
+func (bpf *Module) AttachTracepoint(name string, fd int) error {
+	if _, ok := bpf.tracepoints[name]; ok {
+		return nil
+	}
+
+	parts := strings.SplitN(name, ":", 2)
+	if len(parts) < 2 {
+		return fmt.Errorf("failed to parse tracepoint name, expected %q, got %q", "category:name", name)
+	}
+
+	tpCategoryCS := C.CString(parts[0])
+	tpNameCS := C.CString(parts[1])
+
+	res, err := C.bpf_attach_tracepoint(C.int(fd), tpCategoryCS, tpNameCS, -1, 0, -1, nil, nil)
+
+	C.free(unsafe.Pointer(tpCategoryCS))
+	C.free(unsafe.Pointer(tpNameCS))
+
+	if res == nil {
+		return fmt.Errorf("failed to attach BPF tracepoint: %v", err)
+	}
+	bpf.tracepoints[name] = res
+	return nil
 }
 
 // AttachUprobe attaches a uprobe fd to the symbol in the library or binary 'name'
