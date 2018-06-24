@@ -271,7 +271,7 @@ func (e Exporter) exportTables() (map[string]map[string][]metricValue, error) {
 		for name, labels := range metricTables {
 			metricValues, err := e.tableValues(e.modules[program.Name], name, labels)
 			if err != nil {
-				return nil, fmt.Errorf("error getting values for table %q of program %q", name, program.Name)
+				return nil, fmt.Errorf("error getting values for table %q of program %q: %s", name, program.Name, err)
 			}
 
 			tables[program.Name][name] = metricValues
