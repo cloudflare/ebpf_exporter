@@ -208,16 +208,22 @@ func (e *Exporter) tableValues(module *bcc.Module, tableName string, labels []co
 	values := []metricValue{}
 
 	table := bcc.NewTable(module.TableId(tableName), module)
+	iter := table.Iter()
 
-	for entry := range table.Iter() {
-		elements := strings.Fields(strings.Trim(entry.Key, "{ }"))
+	for iter.Next() {
+		key, err := table.KeyBytesToStr(iter.Key())
+		if err != nil {
+			return nil, fmt.Errorf("error decoding key %v", iter.Key())
+		}
+
+		elements := strings.Fields(strings.Trim(key, "{ }"))
 
 		if len(elements) != len(labels) {
-			return nil, fmt.Errorf("key %q has %d elements, but we expect %d", entry.Key, len(elements), len(labels))
+			return nil, fmt.Errorf("key %q has %d elements, but we expect %d", key, len(elements), len(labels))
 		}
 
 		mv := metricValue{
-			raw:    entry.Key,
+			raw:    key,
 			labels: make([]string, len(labels)),
 		}
 
@@ -240,9 +246,14 @@ func (e *Exporter) tableValues(module *bcc.Module, tableName string, labels []co
 			continue
 		}
 
-		value, err := strconv.ParseUint(entry.Value, 0, 64)
+		leaf, err := table.LeafBytesToStr(iter.Leaf())
 		if err != nil {
-			return nil, fmt.Errorf("value %q for key %v cannot be parsed as uint64: %s", entry.Value, mv.labels, err)
+			return nil, fmt.Errorf("error decoding value %v for key %q", iter.Leaf(), key)
+		}
+
+		value, err := strconv.ParseUint(leaf, 0, 64)
+		if err != nil {
+			return nil, fmt.Errorf("value %q for key %v cannot be parsed as uint64: %s", leaf, mv.labels, err)
 		}
 
 		mv.value = float64(value)
