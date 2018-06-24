@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"encoding/binary"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,6 +16,12 @@ import (
 
 // Namespace to use for all metrics
 const prometheusNamespace = "ebpf_exporter"
+
+var byteOrder binary.ByteOrder
+
+func init() {
+	byteOrder = bcc.GetHostByteOrder()
+}
 
 // Exporter is a ebpf_exporter instance implementing prometheus.Collector
 type Exporter struct {
@@ -246,17 +253,7 @@ func (e *Exporter) tableValues(module *bcc.Module, tableName string, labels []co
 			continue
 		}
 
-		leaf, err := table.LeafBytesToStr(iter.Leaf())
-		if err != nil {
-			return nil, fmt.Errorf("error decoding value %v for key %q", iter.Leaf(), key)
-		}
-
-		value, err := strconv.ParseUint(leaf, 0, 64)
-		if err != nil {
-			return nil, fmt.Errorf("value %q for key %v cannot be parsed as uint64: %s", leaf, mv.labels, err)
-		}
-
-		mv.value = float64(value)
+		mv.value = float64(byteOrder.Uint64(iter.Leaf()))
 
 		values = append(values, mv)
 	}
