@@ -23,7 +23,7 @@ func (k *KSym) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 	if _, ok := k.cache[addr]; !ok {
 		name, err := Ksym(addr)
 		if err != nil {
-			return []byte(fmt.Sprintf("unknown:%s", addr)), nil
+			return []byte(fmt.Sprintf("unknown_addr:0x%s", addr)), nil
 		}
 
 		k.cache[addr] = []byte(name)
