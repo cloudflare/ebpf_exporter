@@ -14,9 +14,9 @@ type Regexp struct {
 }
 
 // Decode only allows inputs matching regexp
-func (r *Regexp) Decode(in string, conf config.Decoder) (string, error) {
+func (r *Regexp) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 	if conf.Regexps == nil {
-		return "", errors.New("no regexps defined in config")
+		return nil, errors.New("no regexps defined in config")
 	}
 
 	if r.cache == nil {
@@ -29,20 +29,20 @@ func (r *Regexp) Decode(in string, conf config.Decoder) (string, error) {
 		if _, ok := r.cache[expr]; !ok {
 			compiled, err := regexp.Compile(expr)
 			if err != nil {
-				return "", fmt.Errorf("error compiling regexp %q: %s", expr, err)
+				return nil, fmt.Errorf("error compiling regexp %q: %s", expr, err)
 			}
 
 			r.cache[expr] = compiled
 		}
 
-		if r.cache[expr].MatchString(in) {
+		if r.cache[expr].MatchString(string(in)) {
 			matched = true
 			break
 		}
 	}
 
 	if !matched {
-		return "", ErrSkipLabelSet
+		return nil, ErrSkipLabelSet
 	}
 
 	return in, nil

@@ -7,6 +7,7 @@ programs:
           table: counts
           labels:
             - name: function
+              size: 8
               decoders:
                 - name: ksym
     tracepoints:

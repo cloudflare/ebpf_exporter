@@ -54,6 +54,7 @@ type Histogram struct {
 // with the list of decoders
 type Label struct {
 	Name     string    `yaml:"name"`
+	Size     uint      `yaml:"size"`
 	Decoders []Decoder `yaml:"decoders"`
 }
 

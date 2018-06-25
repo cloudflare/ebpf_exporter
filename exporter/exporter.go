@@ -1,12 +1,10 @@
 package exporter
 
 import (
-	"encoding/binary"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/decoder"
@@ -16,12 +14,6 @@ import (
 
 // Namespace to use for all metrics
 const prometheusNamespace = "ebpf_exporter"
-
-var byteOrder binary.ByteOrder
-
-func init() {
-	byteOrder = bcc.GetHostByteOrder()
-}
 
 // Exporter is a ebpf_exporter instance implementing prometheus.Collector
 type Exporter struct {
@@ -211,6 +203,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 	}
 }
 
+// tableValues returns values in the requested table to be used in metircs
 func (e *Exporter) tableValues(module *bcc.Module, tableName string, labels []config.Label) ([]metricValue, error) {
 	values := []metricValue{}
 
@@ -218,42 +211,27 @@ func (e *Exporter) tableValues(module *bcc.Module, tableName string, labels []co
 	iter := table.Iter()
 
 	for iter.Next() {
-		key, err := table.KeyBytesToStr(iter.Key())
+		key := iter.Key()
+		raw, err := table.KeyBytesToStr(key)
 		if err != nil {
-			return nil, fmt.Errorf("error decoding key %v", iter.Key())
-		}
-
-		elements := strings.Fields(strings.Trim(key, "{ }"))
-
-		if len(elements) != len(labels) {
-			return nil, fmt.Errorf("key %q has %d elements, but we expect %d", key, len(elements), len(labels))
+			return nil, fmt.Errorf("error decoding key %v", key)
 		}
 
 		mv := metricValue{
-			raw:    key,
+			raw:    raw,
 			labels: make([]string, len(labels)),
 		}
 
-		skip := false
-
-		for i, label := range labels {
-			decoded, err := e.decoders.Decode(elements[i], label)
-			if err != nil {
-				if err == decoder.ErrSkipLabelSet {
-					skip = true
-					break
-				}
-				return nil, fmt.Errorf("error decoding %q for label %q: %s", elements[i], label.Name, err)
+		mv.labels, err = e.decoders.DecodeLabels(key, labels)
+		if err != nil {
+			if err == decoder.ErrSkipLabelSet {
+				continue
 			}
 
-			mv.labels[i] = decoded
+			return nil, err
 		}
 
-		if skip {
-			continue
-		}
-
-		mv.value = float64(byteOrder.Uint64(iter.Leaf()))
+		mv.value = float64(bcc.GetHostByteOrder().Uint64(iter.Leaf()))
 
 		values = append(values, mv)
 	}

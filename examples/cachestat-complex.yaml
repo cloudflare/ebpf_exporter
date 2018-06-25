@@ -1,7 +1,4 @@
 programs:
-  # See:
-  # * https://github.com/iovisor/bcc/blob/master/tools/cachestat.py
-  # * https://github.com/iovisor/bcc/blob/master/tools/cachestat_example.txt
   - name: cachestat
     metrics:
       counters:
@@ -13,6 +10,14 @@ programs:
               size: 8
               decoders:
                 - name: ksym
+            - name: command
+              size: 128
+              decoders:
+                - name: string
+                - name: regexp
+                  regexps:
+                    - ^systemd-journal$
+                    - ^syslog-ng$
     kprobes:
       add_to_page_cache_lru: do_count
       mark_page_accessed: do_count
@@ -21,9 +26,18 @@ programs:
     code: |
       #include <uapi/linux/ptrace.h>
 
-      BPF_HASH(counts, u64);
+      struct key_t {
+          u64 ip;
+          char command[128];
+      };
+
+      BPF_HASH(counts, struct key_t);
 
       int do_count(struct pt_regs *ctx) {
-          counts.increment(PT_REGS_IP(ctx) - 1);
+          struct key_t key = { .ip = PT_REGS_IP(ctx) - 1 };
+          bpf_get_current_comm(&key.command, sizeof(key.command));
+
+          counts.increment(key);
+
           return 0;
       }

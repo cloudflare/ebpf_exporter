@@ -9,15 +9,17 @@ programs:
           table: instructions
           labels:
             - name: cpu
+              size: 4
               decoders:
-                - name: uint64
+                - name: uint
         - name: cpu_cycles_total
           help: Cycles processed by CPUs
           table: cycles
           labels:
             - name: cpu
+              size: 4
               decoders:
-                - name: uint64
+                - name: uint
     perf_events:
       - type: 0x0 # HARDWARE
         name: 0x1 # PERF_COUNT_HW_INSTRUCTIONS

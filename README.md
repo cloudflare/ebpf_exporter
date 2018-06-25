@@ -99,9 +99,6 @@ You can check out `cachestat` source code to see how these translate:
 
 ```yaml
 programs:
-  # See:
-  # * https://github.com/iovisor/bcc/blob/master/tools/cachestat.py
-  # * https://github.com/iovisor/bcc/blob/master/tools/cachestat_example.txt
   - name: cachestat
     metrics:
       counters:
@@ -110,9 +107,11 @@ programs:
           table: counts
           labels:
             - name: op
+              size: 8
               decoders:
                 - name: ksym
             - name: command
+              size: 128
               decoders:
                 - name: string
                 - name: regexp
@@ -280,6 +279,11 @@ To nicely plot these in Grafana, you'll need v5.1:
 
 ```yaml
 programs:
+  # See:
+  # * https://github.com/iovisor/bcc/blob/master/tools/biolatency.py
+  # * https://github.com/iovisor/bcc/blob/master/tools/biolatency_example.txt
+  #
+  # See also: bio-tracepoints.yaml
   - name: bio
     metrics:
       histograms:
@@ -292,18 +296,21 @@ programs:
           bucket_multiplier: 0.000001 # microseconds to seconds
           labels:
             - name: device
+              size: 32
               decoders:
                 - name: string
             - name: operation
+              size: 8
               decoders:
-                - name: uint64
+                - name: uint
                 - name: static_map
                   static_map:
                     1: read
                     2: write
             - name: bucket
+              size: 8
               decoders:
-                - name: uint64
+                - name: uint
         - name: bio_size_bytes
           help: Block IO size histogram with kibibyte buckets
           table: io_size
@@ -313,18 +320,21 @@ programs:
           bucket_multiplier: 1024 # kibibytes to bytes
           labels:
             - name: device
+              size: 32
               decoders:
                 - name: string
             - name: operation
+              size: 8
               decoders:
-                - name: uint64
+                - name: uint
                 - name: static_map
                   static_map:
                     1: read
                     2: write
             - name: bucket
+              size: 8
               decoders:
-                - name: uint64
+                - name: uint
     kprobes:
       blk_start_request: trace_req_start
       blk_mq_start_request: trace_req_start
@@ -334,7 +344,7 @@ programs:
       #include <linux/blk_types.h>
 
       typedef struct disk_key {
-          char disk[DISK_NAME_LEN];
+          char disk[32];
           u8 op;
           u64 slot;
       } disk_key_t;
@@ -425,6 +435,8 @@ programs:
           return 0;
       }
 ```
+
+There is also a tracepoint based equivalent of this example in `examples`.
 
 ### Programs
 
@@ -517,24 +529,48 @@ of prometheus histogram to zero to avoid confusion around this.
 
 Labels transform kernel map keys into prometheus labels.
 
-Maps coming from the kernel are encoded in a special way. For example,
-here's how `[sda, 1]` is encoded as a string:
-
-```
-{ "sda" 0x1 }
-```
-
-We're transforming this to `["sda", "0x1"]` and call it a set of labels.
+Maps coming from the kernel are binary encoded. Values are always `u64`, but
+keys can be primitive types like `u64` or structs.
 
 Each label can be transformed with decoders (see below) according to metric
 configuration. Generally number of labels matches number of elements
 in the kernel map key.
 
+For map keys that are represented as structs alignment rules apply:
+
+* `u64` must be aligned at 8 byte boundary
+* `u32` must be aligned at 4 byte boundary
+* `u16` must be aligned at 2 byte boundary
+
+This means that the following struct:
+
+```c
+typedef struct disk_key {
+    char disk[32];
+    u8 op;
+    u64 slot;
+} disk_key_t;
+```
+
+Is represented as:
+
+* 32 byte `disk` char array
+* 1 byte `op` integer
+* 7 byte padding to align `slot`
+* 8 byte `slot` integer
+
+When decoding, label sizes should be supplied with padding included:
+
+* 32 for `disk`
+* 8 for `op` (1 byte value + 7 byte padding)
+* 8 byte `slot`
+
 ### Decoders
 
-Decoders take a string input of a label value and transform it to a string
-output that can either be chained to another decoder or used as the final
-label value.
+Decoders take a byte slice input of requested length and transform it into
+a byte slice representing a string. That byte slice can either be consumed
+by another decoder (for example `string` -> `regexp`) or or used as the final
+label value exporter to Prometheus.
 
 Below are decoders we have built in.
 
@@ -572,26 +608,27 @@ An example to report metrics only for `systemd-journal` and `syslog-ng`:
 #### `static_map`
 
 Static map decoder takes input and maps it to another value via `static_map`
-configuration key of the decoder.
+configuration key of the decoder. Values are expected as strings.
 
-An example to match `0x1` to `read` and `0x2` to `write`:
+An example to match `1` to `read` and `2` to `write`:
 
 ```
 - name: operation
-  decoder: static_map
-  static_decoder_map:
-    0x1: read
-    0x2: write
+  decoders:
+    - name:static_map
+      static_decoder_map:
+        1: read
+        2: write
 ```
 
 #### `string`
 
-String decoder transforms quoted strings coming from the kernel into unquoted
-string usable for prometheus metrics. For example: `"sda" -> sda`.
+String decoder transforms possibly null terminated strings coming
+from the kernel into string usable for prometheus metrics.
 
-#### `uint64`
+#### `uint`
 
-UInt64 decoder transforms hex encoded `uint64` values from the kernel
+UInt decoder transforms hex encoded `uint` values from the kernel
 into regular numbers. For example: `0xe -> 14`.
 
 ### Configuration file format
@@ -685,6 +722,7 @@ See [Labels](#labels) section for more details.
 
 ```
 name: <prometheus label name>
+size: <field size with padding>
 decoders:
   [ - decoder ]
 ```

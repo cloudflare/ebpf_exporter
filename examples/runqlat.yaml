@@ -14,8 +14,9 @@ programs:
           bucket_multiplier: 0.000001 # microseconds to seconds
           labels:
             - name: bucket
+              size: 8
               decoders:
-                - name: uint64
+                - name: uint
     kprobes:
       ttwu_do_wakeup: trace_ttwu_do_wakeup
       wake_up_new_task: trace_wake_up_new_task
