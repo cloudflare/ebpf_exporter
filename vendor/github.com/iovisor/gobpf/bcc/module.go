@@ -29,7 +29,6 @@ import (
 #cgo LDFLAGS: -lbcc
 #include <bcc/bpf_common.h>
 #include <bcc/libbpf.h>
-void perf_reader_free(void *ptr);
 */
 import "C"
 
@@ -37,9 +36,9 @@ import "C"
 type Module struct {
 	p           unsafe.Pointer
 	funcs       map[string]int
-	kprobes     map[string]unsafe.Pointer
-	uprobes     map[string]unsafe.Pointer
-	tracepoints map[string]unsafe.Pointer
+	kprobes     map[string]int
+	uprobes     map[string]int
+	tracepoints map[string]int
 }
 
 type compileRequest struct {
@@ -90,9 +89,9 @@ func newModule(code string, cflags []string) *Module {
 	return &Module{
 		p:           c,
 		funcs:       make(map[string]int),
-		kprobes:     make(map[string]unsafe.Pointer),
-		uprobes:     make(map[string]unsafe.Pointer),
-		tracepoints: make(map[string]unsafe.Pointer),
+		kprobes:     make(map[string]int),
+		uprobes:     make(map[string]int),
+		tracepoints: make(map[string]int),
 	}
 }
 
@@ -117,19 +116,19 @@ func compile() {
 func (bpf *Module) Close() {
 	C.bpf_module_destroy(bpf.p)
 	for k, v := range bpf.kprobes {
-		C.perf_reader_free(v)
+		C.bpf_close_perf_event_fd((C.int)(v))
 		evNameCS := C.CString(k)
 		C.bpf_detach_kprobe(evNameCS)
 		C.free(unsafe.Pointer(evNameCS))
 	}
 	for k, v := range bpf.uprobes {
-		C.perf_reader_free(v)
+		C.bpf_close_perf_event_fd((C.int)(v))
 		evNameCS := C.CString(k)
 		C.bpf_detach_uprobe(evNameCS)
 		C.free(unsafe.Pointer(evNameCS))
 	}
 	for k, v := range bpf.tracepoints {
-		C.perf_reader_free(v)
+		C.bpf_close_perf_event_fd((C.int)(v))
 		parts := strings.SplitN(k, ":", 2)
 		tpCategoryCS := C.CString(parts[0])
 		tpNameCS := C.CString(parts[1])
@@ -209,28 +208,28 @@ func (bpf *Module) attachProbe(evName string, attachType uint32, fnName string, 
 
 	evNameCS := C.CString(evName)
 	fnNameCS := C.CString(fnName)
-	res, err := C.bpf_attach_kprobe(C.int(fd), attachType, evNameCS, fnNameCS, -1, 0, -1, nil, nil)
+	res, err := C.bpf_attach_kprobe(C.int(fd), attachType, evNameCS, fnNameCS, (C.uint64_t)(0))
 	C.free(unsafe.Pointer(evNameCS))
 	C.free(unsafe.Pointer(fnNameCS))
 
-	if res == nil {
+	if res < 0 {
 		return fmt.Errorf("failed to attach BPF kprobe: %v", err)
 	}
-	bpf.kprobes[evName] = res
+	bpf.kprobes[evName] = int(res)
 	return nil
 }
 
 func (bpf *Module) attachUProbe(evName string, attachType uint32, path string, addr uint64, fd, pid int) error {
 	evNameCS := C.CString(evName)
 	binaryPathCS := C.CString(path)
-	res, err := C.bpf_attach_uprobe(C.int(fd), attachType, evNameCS, binaryPathCS, (C.uint64_t)(addr), (C.pid_t)(pid), 0, -1, nil, nil)
+	res, err := C.bpf_attach_uprobe(C.int(fd), attachType, evNameCS, binaryPathCS, (C.uint64_t)(addr), (C.pid_t)(pid))
 	C.free(unsafe.Pointer(evNameCS))
 	C.free(unsafe.Pointer(binaryPathCS))
 
-	if res == nil {
+	if res < 0 {
 		return fmt.Errorf("failed to attach BPF uprobe: %v", err)
 	}
-	bpf.uprobes[evName] = res
+	bpf.uprobes[evName] = int(res)
 	return nil
 }
 
@@ -263,15 +262,15 @@ func (bpf *Module) AttachTracepoint(name string, fd int) error {
 	tpCategoryCS := C.CString(parts[0])
 	tpNameCS := C.CString(parts[1])
 
-	res, err := C.bpf_attach_tracepoint(C.int(fd), tpCategoryCS, tpNameCS, -1, 0, -1, nil, nil)
+	res, err := C.bpf_attach_tracepoint(C.int(fd), tpCategoryCS, tpNameCS)
 
 	C.free(unsafe.Pointer(tpCategoryCS))
 	C.free(unsafe.Pointer(tpNameCS))
 
-	if res == nil {
+	if res < 0 {
 		return fmt.Errorf("failed to attach BPF tracepoint: %v", err)
 	}
-	bpf.tracepoints[name] = res
+	bpf.tracepoints[name] = int(res)
 	return nil
 }
 

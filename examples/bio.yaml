@@ -105,6 +105,9 @@ programs:
             return 0;
           }
 
+          // Disk that received the request
+          struct gendisk *disk = req->rq_disk;
+
           // Delta in nanoseconds
           delta = bpf_ktime_get_ns() - *tsp;
 
@@ -120,7 +123,7 @@ programs:
           }
 
           disk_key_t latency_key = { .slot = latency_slot };
-          bpf_probe_read(&latency_key.disk, sizeof(latency_key.disk), req->rq_disk->disk_name);
+          bpf_probe_read(&latency_key.disk, sizeof(latency_key.disk), &disk->disk_name);
 
           // Request size histogram key
           u64 size_slot = bpf_log2(bytes / 1024);
@@ -131,7 +134,7 @@ programs:
           }
 
           disk_key_t size_key = { .slot = size_slot };
-          bpf_probe_read(&size_key.disk, sizeof(size_key.disk), req->rq_disk->disk_name);
+          bpf_probe_read(&size_key.disk, sizeof(size_key.disk), &disk->disk_name);
 
           if ((req->cmd_flags & REQ_OP_MASK) == REQ_OP_WRITE) {
               latency_key.op = 2;
