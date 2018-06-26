@@ -35,7 +35,7 @@
     "bcc",
     "pkg/cpuonline"
   ]
-  revision = "c4ceec67cf1a399308813f890adfe89dea1f0a20"
+  revision = "362e99fa21988d6b1eecbb3aa683e55a4a622029"
 
 [[projects]]
   name = "github.com/matttproud/golang_protobuf_extensions"
