@@ -12,7 +12,16 @@ type Program struct {
 	Kprobes     map[string]string `yaml:"kprobes"`
 	Kretprobes  map[string]string `yaml:"kretprobes"`
 	Tracepoints map[string]string `yaml:"tracepoints"`
+	PerfEvents  []PerfEvent       `yaml:"perf_events"`
 	Code        string            `yaml:"code"`
+}
+
+// PerfEvent describes perf_event to attach to
+type PerfEvent struct {
+	Type         int    `yaml:"string"`
+	Name         int    `yaml:"name"`
+	Target       string `yaml:"target"`
+	SamplePeriod int    `yaml:"sample_period"`
 }
 
 // Metrics is a collection of metrics attached to a program

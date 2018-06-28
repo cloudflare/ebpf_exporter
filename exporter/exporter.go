@@ -60,6 +60,18 @@ func (e *Exporter) Attach() error {
 			return fmt.Errorf("failed to attach tracepoints to program %q: %s", program.Name, err)
 		}
 
+		for _, perfEventConfig := range program.PerfEvents {
+			target, err := module.LoadPerfEvent(perfEventConfig.Target)
+			if err != nil {
+				return fmt.Errorf("failed to load target %q in program %q: %s", perfEventConfig.Target, program.Name, err)
+			}
+
+			err = module.AttachPerfEvent(perfEventConfig.Type, perfEventConfig.Name, perfEventConfig.SamplePeriod, 0, -1, -1, -1, target)
+			if err != nil {
+				return fmt.Errorf("failed to attach perf event %d:%d to %q in program %q: %s", perfEventConfig.Type, perfEventConfig.Name, perfEventConfig.Target, program.Name, err)
+			}
+		}
+
 		e.modules[program.Name] = module
 	}
 
