@@ -34,9 +34,15 @@ func main() {
 		log.Fatalf("Error attaching exporter: %s", err)
 	}
 
-	err = prometheus.Register(e)
-	if err != nil {
-		log.Fatalf("Error registering exporter: %s", err)
+	log.Printf("Starting with %d programs found in the config", len(config.Programs))
+
+	// Do not register exporter if there are no programs,
+	// it will fail in prometheus code
+	if len(config.Programs) > 0 {
+		err = prometheus.Register(e)
+		if err != nil {
+			log.Fatalf("Error registering exporter: %s", err)
+		}
 	}
 
 	http.Handle("/metrics", promhttp.Handler())
