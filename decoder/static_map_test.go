@@ -34,7 +34,7 @@ func TestStaticMapDecoder(t *testing.T) {
 			t.Errorf("Error decoding %#v with mapping set to %#v: %s", c.in, c.mapping, err)
 		}
 
-		if bytes.Compare(out, c.out) != 0 {
+		if !bytes.Equal(out, c.out) {
 			t.Errorf("Expected %s, got %s", c.out, out)
 		}
 	}

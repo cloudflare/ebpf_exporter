@@ -20,16 +20,12 @@ func (u *UInt) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 	switch len(in) {
 	case 8:
 		result = byteOrder.Uint64(in)
-		break
 	case 4:
 		result = uint64(byteOrder.Uint32(in))
-		break
 	case 2:
 		result = uint64(byteOrder.Uint16(in))
-		break
 	case 1:
 		result = uint64(in[0])
-		break
 	default:
 		return nil, fmt.Errorf("unknown value length %d for %#v", len(in), in)
 	}
