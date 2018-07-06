@@ -299,24 +299,33 @@ func (e *Exporter) TablesHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Header().Add("Content-type", "text/plain")
-		fmt.Fprintf(w, "%s\n", err)
+		if _, err = fmt.Fprintf(w, "%s\n", err); err != nil {
+			log.Printf("Error returning error to client %q: %s", r.RemoteAddr, err)
+			return
+		}
 		return
 	}
 
 	w.Header().Add("Content-type", "text/plain")
 
+	buf := []byte{}
+
 	for program, tables := range tables {
-		fmt.Fprintf(w, "## Program: %s\n\n", program)
+		buf = append(buf, fmt.Sprintf("## Program: %s\n\n", program)...)
 
 		for name, table := range tables {
-			fmt.Fprintf(w, "### Table: %s\n\n", name)
+			buf = append(buf, fmt.Sprintf("### Table: %s\n\n", name)...)
 
-			fmt.Fprintf(w, "```\n")
+			buf = append(buf, fmt.Sprintf("```\n")...)
 			for _, row := range table {
-				fmt.Fprintf(w, "%s (%v) -> %f\n", row.raw, row.labels, row.value)
+				buf = append(buf, fmt.Sprintf("%s (%v) -> %f\n", row.raw, row.labels, row.value)...)
 			}
-			fmt.Fprintf(w, "```\n\n")
+			buf = append(buf, fmt.Sprintf("```\n\n")...)
 		}
+	}
+
+	if _, err = w.Write(buf); err != nil {
+		log.Printf("Error returning table contents to client %q: %s", r.RemoteAddr, err)
 	}
 }
 
