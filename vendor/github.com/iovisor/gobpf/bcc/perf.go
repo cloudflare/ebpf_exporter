@@ -55,15 +55,7 @@ var mu sync.Mutex
 
 // In lack of binary.HostEndian ...
 func init() {
-	var i int32 = 0x01020304
-	u := unsafe.Pointer(&i)
-	pb := (*byte)(u)
-	b := *pb
-	if b == 0x04 {
-		byteOrder = binary.LittleEndian
-	} else {
-		byteOrder = binary.BigEndian
-	}
+	byteOrder = determineHostByteOrder()
 }
 
 func registerCallback(data *callbackData) uint64 {
@@ -99,6 +91,23 @@ func callback_to_go(cbCookie unsafe.Pointer, raw unsafe.Pointer, rawSize C.int) 
 	go func() {
 		receiverChan <- C.GoBytes(raw, rawSize)
 	}()
+}
+
+// GetHostByteOrder returns the current byte-order.
+func GetHostByteOrder() binary.ByteOrder {
+	return byteOrder
+}
+
+func determineHostByteOrder() binary.ByteOrder {
+	var i int32 = 0x01020304
+	u := unsafe.Pointer(&i)
+	pb := (*byte)(u)
+	b := *pb
+	if b == 0x04 {
+		return binary.LittleEndian
+	}
+
+	return binary.BigEndian
 }
 
 // InitPerfMap initializes a perf map with a receiver channel.
