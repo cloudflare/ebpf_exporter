@@ -2,37 +2,32 @@ package decoder
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/cloudflare/ebpf_exporter/config"
+	"github.com/iovisor/gobpf/bcc"
 )
 
 // KSym is a decoder that transforms kernel address to a function name
 type KSym struct {
-	cache map[string]string
+	cache map[string][]byte
 }
 
 // Decode transforms kernel address to a function name
-func (k *KSym) Decode(in string, conf config.Decoder) (string, error) {
+func (k *KSym) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 	if k.cache == nil {
-		k.cache = map[string]string{}
+		k.cache = map[string][]byte{}
 	}
 
-	num, err := strconv.ParseUint(in, 0, 64)
-	if err != nil {
-		return fmt.Sprintf("invalid:%s", in), err
-	}
+	addr := fmt.Sprintf("%x", bcc.GetHostByteOrder().Uint64(in))
 
-	in = fmt.Sprintf("%x", num)
-
-	if _, ok := k.cache[in]; !ok {
-		name, err := Ksym(in)
+	if _, ok := k.cache[addr]; !ok {
+		name, err := Ksym(addr)
 		if err != nil {
-			return fmt.Sprintf("unknown:%s", in), nil
+			return []byte(fmt.Sprintf("unknown_addr:0x%s", addr)), nil
 		}
 
-		k.cache[in] = name
+		k.cache[addr] = []byte(name)
 	}
 
-	return k.cache[in], nil
+	return k.cache[addr], nil
 }

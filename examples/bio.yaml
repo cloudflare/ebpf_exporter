@@ -16,18 +16,21 @@ programs:
           bucket_multiplier: 0.000001 # microseconds to seconds
           labels:
             - name: device
+              size: 32
               decoders:
                 - name: string
             - name: operation
+              size: 8
               decoders:
-                - name: uint64
+                - name: uint
                 - name: static_map
                   static_map:
                     1: read
                     2: write
             - name: bucket
+              size: 8
               decoders:
-                - name: uint64
+                - name: uint
         - name: bio_size_bytes
           help: Block IO size histogram with kibibyte buckets
           table: io_size
@@ -37,18 +40,21 @@ programs:
           bucket_multiplier: 1024 # kibibytes to bytes
           labels:
             - name: device
+              size: 32
               decoders:
                 - name: string
             - name: operation
+              size: 8
               decoders:
-                - name: uint64
+                - name: uint
                 - name: static_map
                   static_map:
                     1: read
                     2: write
             - name: bucket
+              size: 8
               decoders:
-                - name: uint64
+                - name: uint
     kprobes:
       blk_start_request: trace_req_start
       blk_mq_start_request: trace_req_start
@@ -58,7 +64,7 @@ programs:
       #include <linux/blk_types.h>
 
       typedef struct disk_key {
-          char disk[DISK_NAME_LEN];
+          char disk[32];
           u8 op;
           u64 slot;
       } disk_key_t;

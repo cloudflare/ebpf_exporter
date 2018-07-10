@@ -10,15 +10,17 @@ programs:
           table: references
           labels:
             - name: cpu
+              size: 4
               decoders:
-                - name: uint64
+                - name: uint
         - name: llc_misses_total
           help: Last level cache operations by type
           table: misses
           labels:
             - name: cpu
+              size: 4
               decoders:
-                - name: uint64
+                - name: uint
     perf_events:
       - type: 0x0 # HARDWARE
         name: 0x3 # PERF_COUNT_HW_CACHE_MISSES

@@ -16,18 +16,21 @@ programs:
           bucket_multiplier: 0.000001 # microseconds to seconds
           labels:
             - name: device
+              size: 4
               decoders:
                 - name: majorminor
             - name: operation
+              size: 4
               decoders:
-                - name: uint64
+                - name: uint
                 - name: static_map
                   static_map:
                     1: read
                     2: write
             - name: bucket
+              size: 8
               decoders:
-                - name: uint64
+                - name: uint
         - name: bio_size_bytes
           help: Block IO size histogram with kibibyte buckets
           table: io_size
@@ -37,18 +40,21 @@ programs:
           bucket_multiplier: 1024 # kibibytes to bytes
           labels:
             - name: device
+              size: 4
               decoders:
                 - name: majorminor
             - name: operation
+              size: 4
               decoders:
-                - name: uint64
+                - name: uint
                 - name: static_map
                   static_map:
                     1: read
                     2: write
             - name: bucket
+              size: 8
               decoders:
-                - name: uint64
+                - name: uint
     tracepoints:
       block:block_rq_issue: tracepoint__block__block_rq_issue
       block:block_rq_complete: tracepoint__block__block_rq_complete

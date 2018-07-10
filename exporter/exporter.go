@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/decoder"
@@ -204,48 +203,35 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 	}
 }
 
+// tableValues returns values in the requested table to be used in metircs
 func (e *Exporter) tableValues(module *bcc.Module, tableName string, labels []config.Label) ([]metricValue, error) {
 	values := []metricValue{}
 
 	table := bcc.NewTable(module.TableId(tableName), module)
+	iter := table.Iter()
 
-	for entry := range table.Iter() {
-		elements := strings.Fields(strings.Trim(entry.Key, "{ }"))
-
-		if len(elements) != len(labels) {
-			return nil, fmt.Errorf("key %q has %d elements, but we expect %d", entry.Key, len(elements), len(labels))
+	for iter.Next() {
+		key := iter.Key()
+		raw, err := table.KeyBytesToStr(key)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding key %v", key)
 		}
 
 		mv := metricValue{
-			raw:    entry.Key,
+			raw:    raw,
 			labels: make([]string, len(labels)),
 		}
 
-		skip := false
-
-		for i, label := range labels {
-			decoded, err := e.decoders.Decode(elements[i], label)
-			if err != nil {
-				if err == decoder.ErrSkipLabelSet {
-					skip = true
-					break
-				}
-				return nil, fmt.Errorf("error decoding %q for label %q: %s", elements[i], label.Name, err)
+		mv.labels, err = e.decoders.DecodeLabels(key, labels)
+		if err != nil {
+			if err == decoder.ErrSkipLabelSet {
+				continue
 			}
 
-			mv.labels[i] = decoded
+			return nil, err
 		}
 
-		if skip {
-			continue
-		}
-
-		value, err := strconv.ParseUint(entry.Value, 0, 64)
-		if err != nil {
-			return nil, fmt.Errorf("value %q for key %v cannot be parsed as uint64: %s", entry.Value, mv.labels, err)
-		}
-
-		mv.value = float64(value)
+		mv.value = float64(bcc.GetHostByteOrder().Uint64(iter.Leaf()))
 
 		values = append(values, mv)
 	}

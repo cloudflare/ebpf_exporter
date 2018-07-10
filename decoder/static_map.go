@@ -10,17 +10,15 @@ import (
 type StaticMap struct{}
 
 // Decode maps values according to a static map
-func (s *StaticMap) Decode(in string, conf config.Decoder) (string, error) {
-	// TODO: err?
+func (s *StaticMap) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 	if conf.StaticMap == nil {
-		return "empty mapping", nil
+		return []byte("empty mapping"), nil
 	}
 
-	value, ok := conf.StaticMap[in]
+	value, ok := conf.StaticMap[string(in)]
 	if !ok {
-		// TODO: err?
-		return fmt.Sprintf("unknown:%s", in), nil
+		return []byte(fmt.Sprintf("unknown:%s", in)), nil
 	}
 
-	return value, nil
+	return []byte(value), nil
 }
