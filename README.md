@@ -43,6 +43,10 @@ $ ./bin/ebpf_exporter --config.file=src/github.com/cloudflare/ebpf_exporter/exam
 
 If you pass `--debug`, you can see raw tables at `/tables` endpoint.
 
+## Benchmarking overhead
+
+See [benchmark](benchmark) directory to get an idea of how low ebpf overhead is.
+
 ## Supported scenarios
 
 Currently the only supported way of getting data out of the kernel
