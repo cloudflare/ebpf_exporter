@@ -97,6 +97,11 @@ programs:
 
       // Generates function tracepoint__block__block_rq_issue
       TRACEPOINT_PROBE(block, block_rq_issue) {
+          // blkid generates these and we're not interested in them
+          if (args->dev == 0) {
+              return 0;
+          }
+
           struct key_t key = {};
           key.dev = args->dev;
           key.sector = args->sector;
