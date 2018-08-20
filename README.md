@@ -29,6 +29,18 @@ To build, you need to have `libbcc` installed:
 
 * https://github.com/iovisor/bcc/blob/master/INSTALL.md
 
+You can use pre-compiled binary from Releases:
+
+* https://github.com/cloudflare/ebpf_exporter/releases
+
+That still requires you to have `libbcc`. To build release binaries yourself:
+
+```
+$ make release-binaries
+```
+
+To build a package from latest sources:
+
 ```
 $ mkdir /tmp/ebpf_exporter
 $ cd /tmp/ebpf_exporter
