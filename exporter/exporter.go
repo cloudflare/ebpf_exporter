@@ -17,21 +17,30 @@ const prometheusNamespace = "ebpf_exporter"
 
 // Exporter is a ebpf_exporter instance implementing prometheus.Collector
 type Exporter struct {
-	config   config.Config
-	modules  map[string]*bcc.Module
-	ksyms    map[uint64]string
-	descs    map[string]map[string]*prometheus.Desc
-	decoders *decoder.Set
+	config              config.Config
+	modules             map[string]*bcc.Module
+	ksyms               map[uint64]string
+	enabledProgramsDesc *prometheus.Desc
+	descs               map[string]map[string]*prometheus.Desc
+	decoders            *decoder.Set
 }
 
 // New creates a new exporter with the provided config
 func New(config config.Config) *Exporter {
+	enabledProgramsDesc := prometheus.NewDesc(
+		prometheus.BuildFQName(prometheusNamespace, "", "enabled_programs"),
+		"The set of enabled programs",
+		[]string{"name"},
+		nil,
+	)
+
 	return &Exporter{
-		config:   config,
-		modules:  map[string]*bcc.Module{},
-		ksyms:    map[uint64]string{},
-		descs:    map[string]map[string]*prometheus.Desc{},
-		decoders: decoder.NewSet(),
+		config:              config,
+		modules:             map[string]*bcc.Module{},
+		ksyms:               map[uint64]string{},
+		enabledProgramsDesc: enabledProgramsDesc,
+		descs:               map[string]map[string]*prometheus.Desc{},
+		decoders:            decoder.NewSet(),
 	}
 }
 
@@ -94,6 +103,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 		ch <- e.descs[programName][name]
 	}
 
+	ch <- e.enabledProgramsDesc
+
 	for _, program := range e.config.Programs {
 		if _, ok := e.descs[program.Name]; !ok {
 			e.descs[program.Name] = map[string]*prometheus.Desc{}
@@ -109,8 +120,12 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-// Collect satisfies prometeus.Collector interface and sends all metrics
+// Collect satisfies prometheus.Collector interface and sends all metrics
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
+	for _, program := range e.config.Programs {
+		ch <- prometheus.MustNewConstMetric(e.enabledProgramsDesc, prometheus.GaugeValue, 1, program.Name)
+	}
+
 	e.collectCounters(ch)
 	e.collectHistograms(ch)
 }
