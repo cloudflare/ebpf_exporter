@@ -301,7 +301,7 @@ func (bpf *Module) AttachPerfEvent(evType, evConfig int, samplePeriod int, sampl
 	res := []int{}
 
 	if cpu > 0 {
-		r, err := C.bpf_attach_perf_event(C.int(fd), C.uint(evType), C.uint(evConfig), C.ulong(samplePeriod), C.ulong(sampleFreq), C.int(pid), C.int(cpu), C.int(groupFd))
+		r, err := C.bpf_attach_perf_event(C.int(fd), C.uint32_t(evType), C.uint32_t(evConfig), C.uint64_t(samplePeriod), C.uint64_t(sampleFreq), C.pid_t(pid), C.int(cpu), C.int(groupFd))
 		if r < 0 {
 			return fmt.Errorf("failed to attach BPF perf event: %v", err)
 		}
@@ -314,7 +314,7 @@ func (bpf *Module) AttachPerfEvent(evType, evConfig int, samplePeriod int, sampl
 		}
 
 		for _, i := range cpus {
-			r, err := C.bpf_attach_perf_event(C.int(fd), C.uint(evType), C.uint(evConfig), C.ulong(samplePeriod), C.ulong(sampleFreq), C.int(pid), C.int(i), C.int(groupFd))
+			r, err := C.bpf_attach_perf_event(C.int(fd), C.uint32_t(evType), C.uint32_t(evConfig), C.uint64_t(samplePeriod), C.uint64_t(sampleFreq), C.pid_t(pid), C.int(i), C.int(groupFd))
 			if r < 0 {
 				return fmt.Errorf("failed to attach BPF perf event: %v", err)
 			}
@@ -470,4 +470,22 @@ func (bpf *Module) AttachXDP(devName string, fd int) error {
 // RemoveXDP removes any xdp from this device.
 func (bpf *Module) RemoveXDP(devName string) error {
 	return bpf.attachXDP(devName, -1, 0)
+}
+
+func GetSyscallFnName(name string) string {
+	return GetSyscallPrefix() + name
+}
+
+func GetSyscallPrefix() string {
+	_, err := bccResolveName("", "sys_bpf", -1)
+	if err == nil {
+		return "sys_"
+	}
+
+	_, err = bccResolveName("", "__x64_sys_bpf", -1)
+	if err == nil {
+		return "__x64_sys_"
+	}
+
+	return "sys_"
 }

@@ -72,8 +72,8 @@ func (table *Table) Config() map[string]interface{} {
 func (table *Table) LeafStrToBytes(leafStr string) ([]byte, error) {
 	mod := table.module.p
 
-	leaf_size := C.bpf_table_leaf_size_id(mod, table.id)
-	leaf := make([]byte, leaf_size)
+	leafSize := C.bpf_table_leaf_size_id(mod, table.id)
+	leaf := make([]byte, leafSize)
 	leafP := unsafe.Pointer(&leaf[0])
 
 	leafCS := C.CString(leafStr)
