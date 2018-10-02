@@ -691,7 +691,11 @@ See [llcstat](examples/llcstat.yaml) as an example.
   name: [ perf event name code ]
   target: [ target eBPF function ]
   sample_period: [ sample period ]
+  sample_frequency: [ sample frequency ]
 ```
+
+It's preferred to use `sample_frequency` to let kernel pick the sample period
+automatically, otherwise you may end up with invalid metrics on overflow.
 
 #### `metrics`
 

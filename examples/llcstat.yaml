@@ -25,11 +25,11 @@ programs:
       - type: 0x0 # HARDWARE
         name: 0x3 # PERF_COUNT_HW_CACHE_MISSES
         target: on_cache_miss
-        sample_period: 1000
+        sample_frequency: 99
       - type: 0x0 # HARDWARE
         name: 0x2 # PERF_COUNT_HW_CACHE_REFERENCES
         target: on_cache_reference
-        sample_period: 1000
+        sample_frequency: 99
     code: |
       #include <linux/ptrace.h>
       #include <uapi/linux/bpf_perf_event.h>
@@ -40,11 +40,11 @@ programs:
       BPF_ARRAY(misses, u64, max_cpus);
 
       int on_cache_miss(struct bpf_perf_event_data *ctx) {
-          misses.increment(bpf_get_smp_processor_id());
+          misses.increment(bpf_get_smp_processor_id(), ctx->sample_period);
           return 0;
       }
 
       int on_cache_reference(struct bpf_perf_event_data *ctx) {
-          references.increment(bpf_get_smp_processor_id());
+          references.increment(bpf_get_smp_processor_id(), ctx->sample_period);
           return 0;
       }
