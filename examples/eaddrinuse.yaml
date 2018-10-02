@@ -1,0 +1,48 @@
+programs:
+  # Count EADDRINUSE errors, that can be triggered by either error
+  # or by running out of free sockets on the machine.
+  - name: eadddrinuse
+    metrics:
+      counters:
+        - name: eadddrinuse_total
+          help: Calls resulted in EADDRINUSE
+          table: counts
+          labels:
+            - name: function
+              size: 8
+              decoders:
+                - name: uint
+                - name: static_map
+                  static_map:
+                    1: bind
+                    2: connect
+    tracepoints:
+      syscalls:sys_exit_bind: tracepoint__syscalls__sys_exit_bind
+      syscalls:sys_exit_connect: tracepoint__syscalls__sys_exit_connect
+    code: |
+      #include <linux/errno.h>
+
+      BPF_HASH(counts, u64);
+
+      enum stats {
+          S_BIND    = 1,
+          S_CONNECT = 2,
+      };
+
+      static int count_return(int source, int ret) {
+          if (ret == -EADDRINUSE) {
+              counts.increment(source);
+          }
+
+          return 0;
+      }
+
+      // Generates function tracepoint__syscalls__sys_exit_bind
+      TRACEPOINT_PROBE(syscalls, sys_exit_bind) {
+          return count_return(S_BIND, args->ret);
+      }
+
+      // Generates function tracepoint__syscalls__sys_exit_connect
+      TRACEPOINT_PROBE(syscalls, sys_exit_connect) {
+          return count_return(S_CONNECT, args->ret);
+      }
