@@ -14,6 +14,10 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+const (
+	partitions = "/proc/partitions"
+)
+
 // MajorMinor is a decoder that transforms minormajor device id into name
 type MajorMinor struct {
 	cache map[uint64][]byte
@@ -29,14 +33,14 @@ func (m *MajorMinor) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 	num := uint64(bcc.GetHostByteOrder().Uint32(in[0:4]))
 
 	if _, ok := m.cache[num]; !ok {
-		fd, err := os.Open("/proc/partitions")
+		fd, err := os.Open(partitions)
 		if err != nil {
 			return nil, err
 		}
 		defer func() {
 			// This never happened
 			if err = fd.Close(); err != nil {
-				log.Printf("Error closing %s: %s", kallsyms, err)
+				log.Printf("Error closing %s: %s", partitions, err)
 			}
 		}()
 

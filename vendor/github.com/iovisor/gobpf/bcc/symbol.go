@@ -54,6 +54,12 @@ type bccSymbol struct {
 	offset       C.ulonglong
 }
 
+type bccSymbolOption struct {
+	useDebugFile      int
+	checkDebugFileCrc int
+	useSymbolType     uint32
+}
+
 // resolveSymbolPath returns the file and offset to locate symname in module
 func resolveSymbolPath(module string, symname string, addr uint64, pid int) (string, uint64, error) {
 	if pid == -1 {
@@ -82,6 +88,29 @@ func bccResolveSymname(module string, symname string, addr uint64, pid int) (str
 	}
 
 	return C.GoString(symbolC.module), (uint64)(symbolC.offset), nil
+}
+
+func bccResolveName(module, symname string, pid int) (uint64, error) {
+	symbol := &bccSymbolOption{}
+	symbolC := (*C.struct_bcc_symbol_option)(unsafe.Pointer(symbol))
+
+	pidC := C.int(pid)
+	cache := C.bcc_symcache_new(pidC, symbolC)
+
+	moduleCS := C.CString(module)
+	defer C.free(unsafe.Pointer(moduleCS))
+
+	nameCS := C.CString(symname)
+	defer C.free(unsafe.Pointer(nameCS))
+
+	var addr uint64
+	addrC := C.uint64_t(addr)
+	res := C.bcc_symcache_resolve_name(cache, moduleCS, nameCS, &addrC)
+	if res < 0 {
+		return 0, fmt.Errorf("unable to locate symbol %s in module %s", symname, module)
+	}
+
+	return addr, nil
 }
 
 // getUserSymbolsAndAddresses finds a list of symbols associated with a module,
