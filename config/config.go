@@ -18,10 +18,11 @@ type Program struct {
 
 // PerfEvent describes perf_event to attach to
 type PerfEvent struct {
-	Type         int    `yaml:"string"`
-	Name         int    `yaml:"name"`
-	Target       string `yaml:"target"`
-	SamplePeriod int    `yaml:"sample_period"`
+	Type            int    `yaml:"string"`
+	Name            int    `yaml:"name"`
+	Target          string `yaml:"target"`
+	SamplePeriod    int    `yaml:"sample_period"`
+	SampleFrequency int    `yaml:"sample_frequency"`
 }
 
 // Metrics is a collection of metrics attached to a program
