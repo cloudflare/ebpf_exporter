@@ -1,0 +1,30 @@
+programs:
+  - name: timers
+    metrics:
+      counters:
+        - name: timer_start_total
+          help: Timers fired in the kernel
+          table: counts
+          labels:
+            - name: function
+              size: 8
+              decoders:
+                - name: ksym
+    raw_tracepoints:
+      timer_start: raw_tracepoint__timer_start
+    code: |
+      #include <linux/timer.h>
+
+      BPF_HASH(counts, u64);
+
+      RAW_TRACEPOINT_PROBE(timer_start) {
+          // TP_PROTO(struct timer_list *timer,
+          //        unsigned long expires,
+          //        unsigned int flags),
+
+          struct timer_list *timer = (struct timer_list *)ctx->args[0];
+          void * function = timer->function;
+
+          counts.increment((u64) function);
+          return 0;
+      }

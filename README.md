@@ -671,10 +671,13 @@ kprobes:
   [ kprobename: target ... ]
 # Kretprobes (kernel functions) and their targets (eBPF functions)
 kretprobes:
-  [ kprobename: target ...]
-# Tracepoints and their targets (eBPF functions)
+  [ kprobename: target ... ]
+# Tracepoints (category:name, i.e. timer:timer_start) and their targets (eBPF functions)
 tracepoints:
-  [ tracepoint: target ...]
+  [ tracepoint: target ... ]
+# Raw tracepoints (name, i.e. timer_start) and their targets (eBPF functions)
+raw_tracepoints:
+  [ tracepoint: target ... ]
 # Perf events configuration
 perf_events:
   [ - perf_event ]

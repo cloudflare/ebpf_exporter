@@ -68,6 +68,10 @@ func (e *Exporter) Attach() error {
 			return fmt.Errorf("failed to attach tracepoints to program %q: %s", program.Name, err)
 		}
 
+		if err := attachRawTracepoints(module, program.RawTracepoints); err != nil {
+			return fmt.Errorf("failed to attach raw tracepoints to program %q: %s", program.Name, err)
+		}
+
 		for _, perfEventConfig := range program.PerfEvents {
 			target, err := module.LoadPerfEvent(perfEventConfig.Target)
 			if err != nil {
