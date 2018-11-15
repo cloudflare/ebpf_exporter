@@ -38,7 +38,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9e294e2f43c4093aedb9c948e2cecb9e1591a96e05b3eb22cfdf682daccf63a9"
+  digest = "1:862a911e11e4fec1188f5f2081a2915366b2d4b24f4244db02e77e4449b33a66"
   name = "github.com/iovisor/gobpf"
   packages = [
     "bcc",
@@ -46,7 +46,7 @@
     "pkg/ksym",
   ]
   pruneopts = "NUT"
-  revision = "ef1573eeab55975943c828acc24c2d53e5534db5"
+  revision = "c5918016dd3104b3d2febcd0bb1356df986c780b"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
