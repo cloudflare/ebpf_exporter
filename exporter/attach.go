@@ -6,6 +6,27 @@ import (
 	"github.com/iovisor/gobpf/bcc"
 )
 
+// attach attaches functions to tracing points in provided module
+func attach(module *bcc.Module, kprobes, kretprobes, tracepoints, rawTracepoints map[string]string) error {
+	if err := attachKprobes(module, kprobes); err != nil {
+		return fmt.Errorf("failed to attach kprobes: %s", err)
+	}
+
+	if err := attachKretprobes(module, kretprobes); err != nil {
+		return fmt.Errorf("failed to attach kretprobes: %s", err)
+	}
+
+	if err := attachTracepoints(module, tracepoints); err != nil {
+		return fmt.Errorf("failed to attach tracepoints: %s", err)
+	}
+
+	if err := attachRawTracepoints(module, rawTracepoints); err != nil {
+		return fmt.Errorf("failed to attach raw tracepoints: %s", err)
+	}
+
+	return nil
+}
+
 // attachKprobes attaches functions to their kprobles in provided module
 func attachKprobes(module *bcc.Module, kprobes map[string]string) error {
 	for kprobeName, targetName := range kprobes {
