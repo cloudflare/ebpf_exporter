@@ -56,16 +56,8 @@ func (e *Exporter) Attach() error {
 			return fmt.Errorf("error compiling module for program %q", program.Name)
 		}
 
-		if err := attachKprobes(module, program.Kprobes); err != nil {
-			return fmt.Errorf("failed to attach kprobes to program %q: %s", program.Name, err)
-		}
-
-		if err := attachKretprobes(module, program.Kretprobes); err != nil {
-			return fmt.Errorf("failed to attach kretprobes to program %q: %s", program.Name, err)
-		}
-
-		if err := attachTracepoints(module, program.Tracepoints); err != nil {
-			return fmt.Errorf("failed to attach tracepoints to program %q: %s", program.Name, err)
+		if err := attach(module, program.Kprobes, program.Kretprobes, program.Tracepoints, program.RawTracepoints); err != nil {
+			return fmt.Errorf("failed to attach to program %q: %s", program.Name, err)
 		}
 
 		for _, perfEventConfig := range program.PerfEvents {

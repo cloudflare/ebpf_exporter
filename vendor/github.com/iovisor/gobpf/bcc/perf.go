@@ -87,10 +87,7 @@ func lookupCallback(i uint64) *callbackData {
 //export callback_to_go
 func callback_to_go(cbCookie unsafe.Pointer, raw unsafe.Pointer, rawSize C.int) {
 	callbackData := lookupCallback(uint64(uintptr(cbCookie)))
-	receiverChan := callbackData.receiverChan
-	go func() {
-		receiverChan <- C.GoBytes(raw, rawSize)
-	}()
+	callbackData.receiverChan <- C.GoBytes(raw, rawSize)
 }
 
 // GetHostByteOrder returns the current byte-order.
