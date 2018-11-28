@@ -1,0 +1,123 @@
+programs:
+  # Track XFS reclaim latency for both search and free phases. This is called
+  # from direct reclaim path, which means it impacts memory allocation slowpath.
+  - name: xfs_reclaim
+    metrics:
+      histograms:
+        - name: xfs_reclaim_latency_seconds
+          help: Latency histogram for xfs reclaim operations
+          table: xfs_reclaim_latency
+          bucket_type: exp2
+          bucket_min: 0
+          bucket_max: 26
+          bucket_multiplier: 0.000001 # microseconds to seconds
+          labels:
+            - name: operation
+              size: 8
+              decoders:
+                - name: uint
+                - name: static_map
+                  static_map:
+                    1: count
+                    2: free
+            - name: bucket
+              size: 8
+              decoders:
+                - name: uint
+    kprobes:
+      xfs_fs_nr_cached_objects: xfs_fs_nr_cached_objects_start
+      xfs_fs_free_cached_objects: xfs_fs_free_cached_objects_start
+    kretprobes:
+      xfs_fs_nr_cached_objects: xfs_fs_nr_cached_objects_end
+      xfs_fs_free_cached_objects: xfs_fs_free_cached_objects_end
+    code: |
+      #include <uapi/linux/ptrace.h>
+
+      // 27 buckets for latency, max range is 33.6s .. 67.1s
+      const u8 max_latency_slot = 26;
+
+      // Key for latency measurements map
+      struct latency_key_t {
+          u8 op;
+          u64 slot;
+      };
+
+      // Histograms to record latencies (2 is the number of ops in reclaim_op)
+      BPF_HISTOGRAM(xfs_reclaim_latency, struct latency_key_t, max_latency_slot + 1 * 2);
+
+      // Possible reclaim operations
+      enum reclaim_op {
+          S_COUNT = 1,
+          S_FREE  = 2
+      };
+
+      // Key for tracking operations
+      struct start_key_t {
+          u32 pid;
+          enum reclaim_op op;
+      };
+
+      // Map for tracking operation start time
+      BPF_HASH(start, struct start_key_t);
+
+      // Track operation start
+      static int op_start(u32 pid, enum reclaim_op op) {
+          struct start_key_t key = {};
+
+          key.pid = pid;
+          key.op  = op;
+
+          u64 ts = bpf_ktime_get_ns();
+          start.update(&key, &ts);
+
+          return 0;
+      }
+
+      // Track operation completion and update latenct histogram
+      static int op_end(u32 pid, enum reclaim_op op) {
+          struct start_key_t key = {};
+
+          key.pid = pid;
+          key.op  = op;
+
+          u64 *tsp = start.lookup(&key);
+
+          if (tsp == 0) {
+              return 0;
+          }
+
+          // Latency histogram key
+          u64 latency_slot = bpf_log2l((bpf_ktime_get_ns() - *tsp) / 1000);
+
+          // Cap latency bucket at max value
+          if (latency_slot > max_latency_slot) {
+              latency_slot = max_latency_slot;
+          }
+
+          struct latency_key_t latency_key = {};
+          latency_key.op   = op;
+          latency_key.slot = latency_slot;
+
+          xfs_reclaim_latency.increment(latency_key);
+
+          // Remove started task
+          start.delete(&key);
+
+          return 0;
+      }
+
+      int xfs_fs_nr_cached_objects_start(struct pt_regs *ctx) {
+          return op_start(bpf_get_current_pid_tgid(), S_COUNT);
+      }
+
+      int xfs_fs_nr_cached_objects_end(struct pt_regs *ctx) {
+          return op_end(bpf_get_current_pid_tgid(), S_COUNT);
+      }
+
+      int xfs_fs_free_cached_objects_start(struct pt_regs *ctx) {
+          return op_start(bpf_get_current_pid_tgid(), S_FREE);
+      }
+
+      int xfs_fs_free_cached_objects_end(struct pt_regs *ctx) {
+          return op_end(bpf_get_current_pid_tgid(), S_FREE);
+      }
