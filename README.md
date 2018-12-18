@@ -772,6 +772,41 @@ name: <decoder name>
 # ... decoder specific configuration
 ```
 
+## Built-in metrics
+
+### `ebpf_exporter_enabled_programs`
+
+This gauge reports a timeseries for every loaded logical program:
+
+```
+# HELP ebpf_exporter_enabled_programs The set of enabled programs
+# TYPE ebpf_exporter_enabled_programs gauge
+ebpf_exporter_enabled_programs{name="xfs_reclaim"} 1
+```
+
+### `ebpf_exporter_ebpf_programs`
+
+This gauge reports information available for every ebpf program:
+
+```
+# HELP ebpf_exporter_ebpf_programs Info about ebpf programs
+# TYPE ebpf_exporter_ebpf_programs gauge
+ebpf_exporter_ebpf_programs{function="xfs_fs_free_cached_objects_end",program="xfs_reclaim",tag="d5e845dc27b372e4"} 1
+ebpf_exporter_ebpf_programs{function="xfs_fs_free_cached_objects_start",program="xfs_reclaim",tag="c2439d02dd0ba000"} 1
+ebpf_exporter_ebpf_programs{function="xfs_fs_nr_cached_objects_end",program="xfs_reclaim",tag="598375893f34ef39"} 1
+ebpf_exporter_ebpf_programs{function="xfs_fs_nr_cached_objects_start",program="xfs_reclaim",tag="cf30348184f983dd"} 1
+```
+
+Here `tag` can be used for tracing and performance analysis with two conditions:
+
+* `net.core.bpf_jit_kallsyms=1` sysctl is set
+* `--kallsyms=/proc/kallsyms` is passed to `perf record`
+
+Newer kernels allow `--kallsyms` to `perf top` as well,
+in the future it may not be required at all:
+
+* https://www.spinics.net/lists/linux-perf-users/msg07216.html
+
 ## License
 
 MIT
