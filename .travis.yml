@@ -8,18 +8,24 @@ go:
   - master
 
 before_install:
+  # We're not interested in gopath provided by travis, default ~/go is good
+  - export GOPATH=""
   # Install bcc
   - sudo apt-get update && sudo apt-get install -y lsb-release
   - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648A4A16A23015EEF4A66B8E4052245BD4284CDD
   - echo "deb https://repo.iovisor.org/apt/$(lsb_release --short --codename) $(lsb_release --short --codename) main" | sudo tee /etc/apt/sources.list.d/iovisor.list
   - sudo apt-get update && sudo apt-get install -y libbcc linux-headers-$(uname -r)
   - sudo dpkg -L libbcc
-  # Install linter tools
-  - go get -u -v github.com/alecthomas/gometalinter
-  - $GOPATH/bin/gometalinter --install
-  - curl -sL https://github.com/golang/dep/releases/download/v0.5.0/dep-linux-amd64 > $GOPATH/bin/dep && chmod +x $GOPATH/bin/dep
+  # Install linter tools, cd to avoid confusion with go modules
+  - cd && go get -u -v github.com/alecthomas/gometalinter
+  - ~/go/bin/gometalinter --install
+  - cd -
+
+install:
+  - echo Automatic install suppressed
 
 script:
-  - $GOPATH/bin/dep status
+  - export GOPATH="" GOPROXY="off" GOFLAGS="-mod=vendor"
+  - GOPROXY="" go mod verify
   - go test -v ./...
-  - $GOPATH/bin/gometalinter --deadline 120s --vendor ./...
+  - ~/go/bin/gometalinter --deadline 120s --vendor ./...

@@ -42,15 +42,13 @@ $ make release-binaries
 To build a package from latest sources:
 
 ```
-$ mkdir /tmp/ebpf_exporter
-$ cd /tmp/ebpf_exporter
-$ GOPATH=$(pwd) go get -v github.com/cloudflare/ebpf_exporter/...
+$ go get -u -v github.com/cloudflare/ebpf_exporter/...
 ```
 
 To run with [`bio`](examples/bio.yaml) config (you need `root` privileges):
 
 ```
-$ ./bin/ebpf_exporter --config.file=src/github.com/cloudflare/ebpf_exporter/examples/bio.yaml
+$ ~/go/bin/ebpf_exporter --config.file=src/github.com/cloudflare/ebpf_exporter/examples/bio.yaml
 ```
 
 If you pass `--debug`, you can see raw tables at `/tables` endpoint.
