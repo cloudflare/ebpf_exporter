@@ -10,7 +10,7 @@ release-binaries:
 	rm -rf $(RELEASES_DIR)/*
 	mkdir -p $(RELEASES_DIR)/$(RELEASE_AMD64_DIR)
 	docker build -t ebpf-exporter-build .
-	docker run --rm --entrypoint cat ebpf-exporter-build /go/bin/ebpf_exporter > $(RELEASE_AMD64_BINARY)
+	docker run --rm --entrypoint cat ebpf-exporter-build /root/go/bin/ebpf_exporter > $(RELEASE_AMD64_BINARY)
 	chmod +x $(RELEASE_AMD64_BINARY)
 	cd $(RELEASES_DIR) && tar -czf $(RELEASE_AMD64_DIR).tar.gz $(RELEASE_AMD64_DIR)
 	cd $(RELEASES_DIR) && shasum -a 256 *.tar.gz > sha256sums.txt
