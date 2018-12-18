@@ -5,7 +5,7 @@ github.com/alecthomas/template/parse
 github.com/alecthomas/units
 # github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973
 github.com/beorn7/perks/quantile
-# github.com/golang/protobuf v1.0.0
+# github.com/golang/protobuf v1.2.0
 github.com/golang/protobuf/proto
 # github.com/iovisor/gobpf v0.0.0-20181115102816-c5918016dd31
 github.com/iovisor/gobpf/bcc
