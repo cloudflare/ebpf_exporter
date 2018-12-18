@@ -376,10 +376,10 @@ programs:
       BPF_HASH(start, struct request *);
 
       // Histograms to record latencies
-      BPF_HISTOGRAM(io_latency, disk_key_t, (max_latency_slot + 1) * max_disks);
+      BPF_HISTOGRAM(io_latency, disk_key_t, (max_latency_slot + 2) * max_disks);
 
       // Histograms to record sizes
-      BPF_HISTOGRAM(io_size, disk_key_t, (max_size_slot + 1) * max_disks);
+      BPF_HISTOGRAM(io_size, disk_key_t, (max_size_slot + 2) * max_disks);
 
       // Record start time of a request
       int trace_req_start(struct pt_regs *ctx, struct request *req) {
@@ -405,6 +405,9 @@ programs:
             return 0;
           }
 
+          // Disk that received the request
+          struct gendisk *disk = req->rq_disk;
+
           // Delta in nanoseconds
           delta = bpf_ktime_get_ns() - *tsp;
 
@@ -420,10 +423,13 @@ programs:
           }
 
           disk_key_t latency_key = { .slot = latency_slot };
-          bpf_probe_read(&latency_key.disk, sizeof(latency_key.disk), req->rq_disk->disk_name);
+          bpf_probe_read(&latency_key.disk, sizeof(latency_key.disk), &disk->disk_name);
+
+          // Size in kibibytes
+          u64 size_kib = bytes / 1024;
 
           // Request size histogram key
-          u64 size_slot = bpf_log2(bytes / 1024);
+          u64 size_slot = bpf_log2(size_kib);
 
           // Cap latency bucket at max value
           if (size_slot > max_size_slot) {
@@ -431,7 +437,7 @@ programs:
           }
 
           disk_key_t size_key = { .slot = size_slot };
-          bpf_probe_read(&size_key.disk, sizeof(size_key.disk), req->rq_disk->disk_name);
+          bpf_probe_read(&size_key.disk, sizeof(size_key.disk), &disk->disk_name);
 
           if ((req->cmd_flags & REQ_OP_MASK) == REQ_OP_WRITE) {
               latency_key.op = 2;
@@ -443,6 +449,12 @@ programs:
 
           io_latency.increment(latency_key);
           io_size.increment(size_key);
+
+          // Increment sum keys
+          latency_key.slot = max_latency_slot + 1;
+          io_latency.increment(latency_key, delta);
+          size_key.slot = max_size_slot + 1;
+          io_size.increment(size_key, size_kib);
 
           start.delete(&req);
 
@@ -512,6 +524,9 @@ for i = bucket_min; i < bucket_max; i++ {
 Here `map` is the map from the kernel and `result` is what goes to prometheus.
 
 We take cumulative `count`, because this is what prometheus expects.
+
+If `bucket_max + 1` contains a non-zero value, it will be used as a `sum`
+key in histogram, providing additional information.
 
 For `linear` histograms we expect kernel to provide a map with linear keys
 that are results of integer division of original value by `bucket_multiplier`.

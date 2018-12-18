@@ -43,7 +43,7 @@ programs:
       };
 
       // Histograms to record latencies (2 is the number of ops in reclaim_op)
-      BPF_HISTOGRAM(xfs_reclaim_latency, struct latency_key_t, max_latency_slot + 1 * 2);
+      BPF_HISTOGRAM(xfs_reclaim_latency, struct latency_key_t, (max_latency_slot + 2) * 2);
 
       // Possible reclaim operations
       enum reclaim_op {
@@ -86,8 +86,11 @@ programs:
               return 0;
           }
 
+          // Latency in microseconds
+          u64 latency_us = (bpf_ktime_get_ns() - *tsp) / 1000;
+
           // Latency histogram key
-          u64 latency_slot = bpf_log2l((bpf_ktime_get_ns() - *tsp) / 1000);
+          u64 latency_slot = bpf_log2l(latency_us);
 
           // Cap latency bucket at max value
           if (latency_slot > max_latency_slot) {
@@ -99,6 +102,10 @@ programs:
           latency_key.slot = latency_slot;
 
           xfs_reclaim_latency.increment(latency_key);
+
+          // Increment sum key
+          latency_key.slot = max_latency_slot + 1;
+          xfs_reclaim_latency.increment(latency_key, latency_us);
 
           // Remove started task
           start.delete(&key);

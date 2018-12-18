@@ -193,7 +193,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 			desc := e.descs[program.Name][histogram.Name]
 
 			for _, histogramSet := range histograms {
-				buckets, count, err := transformHistogram(histogramSet.buckets, histogram)
+				buckets, count, sum, err := transformHistogram(histogramSet.buckets, histogram)
 				if err != nil {
 					log.Printf("Error transforming histogram for metric %q in program %q: %s", histogram.Name, program.Name, err)
 					continue
@@ -204,7 +204,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 				// average values from histograms anyway.
 				// Lack of sum also means we cannot have +Inf bucket, only some finite
 				// value bucket, eBPF programs must cap bucket values to work with this.
-				ch <- prometheus.MustNewConstHistogram(desc, count, 0, buckets, histogramSet.labels...)
+				ch <- prometheus.MustNewConstHistogram(desc, count, sum, buckets, histogramSet.labels...)
 			}
 		}
 	}

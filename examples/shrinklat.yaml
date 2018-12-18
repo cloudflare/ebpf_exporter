@@ -27,7 +27,7 @@ programs:
       const u8 max_latency_slot = 26;
 
       // Histograms to record latencies
-      BPF_HISTOGRAM(shrink_node_latency, u64, max_latency_slot + 1);
+      BPF_HISTOGRAM(shrink_node_latency, u64, max_latency_slot + 2);
 
       // Pid to start time map
       BPF_HASH(start, u32);
@@ -49,8 +49,11 @@ programs:
               return 0;
           }
 
+          // Latency in microseconds
+          u64 latency_us = (bpf_ktime_get_ns() - *tsp) / 1000;
+
           // Latency histogram key
-          u64 latency_slot = bpf_log2l((bpf_ktime_get_ns() - *tsp) / 1000);
+          u64 latency_slot = bpf_log2l(latency_us);
 
           // Cap latency bucket at max value
           if (latency_slot > max_latency_slot) {
@@ -59,6 +62,9 @@ programs:
 
           // Increment bucket key
           shrink_node_latency.increment(latency_slot);
+
+          // Increment sum key
+          shrink_node_latency.increment(max_latency_slot + 1, latency_us);
 
           // Remove started task
           start.delete(&pid);
