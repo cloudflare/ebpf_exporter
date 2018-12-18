@@ -77,10 +77,10 @@ programs:
       const u8 max_size_slot = 15;
 
       // Histograms to record latencies
-      BPF_HISTOGRAM(io_latency, disk_key_t, (max_latency_slot + 1) * max_disks);
+      BPF_HISTOGRAM(io_latency, disk_key_t, (max_latency_slot + 2) * max_disks);
 
       // Histograms to record sizes
-      BPF_HISTOGRAM(io_size, disk_key_t, (max_size_slot + 1) * max_disks);
+      BPF_HISTOGRAM(io_size, disk_key_t, (max_size_slot + 2) * max_disks);
 
       struct key_t {
           dev_t dev;
@@ -149,8 +149,11 @@ programs:
           latency_key.slot = latency_slot;
           latency_key.dev = new_encode_dev(args->dev);
 
+          // Size in kibibytes
+          u64 size_kib = valp->bytes / 1024;
+
           // Request size histogram key
-          u64 size_slot = bpf_log2(valp->bytes / 1024);
+          u64 size_slot = bpf_log2(size_kib);
 
           // Cap latency bucket at max value
           if (size_slot > max_size_slot) {
@@ -171,6 +174,12 @@ programs:
 
           io_latency.increment(latency_key);
           io_size.increment(size_key);
+
+          // Increment sum keys
+          latency_key.slot = max_latency_slot + 1;
+          io_latency.increment(latency_key, delta);
+          size_key.slot = max_size_slot + 1;
+          io_size.increment(size_key, size_kib);
 
           start.delete(&key);
 

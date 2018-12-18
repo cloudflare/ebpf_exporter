@@ -34,15 +34,15 @@ func histogramKeyerMaker(histogram config.Histogram) (histogramKeyer, error) {
 	}
 }
 
-func transformHistogram(buckets map[float64]uint64, histogram config.Histogram) (transformed map[float64]uint64, count uint64, err error) {
+func transformHistogram(buckets map[float64]uint64, histogram config.Histogram) (transformed map[float64]uint64, count uint64, sum float64, err error) {
 	keyer, err := histogramKeyerMaker(histogram)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 
 	size := histogram.BucketMax - histogram.BucketMin
 	if size == 0 {
-		return nil, 0, fmt.Errorf("histogram buckets have zero size: [bucket_min .. bucket_max] = [%d .. %d]", histogram.BucketMin, histogram.BucketMax)
+		return nil, 0, 0, fmt.Errorf("histogram buckets have zero size: [bucket_min .. bucket_max] = [%d .. %d]", histogram.BucketMin, histogram.BucketMax)
 	}
 
 	transformed = make(map[float64]uint64, size)
@@ -58,6 +58,14 @@ func transformHistogram(buckets map[float64]uint64, histogram config.Histogram) 
 
 		transformed[keyer(i)] = count
 	}
+
+	multiplier := histogram.BucketMultiplier
+	if multiplier == 0 {
+		multiplier = 1
+	}
+
+	// Optional sum key
+	sum = float64(buckets[float64(histogram.BucketMax+1)]) * multiplier
 
 	return
 }
