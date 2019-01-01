@@ -56,6 +56,15 @@ const (
 	BPF_PROBE_RETURN
 )
 
+const (
+	XDP_FLAGS_UPDATE_IF_NOEXIST = uint32(1) << iota
+	XDP_FLAGS_SKB_MODE
+	XDP_FLAGS_DRV_MODE
+	XDP_FLAGS_HW_MODE
+	XDP_FLAGS_MODES = XDP_FLAGS_SKB_MODE | XDP_FLAGS_DRV_MODE | XDP_FLAGS_HW_MODE
+	XDP_FLAGS_MASK  = XDP_FLAGS_UPDATE_IF_NOEXIST | XDP_FLAGS_MODES
+)
+
 var (
 	defaultCflags []string
 	compileCh     chan compileRequest
@@ -150,6 +159,12 @@ func (bpf *Module) Close() {
 	for _, fd := range bpf.funcs {
 		syscall.Close(fd)
 	}
+}
+
+// GetProgramTag returns a tag for ebpf program under passed fd
+func (bpf *Module) GetProgramTag(fd int) (tag uint64, err error) {
+	_, err = C.bpf_prog_get_tag(C.int(fd), (*C.ulonglong)(unsafe.Pointer(&tag)))
+	return tag, err
 }
 
 // LoadNet loads a program of type BPF_PROG_TYPE_SCHED_ACT.
@@ -492,6 +507,11 @@ func (bpf *Module) attachXDP(devName string, fd int, flags uint32) error {
 // AttachXDP attaches a xdp fd to a device.
 func (bpf *Module) AttachXDP(devName string, fd int) error {
 	return bpf.attachXDP(devName, fd, 0)
+}
+
+// AttachXDPWithFlags attaches a xdp fd to a device with flags.
+func (bpf *Module) AttachXDPWithFlags(devName string, fd int, flags uint32) error {
+	return bpf.attachXDP(devName, fd, flags)
 }
 
 // RemoveXDP removes any xdp from this device.
