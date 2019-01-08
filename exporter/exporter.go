@@ -21,6 +21,8 @@ type Exporter struct {
 	modules             map[string]*bcc.Module
 	ksyms               map[uint64]string
 	enabledProgramsDesc *prometheus.Desc
+	programInfoDesc     *prometheus.Desc
+	programTags         map[string]map[string]uint64
 	descs               map[string]map[string]*prometheus.Desc
 	decoders            *decoder.Set
 }
@@ -34,11 +36,20 @@ func New(config config.Config) *Exporter {
 		nil,
 	)
 
+	programInfoDesc := prometheus.NewDesc(
+		prometheus.BuildFQName(prometheusNamespace, "", "ebpf_programs"),
+		"Info about ebpf programs",
+		[]string{"program", "function", "tag"},
+		nil,
+	)
+
 	return &Exporter{
 		config:              config,
 		modules:             map[string]*bcc.Module{},
 		ksyms:               map[uint64]string{},
 		enabledProgramsDesc: enabledProgramsDesc,
+		programInfoDesc:     programInfoDesc,
+		programTags:         map[string]map[string]uint64{},
 		descs:               map[string]map[string]*prometheus.Desc{},
 		decoders:            decoder.NewSet(),
 	}
@@ -56,9 +67,13 @@ func (e *Exporter) Attach() error {
 			return fmt.Errorf("error compiling module for program %q", program.Name)
 		}
 
-		if err := attach(module, program.Kprobes, program.Kretprobes, program.Tracepoints, program.RawTracepoints); err != nil {
+		tags, err := attach(module, program.Kprobes, program.Kretprobes, program.Tracepoints, program.RawTracepoints)
+
+		if err != nil {
 			return fmt.Errorf("failed to attach to program %q: %s", program.Name, err)
 		}
+
+		e.programTags[program.Name] = tags
 
 		for _, perfEventConfig := range program.PerfEvents {
 			target, err := module.LoadPerfEvent(perfEventConfig.Target)
@@ -96,6 +111,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	}
 
 	ch <- e.enabledProgramsDesc
+	ch <- e.programInfoDesc
 
 	for _, program := range e.config.Programs {
 		if _, ok := e.descs[program.Name]; !ok {
@@ -116,6 +132,12 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, program := range e.config.Programs {
 		ch <- prometheus.MustNewConstMetric(e.enabledProgramsDesc, prometheus.GaugeValue, 1, program.Name)
+	}
+
+	for program, tags := range e.programTags {
+		for function, tag := range tags {
+			ch <- prometheus.MustNewConstMetric(e.programInfoDesc, prometheus.GaugeValue, 1, program, function, fmt.Sprintf("%x", tag))
+		}
 	}
 
 	e.collectCounters(ch)

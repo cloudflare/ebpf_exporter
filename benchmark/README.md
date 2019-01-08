@@ -80,3 +80,8 @@ Tracing 1 functions for "sys_getpid"... Hit Ctrl-C to end.
 These measurements already include some overhead from `funclatency` itself.
 
 You can see frequency of calls in the output as well.
+
+## Performance analysis with perf
+
+See [`ebpf_exporter_ebpf_programs`](../README.md#ebpf_exporter_ebpf_programs)
+for more information on runtime analysis of performance impact.
