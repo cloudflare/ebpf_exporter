@@ -32,6 +32,7 @@ func NewSet() *Set {
 			"static_map": &StaticMap{},
 			"string":     &String{},
 			"uint":       &UInt{},
+			"inet_ip":    &InetIP{},
 		},
 	}
 }
