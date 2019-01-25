@@ -15,6 +15,7 @@ type Program struct {
 	RawTracepoints map[string]string `yaml:"raw_tracepoints"`
 	PerfEvents     []PerfEvent       `yaml:"perf_events"`
 	Code           string            `yaml:"code"`
+	Cflags         []string          `yaml:"cflags"`
 }
 
 // PerfEvent describes perf_event to attach to
