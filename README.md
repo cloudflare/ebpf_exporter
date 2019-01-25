@@ -694,6 +694,10 @@ raw_tracepoints:
 # Perf events configuration
 perf_events:
   [ - perf_event ]
+# Cflags are passed to the bcc compiler, useful for preprocessing
+cflags:
+  [ - -I/include/path
+    - -DMACRO_NAME=value ]
 # Actual eBPF program code to inject in the kernel
 code: [ code ]
 ```

@@ -62,7 +62,7 @@ func (e *Exporter) Attach() error {
 			return fmt.Errorf("multiple programs with name %q", program.Name)
 		}
 
-		module := bcc.NewModule(program.Code, []string{})
+		module := bcc.NewModule(program.Code, program.Cflags)
 		if module == nil {
 			return fmt.Errorf("error compiling module for program %q", program.Name)
 		}
