@@ -1,4 +1,4 @@
-FROM golang:1.11.6-stretch
+FROM golang:1.12.1-stretch
 
 # Doing mostly what CI is doing here
 RUN apt-get update && \
