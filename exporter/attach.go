@@ -80,9 +80,10 @@ func attachSomething(module *bcc.Module, loader probeLoader, attacher probeAttac
 	return tags, nil
 }
 
+// withMaxActive partially applies the maxactive value as needed by AttackK*probe
 func withMaxActive(attacherWithMaxActive probeAttacherWithMaxActive, maxActive int) probeAttacher {
-	return func(s string, i int) error {
-		return attacherWithMaxActive(s, i, maxActive)
+	return func(probe string, target int) error {
+		return attacherWithMaxActive(probe, target, maxActive)
 	}
 }
 
