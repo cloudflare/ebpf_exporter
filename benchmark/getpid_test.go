@@ -82,7 +82,7 @@ func setupGetpidProbe(text string) (*bcc.Module, error) {
 		return nil, fmt.Errorf("failed to load target: %s", err)
 	}
 
-	err = module.AttachKprobe("sys_getpid", target)
+	err = module.AttachKprobe("sys_getpid", target, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach kprobe: %s", err)
 	}
