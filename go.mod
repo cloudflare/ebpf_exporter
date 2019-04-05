@@ -6,7 +6,7 @@ require (
 	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.2.0 // indirect
-	github.com/iovisor/gobpf v0.0.0-20190101180936-b0976764b280
+	github.com/iovisor/gobpf v0.0.0-20190311163924-89fd87167a6e
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

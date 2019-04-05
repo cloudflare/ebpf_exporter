@@ -7,7 +7,7 @@ github.com/alecthomas/units
 github.com/beorn7/perks/quantile
 # github.com/golang/protobuf v1.2.0
 github.com/golang/protobuf/proto
-# github.com/iovisor/gobpf v0.0.0-20190101180936-b0976764b280
+# github.com/iovisor/gobpf v0.0.0-20190311163924-89fd87167a6e
 github.com/iovisor/gobpf/bcc
 github.com/iovisor/gobpf/pkg/ksym
 github.com/iovisor/gobpf/pkg/cpuonline

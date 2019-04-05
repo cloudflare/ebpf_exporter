@@ -14,3 +14,7 @@ release-binaries:
 	chmod +x $(RELEASE_AMD64_BINARY)
 	cd $(RELEASES_DIR) && tar -czf $(RELEASE_AMD64_DIR).tar.gz $(RELEASE_AMD64_DIR)
 	cd $(RELEASES_DIR) && shasum -a 256 *.tar.gz > sha256sums.txt
+
+test:
+	GOPROXY="" go mod verify
+	go test -v ./...

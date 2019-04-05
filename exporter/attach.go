@@ -52,6 +52,7 @@ type probeLoader func(string) (int, error)
 
 // probeAttacher attaches loaded some sort of probe to some sort of tracepoint
 type probeAttacher func(string, int) error
+type probeAttacherWithMaxActive func(string, int, int) error
 
 // attachSomething attaches some kind of probes and returns program tags
 func attachSomething(module *bcc.Module, loader probeLoader, attacher probeAttacher, probes map[string]string) (map[string]uint64, error) {
@@ -79,14 +80,21 @@ func attachSomething(module *bcc.Module, loader probeLoader, attacher probeAttac
 	return tags, nil
 }
 
+// withMaxActive partially applies the maxactive value as needed by AttackK*probe
+func withMaxActive(attacherWithMaxActive probeAttacherWithMaxActive, maxActive int) probeAttacher {
+	return func(probe string, target int) error {
+		return attacherWithMaxActive(probe, target, maxActive)
+	}
+}
+
 // attachKprobes attaches functions to their kprobles in provided module
 func attachKprobes(module *bcc.Module, kprobes map[string]string) (map[string]uint64, error) {
-	return attachSomething(module, module.LoadKprobe, module.AttachKprobe, kprobes)
+	return attachSomething(module, module.LoadKprobe, withMaxActive(module.AttachKprobe, 0), kprobes)
 }
 
 // attachKretprobes attaches functions to their kretprobles in provided module
 func attachKretprobes(module *bcc.Module, kretprobes map[string]string) (map[string]uint64, error) {
-	return attachSomething(module, module.LoadKprobe, module.AttachKretprobe, kretprobes)
+	return attachSomething(module, module.LoadKprobe, withMaxActive(module.AttachKretprobe, 0), kretprobes)
 }
 
 // attachTracepoints attaches functions to their tracepoints in provided module
