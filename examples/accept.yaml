@@ -1,0 +1,96 @@
+programs:
+  - name: accept
+    metrics:
+      histograms:
+        - name: accept_latency_seconds
+          help: Latency histogram for how long sockets sit in accept queue
+          table: accept_latency
+          bucket_type: exp2
+          bucket_min: 0
+          bucket_max: 26
+          bucket_multiplier: 0.000001 # microseconds to seconds
+          labels:
+            - name: port
+              size: 8
+              decoders:
+                - name: uint
+            - name: bucket
+              size: 8
+              decoders:
+                - name: uint
+    kprobes:
+      inet_csk_reqsk_queue_add: trace_inet_csk_reqsk_queue_add_start
+      inet_csk_accept: trace_inet_csk_accept_start
+    code: |
+      // Fix build error because of missing "KBUILD_MODNAME"
+      #ifndef KBUILD_MODNAME
+      #define KBUILD_MODNAME "foo"
+      #endif
+
+      #include <uapi/linux/ptrace.h>
+      #include <net/sock.h>
+      #include <net/request_sock.h>
+      #include <net/inet_connection_sock.h>
+      #include <bcc/proto.h>
+
+      typedef struct listen_socket_key {
+          u16 port;
+          u64 slot;
+      } listen_socket_t;
+
+      // 27 buckets for latency, max range is 33.6s .. 67.1s
+      const u8 max_latency_slot = 26;
+
+      // Max number of listening ports we expect to see on the host
+      const u32 max_ports = 1024;
+
+      // Histograms to record latencies
+      BPF_HISTOGRAM(accept_latency, listen_socket_t, (max_latency_slot + 1) * max_ports);
+
+      // Sockets to start time map
+      BPF_HASH(start, struct request_sock *, u64);
+
+      int trace_inet_csk_reqsk_queue_add_start(struct pt_regs *ctx, struct sock *sk, struct request_sock *req) {
+          u64 ts = bpf_ktime_get_ns();
+          start.update(&req, &ts);
+          return 0;
+      }
+
+      int trace_inet_csk_accept_start(struct pt_regs *ctx, struct sock *sk) {
+          u64 *tsp, delta;
+          struct inet_connection_sock *icsk = (struct inet_connection_sock *)sk;
+          struct request_sock *req = icsk->icsk_accept_queue.rskq_accept_head;
+
+          // check start and calculate delta
+          tsp = start.lookup(&req);
+          if (tsp == 0) {
+              return 0;   // missed entry or filtered
+          }
+
+          delta = bpf_ktime_get_ns() - *tsp;
+          delta /= 1000;
+
+          // Latency histogram key
+          u64 latency_slot = bpf_log2l(delta);
+
+          // Cap latency bucket at max value
+          if (latency_slot > max_latency_slot) {
+              latency_slot = max_latency_slot;
+          }
+
+          u16 lport = 0;
+          lport = sk->__sk_common.skc_num;
+
+          listen_socket_t latency_key = {};
+          latency_key.port = lport;
+          latency_key.slot = latency_slot;
+
+          // Increment bucket key
+          accept_latency.increment(latency_key);
+
+          latency_key.slot = max_latency_slot + 1;
+          accept_latency.increment(latency_key, delta);
+
+          start.delete(&req);
+          return 0;
+      }
