@@ -4,7 +4,7 @@ import (
 	"github.com/cloudflare/ebpf_exporter/config"
 )
 
-// String is a decoded that decodes strings coming from the kernel
+// String is a decoder that decodes strings coming from the kernel
 type String struct{}
 
 // Decode transforms byte slice from the kernel into string
