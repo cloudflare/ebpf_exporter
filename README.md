@@ -655,6 +655,20 @@ An example to match `1` to `read` and `2` to `write`:
 String decoder transforms possibly null terminated strings coming
 from the kernel into string usable for prometheus metrics.
 
+#### `dname`
+
+Dname decoder read DNS qname from string in wire format, then decode
+it into '.' notation format. Could be used after `string` decoder.
+E.g.: `\x07example\03com\x00` will become `example.com`. This decoder
+could be used after `string` decode, like the following example:
+
+```
+- name: qname
+  decoders:
+    - name: string
+	- name: dname
+```
+
 #### `uint`
 
 UInt decoder transforms hex encoded `uint` values from the kernel

@@ -31,6 +31,7 @@ func NewSet() *Set {
 			"regexp":     &Regexp{},
 			"static_map": &StaticMap{},
 			"string":     &String{},
+			"dname":      &Dname{},
 			"uint":       &UInt{},
 			"inet_ip":    &InetIP{},
 		},
