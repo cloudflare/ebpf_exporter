@@ -15,6 +15,11 @@ release-binaries:
 	cd $(RELEASES_DIR) && tar -czf $(RELEASE_AMD64_DIR).tar.gz $(RELEASE_AMD64_DIR)
 	cd $(RELEASES_DIR) && shasum -a 256 *.tar.gz > sha256sums.txt
 
+.PHONY: vendor
+vendor:
+	docker build -t ebpf-exporter-build .
+	docker run --rm -v $(CURDIR):/go/ebpf_exporter --workdir /go/ebpf_exporter --entrypoint /bin/bash ebpf-exporter-build -c "go get -u ./... && go mod tidy"
+
 test:
 	GOPROXY="" go mod verify
 	go test -v ./...
