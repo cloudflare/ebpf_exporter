@@ -5,7 +5,6 @@ language: go
 
 go:
   - 1.x
-  - master
 
 before_install:
   # We're not interested in gopath provided by travis, default ~/go is good
