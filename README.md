@@ -482,7 +482,7 @@ transform map keys into sets of labels and export them as prometheus counters.
 #### Histograms
 
 Histograms from maps are a bit more complex than counters. Maps in the kernel
-cannot be nested, so we need to pack keys in the kerne and unpack in user space.
+cannot be nested, so we need to pack keys in the kernel and unpack in user space.
 
 We get from this:
 
