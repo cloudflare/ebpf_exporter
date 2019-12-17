@@ -5,35 +5,35 @@ github.com/alecthomas/template/parse
 github.com/alecthomas/units
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
-# github.com/cespare/xxhash/v2 v2.1.0
+# github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
 # github.com/golang/protobuf v1.3.2
 github.com/golang/protobuf/proto
-# github.com/iovisor/gobpf v0.0.0-20191024162143-7c8f8e040b4b
+# github.com/iovisor/gobpf v0.0.0-20191212083149-cf081d8fe357 => github.com/bobrik/gobpf v0.0.0-20191216233538-2cb7f18398d8
 github.com/iovisor/gobpf/bcc
-github.com/iovisor/gobpf/pkg/ksym
 github.com/iovisor/gobpf/pkg/cpuonline
+github.com/iovisor/gobpf/pkg/ksym
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/prometheus/client_golang v1.2.1
 github.com/prometheus/client_golang/prometheus
-github.com/prometheus/client_golang/prometheus/promhttp
 github.com/prometheus/client_golang/prometheus/internal
-# github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4
+github.com/prometheus/client_golang/prometheus/promhttp
+# github.com/prometheus/client_model v0.0.0-20191202183732-d1d2010b5bee
 github.com/prometheus/client_model/go
 # github.com/prometheus/common v0.7.0
-github.com/prometheus/common/version
 github.com/prometheus/common/expfmt
-github.com/prometheus/common/model
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
-# github.com/prometheus/procfs v0.0.5
+github.com/prometheus/common/model
+github.com/prometheus/common/version
+# github.com/prometheus/procfs v0.0.8
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# golang.org/x/sys v0.0.0-20191024073052-e66fe6eb8e0c
+# golang.org/x/sys v0.0.0-20191210023423-ac6580df4449
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # gopkg.in/alecthomas/kingpin.v2 v2.2.6
 gopkg.in/alecthomas/kingpin.v2
-# gopkg.in/yaml.v2 v2.2.4
+# gopkg.in/yaml.v2 v2.2.7
 gopkg.in/yaml.v2
