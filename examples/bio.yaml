@@ -56,6 +56,8 @@ programs:
               decoders:
                 - name: uint
     kprobes:
+      # Remove blk_start_request if you're running Linux 5.3+, or better yet
+      # use tracepoint based code that depends on stable kernel ABI.
       blk_start_request: trace_req_start
       blk_mq_start_request: trace_req_start
       blk_account_io_completion: trace_req_completion
