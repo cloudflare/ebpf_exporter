@@ -28,6 +28,7 @@ type Set struct {
 func NewSet() *Set {
 	return &Set{
 		decoders: map[string]Decoder{
+			"cgroup":     &CGroup{},
 			"ksym":       &KSym{},
 			"majorminor": &MajorMinor{},
 			"regexp":     &Regexp{},
