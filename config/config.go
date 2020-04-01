@@ -20,7 +20,7 @@ type Program struct {
 
 // PerfEvent describes perf_event to attach to
 type PerfEvent struct {
-	Type            int    `yaml:"string"`
+	Type            int    `yaml:"type"`
 	Name            int    `yaml:"name"`
 	Target          string `yaml:"target"`
 	SamplePeriod    int    `yaml:"sample_period"`
