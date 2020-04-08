@@ -1,3 +1,6 @@
+# github.com/Microsoft/go-winio v0.4.14
+github.com/Microsoft/go-winio
+github.com/Microsoft/go-winio/pkg/guid
 # github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 github.com/alecthomas/template
 github.com/alecthomas/template/parse
@@ -7,7 +10,37 @@ github.com/alecthomas/units
 github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
-# github.com/golang/protobuf v1.3.2
+# github.com/docker/distribution v2.7.1+incompatible
+github.com/docker/distribution/digestset
+github.com/docker/distribution/reference
+# github.com/docker/docker v1.13.1 => github.com/docker/engine v0.0.0-20190822180741-9552f2b2fdde
+github.com/docker/docker/api
+github.com/docker/docker/api/types
+github.com/docker/docker/api/types/blkiodev
+github.com/docker/docker/api/types/container
+github.com/docker/docker/api/types/events
+github.com/docker/docker/api/types/filters
+github.com/docker/docker/api/types/image
+github.com/docker/docker/api/types/mount
+github.com/docker/docker/api/types/network
+github.com/docker/docker/api/types/registry
+github.com/docker/docker/api/types/strslice
+github.com/docker/docker/api/types/swarm
+github.com/docker/docker/api/types/swarm/runtime
+github.com/docker/docker/api/types/time
+github.com/docker/docker/api/types/versions
+github.com/docker/docker/api/types/volume
+github.com/docker/docker/client
+github.com/docker/docker/errdefs
+# github.com/docker/go-connections v0.4.0
+github.com/docker/go-connections/nat
+github.com/docker/go-connections/sockets
+github.com/docker/go-connections/tlsconfig
+# github.com/docker/go-units v0.4.0
+github.com/docker/go-units
+# github.com/gogo/protobuf v1.3.1
+github.com/gogo/protobuf/proto
+# github.com/golang/protobuf v1.3.3
 github.com/golang/protobuf/proto
 # github.com/iovisor/gobpf v0.0.0-20191212083149-cf081d8fe357 => github.com/bobrik/gobpf v0.0.0-20191216233538-2cb7f18398d8
 github.com/iovisor/gobpf/bcc
@@ -15,6 +48,13 @@ github.com/iovisor/gobpf/pkg/cpuonline
 github.com/iovisor/gobpf/pkg/ksym
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
+# github.com/opencontainers/go-digest v1.0.0-rc1
+github.com/opencontainers/go-digest
+# github.com/opencontainers/image-spec v1.0.1
+github.com/opencontainers/image-spec/specs-go
+github.com/opencontainers/image-spec/specs-go/v1
+# github.com/pkg/errors v0.9.1
+github.com/pkg/errors
 # github.com/prometheus/client_golang v1.2.1
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
@@ -30,6 +70,10 @@ github.com/prometheus/common/version
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# golang.org/x/net v0.0.0-20190613194153-d28f0bde5980
+golang.org/x/net/context/ctxhttp
+golang.org/x/net/internal/socks
+golang.org/x/net/proxy
 # golang.org/x/sys v0.0.0-20191210023423-ac6580df4449
 golang.org/x/sys/unix
 golang.org/x/sys/windows
