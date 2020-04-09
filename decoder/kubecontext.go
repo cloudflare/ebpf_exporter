@@ -16,18 +16,18 @@ import (
 )
 
 const (
-	// when fail get kubernetes labe fail use DEFAULT_KUBECONTEXT_VALUE  as default
-	DEFAULT_KUBECONTEXT_VALUE = "unknown"
+	// when fail get kubernetes labe fail use DefaultKubeContextValue  as default
+	DefaultKubeContextValue = "unknown"
 )
 
-// KubeInfo
+// KubeInfo kubernetes context info
 type KubeInfo struct {
 	kubePodNamespace  string
 	kubePodName       string
 	kubeContainerName string
 }
 
-// KubeContext
+// KubeContext kubernetes context info cache
 type KubeContext struct {
 	kubeContext map[string]KubeInfo
 }
@@ -47,7 +47,7 @@ type KubeContainerName struct {
 	ctx KubeContext
 }
 
-// KubeContainerName is a decoder that transforms pid representation into kubernetes pod container name or pid
+// KubeContainerNameOrPid is a decoder that transforms pid representation into kubernetes pod container name or pid
 type KubeContainerNameOrPid struct {
 	ctx KubeContext
 }
@@ -80,7 +80,7 @@ func (k *KubeContainerName) Decode(in []byte, conf config.Decoder) ([]byte, erro
 func (k *KubeContainerNameOrPid) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 	byteOrder := bcc.GetHostByteOrder()
 	info := k.ctx.getKubeInfo(byteOrder.Uint32(in))
-	if info.kubeContainerName == DEFAULT_KUBECONTEXT_VALUE {
+	if info.kubeContainerName == DefaultKubeContextValue {
 		info.kubeContainerName = fmt.Sprintf("pid-%d", byteOrder.Uint32(in))
 	}
 	b := []byte(info.kubeContainerName)
@@ -89,16 +89,20 @@ func (k *KubeContainerNameOrPid) Decode(in []byte, conf config.Decoder) ([]byte,
 
 // getKubeInfo implement main logic convert container id to kubernetes context
 func (k *KubeContext) getKubeInfo(pid uint32) (info KubeInfo) {
-	info.kubePodNamespace = DEFAULT_KUBECONTEXT_VALUE
-	info.kubePodName = DEFAULT_KUBECONTEXT_VALUE
-	info.kubeContainerName = DEFAULT_KUBECONTEXT_VALUE
+	info.kubePodNamespace = DefaultKubeContextValue
+	info.kubePodName = DefaultKubeContextValue
+	info.kubeContainerName = DefaultKubeContextValue
 	path := fmt.Sprintf("/proc/%d/cgroup", pid)
 
 	r, err := os.Open(path)
 	if err != nil {
 		return
 	}
-	defer r.Close()
+	defer func() {
+		if rerr := r.Close(); rerr != nil {
+			err = rerr
+		}
+	}()
 
 	s := bufio.NewScanner(r)
 
@@ -134,7 +138,11 @@ func (k *KubeContext) inspectKubeInfo(containerID string) (info KubeInfo) {
 	if err != nil {
 		return
 	}
-	defer cli.Close()
+	defer func() {
+		if cerr := cli.Close(); cerr != nil {
+			err = cerr
+		}
+	}()
 	filters := filters.NewArgs()
 	if len(k.kubeContext) > 0 {
 		filters.Add("id", containerID)
@@ -151,15 +159,15 @@ func (k *KubeContext) inspectKubeInfo(containerID string) (info KubeInfo) {
 			var tmp KubeInfo
 			tmp.kubePodNamespace, _ = container.Labels["io.kubernetes.pod.namespace"]
 			if tmp.kubePodNamespace == "" {
-				tmp.kubePodNamespace = DEFAULT_KUBECONTEXT_VALUE
+				tmp.kubePodNamespace = DefaultKubeContextValue
 			}
-			tmp.kubePodName, _ = container.Labels["io.kubernetes.pod.name"]
+			tmp.kubePodName = container.Labels["io.kubernetes.pod.name"]
 			if tmp.kubePodName == "" {
-				tmp.kubePodName = DEFAULT_KUBECONTEXT_VALUE
+				tmp.kubePodName = DefaultKubeContextValue
 			}
-			tmp.kubeContainerName, _ = container.Labels["io.kubernetes.container.name"]
+			tmp.kubeContainerName = container.Labels["io.kubernetes.container.name"]
 			if tmp.kubeContainerName == "" {
-				tmp.kubeContainerName = DEFAULT_KUBECONTEXT_VALUE
+				tmp.kubeContainerName = DefaultKubeContextValue
 			}
 			k.kubeContext[container.ID] = tmp
 		}
