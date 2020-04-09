@@ -157,7 +157,7 @@ func (k *KubeContext) inspectKubeInfo(containerID string) (info KubeInfo) {
 	for _, container := range containers {
 		if container.Labels != nil {
 			var tmp KubeInfo
-			tmp.kubePodNamespace, _ = container.Labels["io.kubernetes.pod.namespace"]
+			tmp.kubePodNamespace = container.Labels["io.kubernetes.pod.namespace"]
 			if tmp.kubePodNamespace == "" {
 				tmp.kubePodNamespace = DefaultKubeContextValue
 			}
@@ -172,6 +172,6 @@ func (k *KubeContext) inspectKubeInfo(containerID string) (info KubeInfo) {
 			k.kubeContext[container.ID] = tmp
 		}
 	}
-	info, _ = k.kubeContext[containerID]
+	info = k.kubeContext[containerID]
 	return
 }
