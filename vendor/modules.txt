@@ -9,7 +9,7 @@ github.com/beorn7/perks/quantile
 github.com/cespare/xxhash/v2
 # github.com/golang/protobuf v1.3.2
 github.com/golang/protobuf/proto
-# github.com/iovisor/gobpf v0.0.0-20191212083149-cf081d8fe357 => github.com/bobrik/gobpf v0.0.0-20191216233538-2cb7f18398d8
+# github.com/iovisor/gobpf v0.0.0-20200529092446-49b58e11a4b5
 github.com/iovisor/gobpf/bcc
 github.com/iovisor/gobpf/pkg/cpuonline
 github.com/iovisor/gobpf/pkg/ksym

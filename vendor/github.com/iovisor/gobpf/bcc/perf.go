@@ -30,9 +30,11 @@ import (
 #include <bcc/libbpf.h>
 #include <bcc/perf_reader.h>
 
-// perf_reader_raw_cb as defined in bcc libbpf.h
+// perf_reader_raw_cb and perf_reader_lost_cb as defined in bcc libbpf.h
 // typedef void (*perf_reader_raw_cb)(void *cb_cookie, void *raw, int raw_size);
-extern void callback_to_go(void*, void*, int);
+extern void rawCallback(void*, void*, int);
+// typedef void (*perf_reader_lost_cb)(void *cb_cookie, uint64_t lost);
+extern void lostCallback(void*, uint64_t);
 */
 import "C"
 
@@ -44,8 +46,10 @@ type PerfMap struct {
 
 type callbackData struct {
 	receiverChan chan []byte
+	lostChan     chan uint64
 }
 
+// BPF_PERF_READER_PAGE_CNT is the default page_cnt used per cpu ring buffer
 const BPF_PERF_READER_PAGE_CNT = 8
 
 var byteOrder binary.ByteOrder
@@ -84,10 +88,18 @@ func lookupCallback(i uint64) *callbackData {
 // be written. This is because we can't take the address of a Go
 // function and give that to C-code since the cgo tool will generate a
 // stub in C that should be called."
-//export callback_to_go
-func callback_to_go(cbCookie unsafe.Pointer, raw unsafe.Pointer, rawSize C.int) {
+//export rawCallback
+func rawCallback(cbCookie unsafe.Pointer, raw unsafe.Pointer, rawSize C.int) {
 	callbackData := lookupCallback(uint64(uintptr(cbCookie)))
 	callbackData.receiverChan <- C.GoBytes(raw, rawSize)
+}
+
+//export lostCallback
+func lostCallback(cbCookie unsafe.Pointer, lost C.ulong) {
+	callbackData := lookupCallback(uint64(uintptr(cbCookie)))
+	if callbackData.lostChan != nil {
+		callbackData.lostChan <- uint64(lost)
+	}
 }
 
 // GetHostByteOrder returns the current byte-order.
@@ -107,8 +119,13 @@ func determineHostByteOrder() binary.ByteOrder {
 	return binary.BigEndian
 }
 
-// InitPerfMap initializes a perf map with a receiver channel.
-func InitPerfMap(table *Table, receiverChan chan []byte) (*PerfMap, error) {
+// InitPerfMap initializes a perf map with a receiver channel, with a default page_cnt.
+func InitPerfMap(table *Table, receiverChan chan []byte, lostChan chan uint64) (*PerfMap, error) {
+	return InitPerfMapWithPageCnt(table, receiverChan, lostChan, BPF_PERF_READER_PAGE_CNT)
+}
+
+// InitPerfMapWithPageCnt initializes a perf map with a receiver channel with a specified page_cnt.
+func InitPerfMapWithPageCnt(table *Table, receiverChan chan []byte, lostChan chan uint64, pageCnt int) (*PerfMap, error) {
 	fd := table.Config()["fd"].(int)
 	keySize := table.Config()["key_size"].(uint64)
 	leafSize := table.Config()["leaf_size"].(uint64)
@@ -119,6 +136,7 @@ func InitPerfMap(table *Table, receiverChan chan []byte) (*PerfMap, error) {
 
 	callbackDataIndex := registerCallback(&callbackData{
 		receiverChan,
+		lostChan,
 	})
 
 	key := make([]byte, keySize)
@@ -134,7 +152,7 @@ func InitPerfMap(table *Table, receiverChan chan []byte) (*PerfMap, error) {
 	}
 
 	for _, cpu := range cpus {
-		reader, err := bpfOpenPerfBuffer(cpu, callbackDataIndex)
+		reader, err := bpfOpenPerfBuffer(cpu, callbackDataIndex, pageCnt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open perf buffer: %v", err)
 		}
@@ -186,13 +204,17 @@ func (pm *PerfMap) poll(timeout int) {
 	}
 }
 
-func bpfOpenPerfBuffer(cpu uint, callbackDataIndex uint64) (unsafe.Pointer, error) {
+func bpfOpenPerfBuffer(cpu uint, callbackDataIndex uint64, pageCnt int) (unsafe.Pointer, error) {
+	if (pageCnt & (pageCnt - 1)) != 0 {
+		return nil, fmt.Errorf("pageCnt must be a power of 2: %d", pageCnt)
+	}
 	cpuC := C.int(cpu)
+	pageCntC := C.int(pageCnt)
 	reader, err := C.bpf_open_perf_buffer(
-		(C.perf_reader_raw_cb)(unsafe.Pointer(C.callback_to_go)),
-		nil,
+		(C.perf_reader_raw_cb)(unsafe.Pointer(C.rawCallback)),
+		(C.perf_reader_lost_cb)(unsafe.Pointer(C.lostCallback)),
 		unsafe.Pointer(uintptr(callbackDataIndex)),
-		-1, cpuC, BPF_PERF_READER_PAGE_CNT)
+		-1, cpuC, pageCntC)
 	if reader == nil {
 		return nil, fmt.Errorf("failed to open perf buffer: %v", err)
 	}
