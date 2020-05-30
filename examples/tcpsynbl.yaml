@@ -3,7 +3,7 @@ programs:
     metrics:
       histograms:
         - name: tcp_syn_backlog
-          help: trace the TCP SYN backlog size
+          help: TCP SYN backlog size
           table: bucket
           bucket_type: linear
           bucket_min: 0
