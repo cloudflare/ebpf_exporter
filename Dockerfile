@@ -9,7 +9,10 @@ RUN apt-get update && \
     apt-get install -y linux-headers-amd64 && \
     curl -sL https://github.com/cloudflare/ebpf_exporter/files/3890546/libbcc_0.11.0-2_amd64.deb.gz | gunzip > /tmp/libbcc.deb && \
     dpkg -i /tmp/libbcc.deb
-
 COPY ./ /go/ebpf_exporter
 
-RUN cd /go/ebpf_exporter && GOPATH="" GOPROXY="off" GOFLAGS="-mod=vendor" go install -v ./...
+RUN cd /go/ebpf_exporter && \
+    GOPATH="" GOPROXY="off" GOFLAGS="-mod=vendor" go install -v ./... && \
+    cp /root/go/bin/ebpf_exporter /usr/local/bin
+
+CMD ["ebpf_exporter", "--help"]
