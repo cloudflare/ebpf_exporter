@@ -7,8 +7,8 @@ programs:
           table: bucket
           bucket_type: linear
           bucket_min: 0
-          bucket_max: 1024 # `sysctl net.ipv4.tcp_max_syn_backlog`
-          bucket_multiplier: 1
+          bucket_max: 20
+          bucket_multiplier: 50
           labels:
             - name: bucket
               size: 8
