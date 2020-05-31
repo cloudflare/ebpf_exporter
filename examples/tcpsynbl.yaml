@@ -1,0 +1,30 @@
+programs:
+  - name: tcpsynbl
+    metrics:
+      histograms:
+        - name: tcp_syn_backlog
+          help: TCP SYN backlog size
+          table: bucket
+          bucket_type: linear
+          bucket_min: 0
+          bucket_max: 20
+          bucket_multiplier: 50
+          labels:
+            - name: bucket
+              size: 8
+              decoders:
+                - name: uint
+    kprobes:
+      tcp_v4_syn_recv_sock: do_count
+      tcp_v6_syn_recv_sock: do_count
+    code: |
+      #include <net/sock.h>
+
+      // Histograms to record TCP SYN backlog size
+      BPF_HISTOGRAM(bucket, u64);
+
+      int do_count(struct pt_regs *ctx, struct sock *sk) {
+          u64 backlog = bpf_log2l(sk->sk_ack_backlog);
+          bucket.increment(backlog);
+          return 0;
+      }
