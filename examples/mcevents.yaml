@@ -1,0 +1,29 @@
+programs:
+  - name: mcevents 
+    metrics:
+      counters:
+        - name: mc_event_total
+          help: Machine check events
+          table: counts
+          labels:
+            - name: type
+              size: 8
+              decoders:
+                - name: static_map
+                  0: err_corrected
+                  1: err_uncorrected
+                  2: err_deferred
+                  3: err_fatal
+                  4: info
+    tracepoints:
+      ras:mc_event: tracepoint__ras__mc_event
+    code: |
+      #include <uapi/linux/ptrace.h>
+      #include <linux/types.h>
+      BPF_HASH(counts, u8);
+
+      // Generates function tracepoint__ras__mc_event
+      TRACEPOINT_PROBE(ras, mc_event) {
+          counts.increment((uint) args->error_type);
+          return 0;
+      }
