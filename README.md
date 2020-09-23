@@ -504,10 +504,13 @@ the missing data.
 
 That's why for histogram configuration we have the following keys:
 
-* `bucket_type`: can be either `exp2` or `linear`
-* `bucket_min`: minimum bucket key
-* `bucket_max`: maximum bucket key
+* `bucket_type`: can be either `exp2`, `linear`, or `fixed`
+* `bucket_min`: minimum bucket key (`exp2` and `linear` only)
+* `bucket_max`: maximum bucket key (`exp2` and `linear` only)
+* `bucket_keys`: maximum bucket key (`fixed` only)
 * `bucket_multiplier`: multiplier for bucket keys (default is `1`)
+
+##### `exp2` histograms
 
 For `exp2` histograms we expect kernel to provide a map with linear keys that
 are log2 of actual values. We then go from `bucket_min` to `bucket_max` in
@@ -525,8 +528,7 @@ Here `map` is the map from the kernel and `result` is what goes to prometheus.
 
 We take cumulative `count`, because this is what prometheus expects.
 
-If `bucket_max + 1` contains a non-zero value, it will be used as a `sum`
-key in histogram, providing additional information.
+##### `linear` histograms
 
 For `linear` histograms we expect kernel to provide a map with linear keys
 that are results of integer division of original value by `bucket_multiplier`.
@@ -539,6 +541,30 @@ for i = bucket_min; i < bucket_max; i++ {
   result[i * bucket_multiplier] = count
 }
 ```
+
+##### `fixed` histograms
+
+For `fixed` histograms we expect kernel to provide a map with fixed keys
+defined by the user.
+
+```
+count = 0
+for i = 0; i < len(bucket_keys); i++ {
+  count  += map.get(bucket_keys[i], 0)
+  result[bucket_keys[i] * multiplier] = count
+}
+```
+
+##### `sum` keys
+
+For `exp2` and `linear` hisograms, if `bucket_max + 1` contains a non-zero
+value, it will be used as a `sum` key in histogram, providing additional
+information.
+
+For `fixed` histograms, if `buckets_keys[len(bucket_keys) -1 ] + 1 contains
+a non-zero value, it will be used as a `sum` key.
+
+##### Advice on values outside of `[bucket_min, bucket_max]`
 
 For both `exp2` and `linear` histograms it is important that kernel does
 not count events into buckets outside of `[bucket_min, bucket_max]` range.

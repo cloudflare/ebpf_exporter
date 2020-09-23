@@ -50,6 +50,7 @@ type Histogram struct {
 	BucketMultiplier float64             `yaml:"bucket_multiplier"`
 	BucketMin        int                 `yaml:"bucket_min"`
 	BucketMax        int                 `yaml:"bucket_max"`
+	BucketKeys       []float64           `yaml:"bucket_keys"`
 	Labels           []Label             `yaml:"labels"`
 }
 
@@ -76,4 +77,6 @@ const (
 	HistogramBucketExp2 = "exp2"
 	// HistogramBucketLinear means histogram with linear keys
 	HistogramBucketLinear = "linear"
+	// HistogramBucketFixed means histogram with fixed user-defined keys
+	HistogramBucketFixed = "fixed"
 )
