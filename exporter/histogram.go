@@ -29,12 +29,23 @@ func histogramKeyerMaker(histogram config.Histogram) (histogramKeyer, error) {
 		return func(bucket float64) float64 {
 			return bucket * multiplier
 		}, nil
+	case config.HistogramBucketFixed:
+		return func(bucket float64) float64 {
+			return bucket * multiplier
+		}, nil
 	default:
 		return nil, fmt.Errorf("unknown histogram type: %q", histogram.BucketType)
 	}
 }
 
 func transformHistogram(buckets map[float64]uint64, histogram config.Histogram) (transformed map[float64]uint64, count uint64, sum float64, err error) {
+	if histogram.BucketType == config.HistogramBucketFixed {
+		return transformHistogramFixed(buckets, histogram)
+	}
+	return transformHistogramDynamic(buckets, histogram)
+}
+
+func transformHistogramDynamic(buckets map[float64]uint64, histogram config.Histogram) (transformed map[float64]uint64, count uint64, sum float64, err error) {
 	keyer, err := histogramKeyerMaker(histogram)
 	if err != nil {
 		return nil, 0, 0, err
@@ -66,6 +77,40 @@ func transformHistogram(buckets map[float64]uint64, histogram config.Histogram) 
 
 	// Optional sum key
 	sum = float64(buckets[float64(histogram.BucketMax+1)]) * multiplier
+
+	return
+}
+
+func transformHistogramFixed(buckets map[float64]uint64, histogram config.Histogram) (transformed map[float64]uint64, count uint64, sum float64, err error) {
+	keyer, err := histogramKeyerMaker(histogram)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	size := len(histogram.BucketKeys)
+	if size == 0 {
+		return nil, 0, 0, fmt.Errorf("histogram buckets have zero size: len(bucket_keys) = %d", len(histogram.BucketKeys))
+	}
+
+	transformed = make(map[float64]uint64, size)
+
+	for i := 0; i < len(histogram.BucketKeys); i++ {
+		key := histogram.BucketKeys[i]
+
+		// Prometheus expects cumulative buckets with bucket being
+		// the upper limit of all values in the bucket.
+		count += buckets[key]
+
+		transformed[keyer(key)] = count
+	}
+
+	multiplier := histogram.BucketMultiplier
+	if multiplier == 0 {
+		multiplier = 1
+	}
+
+	// Optional sum key
+	sum = float64(buckets[histogram.BucketKeys[len(histogram.BucketKeys)-1]+1]) * multiplier
 
 	return
 }
