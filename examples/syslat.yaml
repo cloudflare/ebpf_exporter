@@ -3,143 +3,151 @@
 #
 # This example demonstrates how to use fixed buckets.
 programs:
-- name: syscall-latency
-  metrics:
-    histograms:
-    - bucket_keys:
-      - 100     # 100us
-      - 1000    # 1ms
-      - 250000  # 250ms
-      - 1000000 # 1s
-      - 2500000 # 2.5s
-      - 5000000 # 5s
-      bucket_multiplier: 1e-06
-      bucket_type: fixed
-      help: Latency of Linux syscalls
-      labels:
-      - decoders:
-        - name: ksym
-        name: function
-        size: 8
-      - decoders:
-        - name: uint
-        name: bucket
-        size: 8
-      name: syscall_latency_seconds
-      table: dist
-  kprobes:
-    SyS_accept: trace_func_entry
-    SyS_accept4: trace_func_entry
-    SyS_connect: trace_func_entry
-    do_syscall_64: trace_func_entry
-    syscall_slow_exit_work: trace_func_entry
-  kretprobes:
-    SyS_accept: trace_func_return
-    SyS_accept4: trace_func_return
-    SyS_connect: trace_func_return
-    do_syscall_64: trace_func_return
-    syscall_slow_exit_work: trace_func_return
-  code: |
-    #include <uapi/linux/ptrace.h>
+  - name: syslat
+    metrics:
+      histograms:
+        - bucket_keys:
+            - 100 # 100us
+            - 1000 # 1ms
+            - 250000 # 250ms
+            - 1000000 # 1s
+            - 2500000 # 2.5s
+            - 5000000 # 5s
+          bucket_multiplier: 1e-06
+          bucket_type: fixed
+          help: Latency of Linux syscalls
+          labels:
+            - decoders:
+                - name: ksym
+              name: function
+              size: 8
+            - decoders:
+                - name: uint
+              name: bucket
+              size: 8
+          name: syscall_latency_seconds
+          table: dist
+    kprobes:
+      do_syscall_64: trace_func_entry
+      syscall_slow_exit_work: trace_func_entry
+      # Other options:
+      # SyS_accept: trace_func_entry
+      # SyS_accept4: trace_func_entry
+      # SyS_connect: trace_func_entry
+    kretprobes:
+      do_syscall_64: trace_func_return
+      syscall_slow_exit_work: trace_func_return
+      # Other options:
+      # SyS_accept: trace_func_return
+      # SyS_accept4: trace_func_return
+      # SyS_connect: trace_func_return
+    code: |
+      #include <uapi/linux/ptrace.h>
 
-    // Set up user-defined buckets.
-    const static int NUM_BUCKETS = 6;
-    const static u64 buckets[NUM_BUCKETS] = {
-      100, 1000, 250000, 1000000, 2500000, 5000000
-    };
+      // Set up user-defined buckets.
+      const static u64 buckets[] = {100, 1000, 250000, 1000000, 2500000, 5000000};
+      const static int NUM_BUCKETS = sizeof(buckets) / sizeof(buckets[0]);
 
-    // Define the key used in the latency histogram.
-    typedef struct hist_key {
-        u64 ip;
-        u64 bucket;
-    } hist_key_t;
+      // Define the key used in the latency histogram.
+      typedef struct hist_key {
+          u64 ip;
+          u64 bucket;
+      } hist_key_t;
 
-    // Used to keep track of the start time of syscalls.
-    BPF_HASH(start, u32);
-    // Used to keep track of the address of the syscall kprobe (e.g. SyS_accept).
-    BPF_HASH(ipaddr, u32);
-    // Used to record the latency of syscalls.
-    BPF_HISTOGRAM(dist, hist_key_t);
+      // Used to keep track of the start time of syscalls.
+      BPF_HASH(start, u32);
 
-    static u64 get_bucket_key(u64 value)
-    {
-        for (int i = 0; i < NUM_BUCKETS; i++) {
-            if (value <= buckets[i])
-                return buckets[i];
-        }
-        return U64_MAX; 
-    }
+      // Used to keep track of the address of the syscall kprobe (e.g. do_syscall_64).
+      BPF_HASH(ipaddr, u32);
 
-    // Called when a syscall kprobe is entered.
-    int trace_func_entry(struct pt_regs *ctx)
-    {
-        // Get the process ID that resulted in this syscall kprobe.
-        u64 pid_tgid = bpf_get_current_pid_tgid();
-        u32 pid = pid_tgid;
+      // Used to record the latency of syscalls.
+      BPF_HISTOGRAM(dist, hist_key_t);
 
-        // Get and record the current kernel time (in nanoseconds).
-        u64 ts = bpf_ktime_get_ns();
-        start.update(&pid, &ts);
+      static u64 get_bucket_key(u64 value) {
+          for (int i = 0; i < NUM_BUCKETS; i++) {
+              if (value <= buckets[i]) {
+                  return buckets[i];
+              }
+          }
 
-        // Get and record the kprobe address.
-        u64 ip = PT_REGS_IP(ctx);
-        ipaddr.update(&pid, &ip);
+          // Cap at maximum value
+          return buckets[NUM_BUCKETS-1];
+      }
 
-        return 0;
-    }
+      // Called when a syscall kprobe is entered.
+      int trace_func_entry(struct pt_regs *ctx) {
+          // Get the process ID that resulted in this syscall kprobe.
+          u64 pid_tgid = bpf_get_current_pid_tgid();
+          u32 pid = pid_tgid;
 
-    // Called when a syscall kprobe returns.
-    int trace_func_return(struct pt_regs *ctx)
-    {
-        // Get the process ID that resulted in this syscall kprobe.
-        u64 pid_tgid = bpf_get_current_pid_tgid();
-        u32 pid = pid_tgid;
+          // Get and record the current kernel time (in nanoseconds).
+          u64 ts = bpf_ktime_get_ns();
+          start.update(&pid, &ts);
 
-        // Will be used to retrieve start time and calculate latency.
-        u64 *tsp, delta;
+          // Get and record the kprobe address.
+          u64 ip = PT_REGS_IP(ctx);
+          ipaddr.update(&pid, &ip);
 
-        // Retrieve the start time that was stored in trace_func_entry.
-        tsp = start.lookup(&pid);
-        // Return is no start time was found.
-        if (tsp == 0) {
-            return 0;
-        }
-        // Calculate the latency of the syscall.
-        delta = bpf_ktime_get_ns() - *tsp;
-        // Convert to microseconds.
-        delta /= 1000;
-        // Remove the start time from the hash.
-        start.delete(&pid);
+          return 0;
+      }
 
-        // Retrieve the kprobe address.
-        u64 ip, *ipp = ipaddr.lookup(&pid);
-        // Return if kprobe address not found.
-        if (ipp == 0) {
-            return 0;
-        }
-        ip = *ipp;
+      // Called when a syscall kprobe returns.
+      int trace_func_return(struct pt_regs *ctx) {
+          // Get the process ID that resulted in this syscall kprobe.
+          u64 pid_tgid = bpf_get_current_pid_tgid();
+          u32 pid = pid_tgid;
 
-        // Construct histogram key.
-        hist_key_t key;
-        // From ebpf_exporter docs:
-        // > Note that sometimes you can observe PT_REGS_IP being off by one.
-        // > You can subtract 1 in your code to make it point to the right
-        // > instruction that can be found /proc/kallsyms.
-        key.ip = ip - 1;
+          // Will be used to retrieve start time and calculate latency.
+          u64 *tsp, delta;
 
-        // Get the user-defined bucket of the latency, and increment the
-        // slot for that value in the latency histogram.
-        key.bucket = get_bucket_key(delta);
-        dist.increment(key);
+          // Retrieve the start time that was stored in trace_func_entry.
 
-        // Increment the optional sum key.
-        hist_key_t max_key;
-        max_key.bucket = buckets[NUM_BUCKETS - 1] + 1;
-        max_key.ip = key.ip;
-        dist.increment(max_key, delta);
+          tsp = start.lookup(&pid);
+          // Return is no start time was found.
+          if (tsp == 0) {
+              return 0;
+          }
 
-        // Delete the kprobe address from the hash.
-        ipaddr.delete(&pid);
+          // Calculate the latency of the syscall.
+          delta = bpf_ktime_get_ns() - *tsp;
 
-        return 0;
-    }
+          // Convert to microseconds.
+          delta /= 1000;
+
+          // Remove the start time from the hash.
+          start.delete(&pid);
+
+          // Retrieve the kprobe address.
+          u64 ip, *ipp = ipaddr.lookup(&pid);
+
+          // Return if kprobe address not found.
+          if (ipp == 0) {
+              return 0;
+          }
+          ip = *ipp;
+
+          // Construct histogram key.
+          hist_key_t key;
+          // From ebpf_exporter docs:
+          // > Note that sometimes you can observe PT_REGS_IP being off by one.
+          // > You can subtract 1 in your code to make it point to the right
+          // > instruction that can be found /proc/kallsyms.
+          key.ip = ip - 1;
+          // Get the user-defined bucket of the latency, and increment the
+          // slot for that value in the latency histogram.
+          key.bucket = get_bucket_key(delta);
+
+          dist.increment(key);
+
+          // Increment the optional sum key.
+          hist_key_t max_key;
+          max_key.bucket = buckets[NUM_BUCKETS - 1] + 1;
+          max_key.ip = key.ip;
+
+          dist.increment(max_key, delta);
+
+          // Delete the kprobe address from the hash.
+          ipaddr.delete(&pid);
+
+          return 0;
+      }

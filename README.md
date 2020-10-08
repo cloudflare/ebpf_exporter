@@ -561,7 +561,7 @@ For `exp2` and `linear` hisograms, if `bucket_max + 1` contains a non-zero
 value, it will be used as a `sum` key in histogram, providing additional
 information.
 
-For `fixed` histograms, if `buckets_keys[len(bucket_keys) -1 ] + 1 contains
+For `fixed` histograms, if `buckets_keys[len(bucket_keys) -1 ] + 1` contains
 a non-zero value, it will be used as a `sum` key.
 
 ##### Advice on values outside of `[bucket_min, bucket_max]`
