@@ -671,10 +671,24 @@ An example to match `1` to `read` and `2` to `write`:
 - name: operation
   decoders:
     - name:static_map
-      static_decoder_map:
+      static_map:
         1: read
         2: write
 ```
+Unkown keys will be replaced by `"unknown:key_name"` unless `allow_unknown: true`
+is specified in the decoder. For example, the above will decode `3` to `unknown:3`
+and the below example will decode `3` to `3`:
+
+```
+- name: operation
+  decoders:
+    - name:static_map
+      allow_unknown: true
+      static_map:
+        1: read
+        2: write
+```
+
 
 #### `string`
 
