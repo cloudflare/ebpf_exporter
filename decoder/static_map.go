@@ -17,11 +17,10 @@ func (s *StaticMap) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 
 	value, ok := conf.StaticMap[string(in)]
 	if !ok {
-		if !conf.AllowUnknown {
-			return []byte(fmt.Sprintf("unknown:%s", in)), nil
-		} else {
+		if conf.AllowUnknown {
 			return in, nil
 		}
+		return []byte(fmt.Sprintf("unknown:%s", in)), nil
 	}
 
 	return []byte(value), nil
