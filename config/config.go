@@ -64,9 +64,10 @@ type Label struct {
 
 // Decoder defines how to decode value
 type Decoder struct {
-	Name      string            `yaml:"name"`
-	StaticMap map[string]string `yaml:"static_map"`
-	Regexps   []string          `yaml:"regexps"`
+	Name         string            `yaml:"name"`
+	StaticMap    map[string]string `yaml:"static_map"`
+	Regexps      []string          `yaml:"regexps"`
+	AllowUnknown bool              `yaml:"allow_unknown"`
 }
 
 // HistogramBucketType is an enum to define how to interpret histogram
