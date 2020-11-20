@@ -1,0 +1,71 @@
+programs:
+  - name: mcevents
+    metrics:
+      counters:
+        - name: mc_event_total
+          help: Machine check events
+          table: mc_counts
+          labels:
+            - name: type
+              size: 4
+              decoders:
+                - name: uint
+                - name: static_map
+                  static_map:
+                    0: err_corrected
+                    1: err_uncorrected
+                    2: err_deferred
+                    3: err_fatal
+                    4: info
+            - name: middle_layer
+              size: 1
+              decoders:
+                - name: uint
+            - name: top_layer
+              size: 1
+              decoders:
+                - name: uint
+            - name: lower_layer
+              size: 1
+              decoders:
+                - name: uint
+            - name: mc_index
+              size: 1
+              decoders:
+                - name: uint
+            - name: label
+              size: 100
+              decoders:
+                - name: string
+            - name: msg
+              size: 32
+              decoders:
+                - name: string
+    tracepoints:
+      ras:mc_event: tracepoint__ras__mc_event
+    code: |
+      #include <uapi/linux/ptrace.h>
+      #include <linux/types.h>
+      struct key_t {
+          uint type;
+          s8 middle_layer;
+          s8 top_layer;
+          s8 lower_layer;
+          s8 mc_index;
+          char label[100];
+          char msg[32];
+      };
+      BPF_HASH(mc_counts, struct key_t, u64);
+
+      // Generates function tracepoint__ras__mc_event
+      TRACEPOINT_PROBE(ras, mc_event) {
+          struct key_t key = { .type = args->error_type,
+              .middle_layer = args->middle_layer,
+              .top_layer = args->top_layer,
+              .lower_layer = args->lower_layer,
+              .mc_index = args->mc_index};
+          TP_DATA_LOC_READ_CONST(key.label,label,100)
+          TP_DATA_LOC_READ_CONST(key.msg,msg,32)
+          mc_counts.increment(key);
+          return 0;
+      }
