@@ -1,4 +1,4 @@
-FROM golang:1.15.5-buster
+FROM golang:1.14.12-stretch
 
 # Doing mostly what CI is doing here
 RUN apt-get update && \
