@@ -14,9 +14,10 @@ import (
 )
 
 func main() {
-	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests").Default(":9435").String()
 	configFile := kingpin.Flag("config.file", "Config file path").Default("config.yaml").File()
 	debug := kingpin.Flag("debug", "Enable debug").Bool()
+	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests").Default(":9435").String()
+	metricsPath := kingpin.Flag("web.telemetry-path", "Path under which to expose metrics").Default("/metrics").String()
 	kingpin.Version(version.Print("ebpf_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
@@ -41,7 +42,19 @@ func main() {
 		log.Fatalf("Error registering exporter: %s", err)
 	}
 
-	http.Handle("/metrics", promhttp.Handler())
+	http.Handle(*metricsPath, promhttp.Handler())
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		_, err = w.Write([]byte(`<html>
+			<head><title>eBPF Exporter</title></head>
+			<body>
+			<h1>eBPF Exporter</h1>
+			<p><a href="` + *metricsPath + `">Metrics</a></p>
+			</body>
+			</html>`))
+		if err != nil {
+			log.Fatalf("Error sending response body: %s", err)
+		}
+	})
 
 	if *debug {
 		log.Printf("Debug enabled, exporting raw tables on /tables")
