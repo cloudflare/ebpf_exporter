@@ -331,11 +331,11 @@ func (e *Exporter) TablesHandler(w http.ResponseWriter, r *http.Request) {
 		for name, table := range tables {
 			buf = append(buf, fmt.Sprintf("### Table: %s\n\n", name)...)
 
-			buf = append(buf, fmt.Sprintf("```\n")...)
+			buf = append(buf, "```\n"...)
 			for _, row := range table {
 				buf = append(buf, fmt.Sprintf("%s (%v) -> %f\n", row.raw, row.labels, row.value)...)
 			}
-			buf = append(buf, fmt.Sprintf("```\n\n")...)
+			buf = append(buf, "```\n\n"...)
 		}
 	}
 

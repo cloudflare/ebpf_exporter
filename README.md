@@ -1,6 +1,7 @@
 # ebpf_exporter
 
-[![Build Status](https://travis-ci.org/cloudflare/ebpf_exporter.svg?branch=master)](https://travis-ci.org/cloudflare/ebpf_exporter)
+![Build Status](https://github.com/cloudflare/ebpf_exporter/workflows/Go/badge.svg)
+![Build Status](https://github.com/cloudflare/ebpf_exporter/workflows/golangci-lint/badge.svg)
 
 Prometheus exporter for custom eBPF metrics.
 
