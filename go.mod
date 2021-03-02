@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/alecthomas/units v0.0.0-20201120081800-1786d5ef83d4 // indirect
-	github.com/iovisor/gobpf v0.0.0-20200614202714-e6b321d32103
+	github.com/iovisor/gobpf v0.0.0-20210226085815-9287508f53f6
 	github.com/prometheus/client_golang v1.8.0
 	github.com/prometheus/common v0.15.0
 	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68

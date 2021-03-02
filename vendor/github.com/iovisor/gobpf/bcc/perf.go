@@ -95,7 +95,7 @@ func rawCallback(cbCookie unsafe.Pointer, raw unsafe.Pointer, rawSize C.int) {
 }
 
 //export lostCallback
-func lostCallback(cbCookie unsafe.Pointer, lost C.ulong) {
+func lostCallback(cbCookie unsafe.Pointer, lost C.uint64_t) {
 	callbackData := lookupCallback(uint64(uintptr(cbCookie)))
 	if callbackData.lostChan != nil {
 		callbackData.lostChan <- uint64(lost)

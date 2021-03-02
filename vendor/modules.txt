@@ -14,7 +14,7 @@ github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/iovisor/gobpf v0.0.0-20200614202714-e6b321d32103
+# github.com/iovisor/gobpf v0.0.0-20210226085815-9287508f53f6
 ## explicit
 github.com/iovisor/gobpf/bcc
 github.com/iovisor/gobpf/pkg/cpuonline
