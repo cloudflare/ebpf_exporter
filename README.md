@@ -1,8 +1,5 @@
 # ebpf_exporter
 
-![Build Status](https://github.com/cloudflare/ebpf_exporter/workflows/Go/badge.svg)
-![Build Status](https://github.com/cloudflare/ebpf_exporter/workflows/golangci-lint/badge.svg)
-
 Prometheus exporter for custom eBPF metrics.
 
 Motivation of this exporter is to allow you to write eBPF code and export
