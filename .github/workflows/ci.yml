@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build-bcc:
+    name: Build BCC
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build BCC
+        run: |
+          docker build -t ebpf-exporter-build .
+          docker run --rm ebpf-exporter-build cat /tmp/libbcc.deb > libbcc.deb
+
+      - name: Upload libbcc.deb
+        uses: actions/upload-artifact@v2
+        with:
+          name: libbcc.deb
+          path: libbcc.deb
+
+  test-ebpf-exporter:
+    name: Test
+    needs: build-bcc
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ^1.16
+
+      - uses: actions/checkout@v2
+
+      - name: Download libbcc.deb
+        uses: actions/download-artifact@v2
+        with:
+          name: libbcc.deb
+
+      - name: Install libbcc
+        run: |
+          sudo dpkg -i libbcc.deb
+
+      - name: Check vendored dependencies
+        run: |
+          go mod verify
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v ./...
+
+  lint-ebpf-exporter:
+    name: Lint
+    needs: build-bcc
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ^1.16
+
+      - uses: actions/checkout@v2
+
+      - name: Download libbcc.deb
+        uses: actions/download-artifact@v2
+        with:
+          name: libbcc.deb
+
+      - name: Install libbcc
+        run: |
+          sudo dpkg -i libbcc.deb
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.38

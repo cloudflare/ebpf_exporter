@@ -1,15 +1,31 @@
-FROM golang:1.14.12-stretch
+FROM ubuntu:20.04 as builder
 
-# Doing mostly what CI is doing here
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update && \
-    apt-get install -y apt-transport-https && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648A4A16A23015EEF4A66B8E4052245BD4284CDD && \
-    echo "deb https://repo.iovisor.org/apt/xenial xenial main" > /etc/apt/sources.list.d/iovisor.list && \
-    apt-get update && \
-    apt-get install -y linux-headers-amd64 && \
-    curl -sL https://github.com/cloudflare/ebpf_exporter/files/3890546/libbcc_0.11.0-2_amd64.deb.gz | gunzip > /tmp/libbcc.deb && \
-    dpkg -i /tmp/libbcc.deb
+    apt-get -y --no-install-recommends install build-essential pbuilder aptitude git openssh-client ca-certificates
+
+RUN git clone --branch=v0.18.0 --depth=1 https://github.com/iovisor/bcc.git /root/bcc && \
+    git -C /root/bcc submodule update --init --recursive
+
+RUN cd /root/bcc && \
+    /usr/lib/pbuilder/pbuilder-satisfydepends && \
+    PARALLEL=$(nproc) ./scripts/build-deb.sh release
+
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential software-properties-common
+
+RUN add-apt-repository ppa:longsleep/golang-backports && \
+    apt-get install -y --no-install-recommends golang-1.16-go
+
+COPY --from=builder /root/bcc/libbcc_*.deb /tmp/libbcc.deb
+
+RUN dpkg -i /tmp/libbcc.deb
 
 COPY ./ /go/ebpf_exporter
 
-RUN cd /go/ebpf_exporter && GOPATH="" GOPROXY="off" GOFLAGS="-mod=vendor" go install -v ./...
+RUN cd /go/ebpf_exporter && GOPATH="" GOPROXY="off" GOFLAGS="-mod=vendor" /usr/lib/go-1.16/bin/go install -v ./...
