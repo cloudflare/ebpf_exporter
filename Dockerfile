@@ -22,10 +22,12 @@ RUN apt-get update && \
 RUN add-apt-repository ppa:longsleep/golang-backports && \
     apt-get install -y --no-install-recommends golang-1.16-go
 
+ENV PATH="/usr/lib/go-1.16/bin:$PATH"
+
 COPY --from=builder /root/bcc/libbcc_*.deb /tmp/libbcc.deb
 
 RUN dpkg -i /tmp/libbcc.deb
 
 COPY ./ /go/ebpf_exporter
 
-RUN cd /go/ebpf_exporter && GOPATH="" GOPROXY="off" GOFLAGS="-mod=vendor" /usr/lib/go-1.16/bin/go install -v ./...
+RUN cd /go/ebpf_exporter && GOPATH="" GOPROXY="off" GOFLAGS="-mod=vendor" go install -v ./...
