@@ -20,11 +20,14 @@ import (
 	"fmt"
 	"os"
 	"unsafe"
+
+	"github.com/iovisor/gobpf/pkg/cpupossible"
 )
 
 /*
 #cgo CFLAGS: -I/usr/include/bcc/compat
 #cgo LDFLAGS: -lbcc
+#include <linux/bpf.h>
 #include <bcc/bcc_common.h>
 #include <bcc/libbpf.h>
 */
@@ -141,6 +144,15 @@ func (table *Table) Get(key []byte) ([]byte, error) {
 	keyP := unsafe.Pointer(&key[0])
 
 	leafSize := C.bpf_table_leaf_size_id(mod, table.id)
+	mapType := C.bpf_table_type_id(mod, table.id)
+	switch mapType {
+	case C.BPF_MAP_TYPE_PERCPU_HASH, C.BPF_MAP_TYPE_PERCPU_ARRAY:
+		cpus, err := cpupossible.Get()
+		if err != nil {
+			return nil, fmt.Errorf("get possible cpus: %w", err)
+		}
+		leafSize *= C.ulong(len(cpus))
+	}
 	leaf := make([]byte, leafSize)
 	leafP := unsafe.Pointer(&leaf[0])
 
@@ -161,6 +173,15 @@ func (table *Table) GetP(key unsafe.Pointer) (unsafe.Pointer, error) {
 	fd := C.bpf_table_fd_id(table.module.p, table.id)
 
 	leafSize := C.bpf_table_leaf_size_id(table.module.p, table.id)
+	mapType := C.bpf_table_type_id(table.module.p, table.id)
+	switch mapType {
+	case C.BPF_MAP_TYPE_PERCPU_HASH, C.BPF_MAP_TYPE_PERCPU_ARRAY:
+		cpus, err := cpupossible.Get()
+		if err != nil {
+			return nil, fmt.Errorf("get possible cpus: %w", err)
+		}
+		leafSize *= C.ulong(len(cpus))
+	}
 	leaf := make([]byte, leafSize)
 	leafP := unsafe.Pointer(&leaf[0])
 
@@ -289,6 +310,16 @@ func (it *TableIterator) Next() bool {
 		}
 
 		leafSize := C.bpf_table_leaf_size_id(it.table.module.p, it.table.id)
+		mapType := C.bpf_table_type_id(it.table.module.p, it.table.id)
+		switch mapType {
+		case C.BPF_MAP_TYPE_PERCPU_HASH, C.BPF_MAP_TYPE_PERCPU_ARRAY:
+			cpus, err := cpupossible.Get()
+			if err != nil {
+				it.err = fmt.Errorf("get possible cpus: %w", err)
+				return false
+			}
+			leafSize *= C.ulong(len(cpus))
+		}
 		leaf := make([]byte, leafSize)
 
 		it.key = key
