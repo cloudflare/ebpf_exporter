@@ -26,21 +26,27 @@ An easy way of thinking about this exporter is bcc tools as prometheus metrics:
 
 ## Building and running
 
-To build, you need to have `libbcc` installed:
+### Note on bcc
+
+`epbf_exporter` depends on `libbcc` to instrument the kernel, and you need
+to have it installed on your system. Please consule `bcc` documentation:
 
 * https://github.com/iovisor/bcc/blob/master/INSTALL.md
 
-You can use pre-compiled binary from Releases:
+Note that there's a dependency between `bcc` version you have on your system
+and `gobpf`, which is Go's library to talk to `libbcc`. If you see errors
+pointing to argument mismatch, it probably means that your `libbcc` version
+doesn't match what `gobpf` expects. Currently `ebpf_exporter` works with `bcc`
+0.18.0, but if you see issues with newer versions, please file an issue.
 
-* https://github.com/cloudflare/ebpf_exporter/releases
+This setup also prevents us from providing prebuilt static binaries.
 
-That still requires you to have `libbcc`. To build release binaries yourself:
+If you can figure out a way to statically link `bcc` into `ebpf_exporter`
+to remove this nuisance, your contribution will be most welcome.
 
-```
-$ make release-binaries
-```
+### Actual building
 
-To build a package from latest sources:
+To build a binary from latest sources:
 
 ```
 $ go get -u -v github.com/cloudflare/ebpf_exporter/...
@@ -53,6 +59,12 @@ $ ~/go/bin/ebpf_exporter --config.file=src/github.com/cloudflare/ebpf_exporter/e
 ```
 
 If you pass `--debug`, you can see raw tables at `/tables` endpoint.
+
+### Docker image
+
+There's a `Dockerfile` in repo root that builds both `bcc` and `ebpf_exporter`.
+It's not intended for running, but rather to ensure that we have a predefined
+build environment in which everything compiles successfully.
 
 ## Benchmarking overhead
 
