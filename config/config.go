@@ -35,10 +35,11 @@ type Metrics struct {
 
 // Counter is a metric defining prometheus counter
 type Counter struct {
-	Name   string  `yaml:"name"`
-	Help   string  `yaml:"help"`
-	Table  string  `yaml:"table"`
-	Labels []Label `yaml:"labels"`
+	Name    string  `yaml:"name"`
+	Help    string  `yaml:"help"`
+	Table   string  `yaml:"table"`
+	PerfMap string  `yaml:"perf_map"`
+	Labels  []Label `yaml:"labels"`
 }
 
 // Histogram is a metric defining prometheus histogram
