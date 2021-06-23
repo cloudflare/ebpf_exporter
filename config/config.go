@@ -1,5 +1,10 @@
 package config
 
+import (
+	"errors"
+	"fmt"
+)
+
 // Config defines exporter configuration
 type Config struct {
 	Programs []Program `yaml:"programs"`
@@ -81,3 +86,20 @@ const (
 	// HistogramBucketFixed means histogram with fixed user-defined keys
 	HistogramBucketFixed = "fixed"
 )
+
+func ValidateConfig(c *Config) error {
+	if len(c.Programs) == 0 {
+		return errors.New("no programs specified")
+	}
+
+	for _, program := range c.Programs {
+		if program.Code == "" {
+			return fmt.Errorf("program (%s) has no code section", program.Name)
+		}
+		if len(program.Kprobes)+len(program.Kretprobes)+len(program.Tracepoints)+len(program.RawTracepoints)+len(program.PerfEvents) == 0 {
+			return fmt.Errorf("program (%s) has no probes, tracepoints, or perf events", program.Name)
+		}
+	}
+
+	return nil
+}

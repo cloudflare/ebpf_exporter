@@ -22,20 +22,25 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	config := config.Config{}
+	theConfig := config.Config{}
 
-	err := yaml.NewDecoder(*configFile).Decode(&config)
+	err := yaml.NewDecoder(*configFile).Decode(&theConfig)
 	if err != nil {
 		log.Fatalf("Error reading config file: %s", err)
 	}
 
-	e := exporter.New(config)
+	err = config.ValidateConfig(&theConfig)
+	if err != nil {
+		log.Fatalf("config error: (%s)", err)
+	}
+
+	e := exporter.New(theConfig)
 	err = e.Attach()
 	if err != nil {
 		log.Fatalf("Error attaching exporter: %s", err)
 	}
 
-	log.Printf("Starting with %d programs found in the config", len(config.Programs))
+	log.Printf("Starting with %d programs found in the config", len(theConfig.Programs))
 
 	err = prometheus.Register(e)
 	if err != nil {
