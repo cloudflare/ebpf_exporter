@@ -28,7 +28,12 @@ type Exporter struct {
 }
 
 // New creates a new exporter with the provided config
-func New(config config.Config) *Exporter {
+func New(cfg config.Config) (*Exporter, error) {
+	err := config.ValidateConfig(&cfg)
+	if err != nil {
+		return nil, fmt.Errorf("error validating config: %s", err)
+	}
+
 	enabledProgramsDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(prometheusNamespace, "", "enabled_programs"),
 		"The set of enabled programs",
@@ -44,7 +49,7 @@ func New(config config.Config) *Exporter {
 	)
 
 	return &Exporter{
-		config:              config,
+		config:              cfg,
 		modules:             map[string]*bcc.Module{},
 		ksyms:               map[uint64]string{},
 		enabledProgramsDesc: enabledProgramsDesc,
@@ -52,7 +57,7 @@ func New(config config.Config) *Exporter {
 		programTags:         map[string]map[string]uint64{},
 		descs:               map[string]map[string]*prometheus.Desc{},
 		decoders:            decoder.NewSet(),
-	}
+	}, nil
 }
 
 // Attach injects eBPF into kernel and attaches necessary kprobes
