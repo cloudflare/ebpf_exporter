@@ -19,6 +19,7 @@ const prometheusNamespace = "ebpf_exporter"
 type Exporter struct {
 	config              config.Config
 	modules             map[string]*bcc.Module
+	perfMapCollectors   []*PerfMapSink
 	ksyms               map[uint64]string
 	enabledProgramsDesc *prometheus.Desc
 	programInfoDesc     *prometheus.Desc
@@ -124,6 +125,11 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 		}
 
 		for _, counter := range program.Metrics.Counters {
+			if len(counter.PerfMap) != 0 {
+				perfSink := NewPerfMapSink(e.decoders, e.modules[program.Name], counter)
+				e.perfMapCollectors = append(e.perfMapCollectors, perfSink)
+			}
+
 			addDescs(program.Name, counter.Name, counter.Help, counter.Labels)
 		}
 
@@ -145,6 +151,10 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
+	for _, perfMapCollector := range e.perfMapCollectors {
+		perfMapCollector.Collect(ch)
+	}
+
 	e.collectCounters(ch)
 	e.collectHistograms(ch)
 }
@@ -153,6 +163,10 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 	for _, program := range e.config.Programs {
 		for _, counter := range program.Metrics.Counters {
+			if len(counter.PerfMap) != 0 {
+				continue
+			}
+
 			tableValues, err := e.tableValues(e.modules[program.Name], counter.Table, counter.Labels)
 			if err != nil {
 				log.Printf("Error getting table %q values for metric %q of program %q: %s", counter.Table, counter.Name, program.Name, err)
