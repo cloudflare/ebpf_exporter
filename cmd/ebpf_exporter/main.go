@@ -29,7 +29,11 @@ func main() {
 		log.Fatalf("Error reading config file: %s", err)
 	}
 
-	e := exporter.New(config)
+	e, err := exporter.New(config)
+	if err != nil {
+		log.Fatalf("Error creating exporter: %s", err)
+	}
+
 	err = e.Attach()
 	if err != nil {
 		log.Fatalf("Error attaching exporter: %s", err)
