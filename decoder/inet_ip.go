@@ -11,6 +11,6 @@ type InetIP struct{}
 
 // Decode transforms an ip byte representation into a string
 func (i *InetIP) Decode(in []byte, conf config.Decoder) ([]byte, error) {
-	ip := net.IP(in);
+	ip := net.IP(in)
 	return []byte(ip.String()), nil
 }

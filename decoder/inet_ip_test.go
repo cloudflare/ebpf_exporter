@@ -17,7 +17,7 @@ func TestInetIpDecoder(t *testing.T) {
 			out: []byte("1.2.3.4"),
 		},
 		{
-			in:  []byte{
+			in: []byte{
 				0x24, 0x00,
 				0xcb, 0x00,
 				0x00, 0x04,
