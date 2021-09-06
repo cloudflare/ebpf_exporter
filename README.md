@@ -800,9 +800,13 @@ See [Counters](#counters) section for more details.
 name: <prometheus counter name>
 help: <prometheus metric help>
 table: <eBPF table name to track>
+perf_map: <name for a BPF_PERF_OUTPUT map> # optional
+perf_map_flush_duration: <how often should we flush metrics from perf_map: time.Duration> # optional
 labels:
   [ - label ]
 ```
+
+An example of `perf_map` can be found [here](examples/oomkill.yaml).
 
 #### `histogram`
 
