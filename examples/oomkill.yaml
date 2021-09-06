@@ -43,6 +43,6 @@ programs:
               return;
           }
 
-          data.cgroup_id = mcg->css.cgroup->kn->id.id;
+          data.cgroup_id = mcg->css.cgroup->kn->id;
           events.perf_submit(ctx, &data, sizeof(data));
       }
