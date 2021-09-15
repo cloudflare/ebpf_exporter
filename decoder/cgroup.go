@@ -2,8 +2,8 @@ package decoder
 
 import (
 	"fmt"
+	"io/fs"
 	"log"
-	"os"
 	"path/filepath"
 	"strconv"
 
@@ -48,7 +48,7 @@ func (c *CGroup) refreshCache() error {
 
 	cgroupPath := "/sys/fs/cgroup"
 
-	return filepath.Walk(cgroupPath, func(path string, info os.FileInfo, err error) error {
+	return filepath.WalkDir(cgroupPath, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
