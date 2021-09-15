@@ -63,6 +63,7 @@ func (c *CGroup) refreshCache() error {
 		handle, _, err := unix.NameToHandleAt(unix.AT_FDCWD, path, 0)
 		if err != nil {
 			log.Printf("Error resolving handle of %s: %s", path, err)
+			return nil
 		}
 
 		c.cache[byteOrder.Uint64(handle.Bytes())] = []byte(path)
