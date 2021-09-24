@@ -762,6 +762,9 @@ perf_events:
 cflags:
   [ - -I/include/path
     - -DMACRO_NAME=value ]
+# Kernel symbol addresses to define as kaddr_{symbol} from /proc/kallsyms (consider CONFIG_KALLSYMS_ALL)
+kaddrs:
+  [ - symbol_to_resolve ]
 # Actual eBPF program code to inject in the kernel
 code: [ code ]
 ```

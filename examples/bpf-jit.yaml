@@ -1,0 +1,44 @@
+programs:
+  - name: bpf-jit
+    metrics:
+      counters:
+        # Technically this is a gauge, but ebpf_exporter only knows counters
+        - name: bpf_jit_pages_currently_allocated
+          help: Current number of pages allocated for bpf jit
+          table: current
+          labels:
+            # ebpf_exporter doesn't support metrics without labels
+            - name: empty
+              size: 8
+              decoders:
+                - name: uint
+                - name: static_map
+                  static_map:
+                    0: ""
+    kprobes:
+      # Sometimes bpf_jit_charge_modmem / bpf_jit_uncharge_modmem get elided,
+      # so we're tracing the outer entrypoints instead.
+      # It's common to see calls to bpf_jit_binary_free not being traced too.
+      bpf_jit_binary_alloc: trace_change
+    kaddrs:
+      # Define kaddr_bpf_jit_current the the address of bpf_jit_current
+      - bpf_jit_current
+    code: |
+      #include <uapi/linux/ptrace.h>
+
+      BPF_HASH(current, u64, u64, 1);
+
+      static int trace_current() {
+          u64 zero = 0, *val;
+
+          s64 bpf_jit_current;
+          bpf_probe_read_kernel(&bpf_jit_current, sizeof(bpf_jit_current), (const void*) kaddr_bpf_jit_current);
+
+          current.update(&zero, &bpf_jit_current);
+
+          return 0;
+      }
+
+      int trace_change(struct pt_regs *ctx, u32 pages) {
+          return trace_current();
+      }
