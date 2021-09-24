@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get -y --no-install-recommends install build-essential pbuilder aptitude git openssh-client ca-certificates
 
-RUN git clone --branch=v0.18.0 --depth=1 https://github.com/iovisor/bcc.git /root/bcc && \
+RUN git clone --branch=v0.22.0 --depth=1 https://github.com/iovisor/bcc.git /root/bcc && \
     git -C /root/bcc submodule update --init --recursive
 
 RUN cd /root/bcc && \

@@ -34,7 +34,7 @@ Note that there's a dependency between `bcc` version you have on your system
 and `gobpf`, which is Go's library to talk to `libbcc`. If you see errors
 pointing to argument mismatch, it probably means that your `libbcc` version
 doesn't match what `gobpf` expects. Currently `ebpf_exporter` works with `bcc`
-0.18.0, but if you see issues with newer versions, please file an issue.
+0.22.0, but if you see issues with newer versions, please file an issue.
 
 This setup also prevents us from providing prebuilt static binaries.
 
