@@ -20,9 +20,9 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential software-properties-common
 
 RUN add-apt-repository ppa:longsleep/golang-backports && \
-    apt-get install -y --no-install-recommends golang-1.16-go
+    apt-get install -y --no-install-recommends golang-1.17-go
 
-ENV PATH="/usr/lib/go-1.16/bin:$PATH"
+ENV PATH="/usr/lib/go-1.17/bin:$PATH"
 
 COPY --from=builder /root/bcc/libbcc_*.deb /tmp/libbcc.deb
 
