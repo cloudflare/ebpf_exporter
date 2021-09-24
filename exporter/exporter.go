@@ -1,10 +1,13 @@
 package exporter
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/decoder"
@@ -20,7 +23,7 @@ type Exporter struct {
 	config              config.Config
 	modules             map[string]*bcc.Module
 	perfMapCollectors   []*PerfMapSink
-	ksyms               map[uint64]string
+	kaddrs              map[string]uint64
 	enabledProgramsDesc *prometheus.Desc
 	programInfoDesc     *prometheus.Desc
 	programTags         map[string]map[string]uint64
@@ -52,7 +55,7 @@ func New(cfg config.Config) (*Exporter, error) {
 	return &Exporter{
 		config:              cfg,
 		modules:             map[string]*bcc.Module{},
-		ksyms:               map[uint64]string{},
+		kaddrs:              map[string]uint64{},
 		enabledProgramsDesc: enabledProgramsDesc,
 		programInfoDesc:     programInfoDesc,
 		programTags:         map[string]map[string]uint64{},
@@ -68,7 +71,12 @@ func (e *Exporter) Attach() error {
 			return fmt.Errorf("multiple programs with name %q", program.Name)
 		}
 
-		module := bcc.NewModule(program.Code, program.Cflags)
+		code, err := e.code(program)
+		if err != nil {
+			return err
+		}
+
+		module := bcc.NewModule(code, program.Cflags)
 		if module == nil {
 			return fmt.Errorf("error compiling module for program %q", program.Name)
 		}
@@ -97,6 +105,58 @@ func (e *Exporter) Attach() error {
 	}
 
 	return nil
+}
+
+// code generates program code, augmented if necessary
+func (e Exporter) code(program config.Program) (string, error) {
+	preamble := ""
+
+	if len(program.Kaddrs) > 0 && len(e.kaddrs) == 0 {
+		if err := e.populateKaddrs(); err != nil {
+			return "", err
+		}
+	}
+
+	defines := make([]string, 0, len(program.Kaddrs))
+	for _, kaddr := range program.Kaddrs {
+		defines = append(defines, fmt.Sprintf("#define kaddr_%s 0x%x", kaddr, e.kaddrs[kaddr]))
+	}
+
+	preamble = preamble + strings.Join(defines, "\n")
+
+	if preamble == "" {
+		return program.Code, nil
+	}
+
+	return preamble + "\n\n" + program.Code, nil
+}
+
+// populateKaddrs populates cache of ksym -> kaddr mappings
+// TODO: move to github.com/iovisor/gobpf/pkg/ksym
+func (e Exporter) populateKaddrs() error {
+	fd, err := os.Open("/proc/kallsyms")
+	if err != nil {
+		return err
+	}
+
+	defer fd.Close()
+
+	s := bufio.NewScanner(fd)
+	for s.Scan() {
+		parts := strings.Split(s.Text(), " ")
+		if len(parts) != 3 {
+			continue
+		}
+
+		addr, err := strconv.ParseUint(parts[0], 16, 64)
+		if err != nil {
+			return fmt.Errorf("error parsing addr %q from line %q: %s", parts[0], s.Text(), err)
+		}
+
+		e.kaddrs[parts[2]] = addr
+	}
+
+	return s.Err()
 }
 
 // Describe satisfies prometheus.Collector interface by sending descriptions

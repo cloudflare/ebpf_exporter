@@ -22,6 +22,7 @@ type Program struct {
 	PerfEvents     []PerfEvent       `yaml:"perf_events"`
 	Code           string            `yaml:"code"`
 	Cflags         []string          `yaml:"cflags"`
+	Kaddrs         []string          `yaml:"kaddrs"`
 }
 
 // PerfEvent describes perf_event to attach to
