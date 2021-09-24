@@ -1,20 +1,22 @@
 # github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 github.com/alecthomas/template
 github.com/alecthomas/template/parse
-# github.com/alecthomas/units v0.0.0-20210208195552-ff826a37aa15
+# github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922
 ## explicit
 github.com/alecthomas/units
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
-# github.com/cespare/xxhash/v2 v2.1.1
+# github.com/cespare/xxhash/v2 v2.1.2
+## explicit
 github.com/cespare/xxhash/v2
-# github.com/golang/protobuf v1.4.3
+# github.com/golang/protobuf v1.5.2
+## explicit
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/iovisor/gobpf v0.1.1
+# github.com/iovisor/gobpf v0.2.0
 ## explicit
 github.com/iovisor/gobpf/bcc
 github.com/iovisor/gobpf/pkg/cpuonline
@@ -23,30 +25,30 @@ github.com/iovisor/gobpf/pkg/cpurange
 github.com/iovisor/gobpf/pkg/ksym
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/prometheus/client_golang v1.9.0
+# github.com/prometheus/client_golang v1.11.0
 ## explicit
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
 github.com/prometheus/client_golang/prometheus/promhttp
 # github.com/prometheus/client_model v0.2.0
 github.com/prometheus/client_model/go
-# github.com/prometheus/common v0.18.0
+# github.com/prometheus/common v0.30.0
 ## explicit
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
 github.com/prometheus/common/model
 github.com/prometheus/common/version
-# github.com/prometheus/procfs v0.6.0
+# github.com/prometheus/procfs v0.7.3
 ## explicit
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# golang.org/x/sys v0.0.0-20210309074719-68d13333faf2
+# golang.org/x/sys v0.0.0-20210923061019-b8560ed6a9b7
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# google.golang.org/protobuf v1.25.0
+# google.golang.org/protobuf v1.27.1
 ## explicit
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
@@ -58,22 +60,23 @@ google.golang.org/protobuf/internal/encoding/messageset
 google.golang.org/protobuf/internal/encoding/tag
 google.golang.org/protobuf/internal/encoding/text
 google.golang.org/protobuf/internal/errors
-google.golang.org/protobuf/internal/fieldsort
 google.golang.org/protobuf/internal/filedesc
 google.golang.org/protobuf/internal/filetype
 google.golang.org/protobuf/internal/flags
 google.golang.org/protobuf/internal/genid
 google.golang.org/protobuf/internal/impl
-google.golang.org/protobuf/internal/mapsort
+google.golang.org/protobuf/internal/order
 google.golang.org/protobuf/internal/pragma
 google.golang.org/protobuf/internal/set
 google.golang.org/protobuf/internal/strs
 google.golang.org/protobuf/internal/version
 google.golang.org/protobuf/proto
+google.golang.org/protobuf/reflect/protodesc
 google.golang.org/protobuf/reflect/protoreflect
 google.golang.org/protobuf/reflect/protoregistry
 google.golang.org/protobuf/runtime/protoiface
 google.golang.org/protobuf/runtime/protoimpl
+google.golang.org/protobuf/types/descriptorpb
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
