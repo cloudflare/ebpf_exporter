@@ -151,7 +151,7 @@ func (table *Table) Get(key []byte) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("get possible cpus: %w", err)
 		}
-		leafSize *= C.ulong(len(cpus))
+		leafSize *= C.size_t(len(cpus))
 	}
 	leaf := make([]byte, leafSize)
 	leafP := unsafe.Pointer(&leaf[0])
@@ -180,7 +180,7 @@ func (table *Table) GetP(key unsafe.Pointer) (unsafe.Pointer, error) {
 		if err != nil {
 			return nil, fmt.Errorf("get possible cpus: %w", err)
 		}
-		leafSize *= C.ulong(len(cpus))
+		leafSize *= C.size_t(len(cpus))
 	}
 	leaf := make([]byte, leafSize)
 	leafP := unsafe.Pointer(&leaf[0])
@@ -318,7 +318,7 @@ func (it *TableIterator) Next() bool {
 				it.err = fmt.Errorf("get possible cpus: %w", err)
 				return false
 			}
-			leafSize *= C.ulong(len(cpus))
+			leafSize *= C.size_t(len(cpus))
 		}
 		leaf := make([]byte, leafSize)
 
