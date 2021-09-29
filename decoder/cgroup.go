@@ -2,8 +2,8 @@ package decoder
 
 import (
 	"fmt"
+	"io/fs"
 	"log"
-	"os"
 	"path/filepath"
 	"strconv"
 
@@ -18,7 +18,7 @@ type CGroup struct {
 }
 
 // Decode transforms cgroup id to path in cgroupfs
-func (c *CGroup) Decode(in []byte, conf config.Decoder) ([]byte, error) {
+func (c *CGroup) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	if c.cache == nil {
 		c.cache = map[uint64][]byte{}
 	}
@@ -46,12 +46,9 @@ func (c *CGroup) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 func (c *CGroup) refreshCache() error {
 	byteOrder := bcc.GetHostByteOrder()
 
-	cgroupPath := "/sys/fs/cgroup/unified"
-	if _, err := os.Stat(cgroupPath); os.IsNotExist(err) {
-		cgroupPath = "/sys/fs/cgroup"
-	}
+	cgroupPath := "/sys/fs/cgroup"
 
-	return filepath.Walk(cgroupPath, func(path string, info os.FileInfo, err error) error {
+	return filepath.WalkDir(cgroupPath, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

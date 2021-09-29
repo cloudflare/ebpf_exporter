@@ -1,6 +1,6 @@
 module github.com/cloudflare/ebpf_exporter
 
-go 1.14
+go 1.16
 
 require (
 	github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 // indirect

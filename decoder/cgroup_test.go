@@ -38,3 +38,15 @@ func TestCgroupDecoder(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkCgroupRefresh(b *testing.B) {
+	d := &CGroup{cache: map[uint64][]byte{}}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		err := d.refreshCache()
+		if err != nil {
+			b.Errorf("Failed to refresh cgroup cache: %s", err)
+		}
+	}
+}
