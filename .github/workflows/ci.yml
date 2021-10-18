@@ -63,6 +63,35 @@ jobs:
           name: ebpf_exporter.aarch64
           path: ebpf_exporter.aarch64
 
+  build-bcc-armv6l:
+    name: Build BCC and ebpf_exporter (armv6l emulated, be patient)
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: dbhi/qus/action@main
+        with:
+          targets: arm
+
+      - uses: actions/checkout@v2
+
+      - name: Build BCC and ebpf_exporter
+        run: |
+          docker buildx build --progress plain --tag ebpf-exporter-build --platform linux/arm32v6 .
+          id=$(docker create ebpf-exporter-build)
+          docker cp $id:/tmp/libbcc.deb libbcc-armv6l.deb
+          docker cp $id:/root/go/bin/ebpf_exporter ebpf_exporter.armv6l
+
+      - name: Upload libbcc.deb
+        uses: actions/upload-artifact@v2
+        with:
+          name: libbcc-armv6l.deb
+          path: libbcc-armv6l.deb
+
+      - name: Upload ebpf_exporter
+        uses: actions/upload-artifact@v2
+        with:
+          name: ebpf_exporter.armv6l
+          path: ebpf_exporter.armv6l
+
   test-ebpf-exporter-x86_64:
     name: Test ebpf_exporter (x86_64)
     needs: build-bcc-x86_64
