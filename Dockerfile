@@ -1,9 +1,12 @@
-FROM ubuntu:20.04 as builder
-
-ENV DEBIAN_FRONTEND=noninteractive
+# Building on Ubuntu Bionic (18.04) and supporting glibc 2.27. This allows
+# the following distros (and newer versions) to run the resulting binaries:
+# * Ubuntu Bionic (2.27)
+# * Debian Buster (2.28)
+# * CentOS 8 (2.28)
+FROM ubuntu:bionic as builder
 
 RUN apt-get update && \
-    apt-get -y --no-install-recommends install build-essential pbuilder aptitude git openssh-client ca-certificates
+    apt-get -y --no-install-recommends install build-essential fakeroot pbuilder aptitude git openssh-client ca-certificates
 
 RUN git clone --branch=v0.22.0 --depth=1 https://github.com/iovisor/bcc.git /root/bcc && \
     git -C /root/bcc submodule update --init --recursive
@@ -12,12 +15,10 @@ RUN cd /root/bcc && \
     /usr/lib/pbuilder/pbuilder-satisfydepends && \
     PARALLEL=$(nproc) ./scripts/build-deb.sh release
 
-FROM ubuntu:20.04
-
-ENV DEBIAN_FRONTEND=noninteractive
+FROM ubuntu:bionic
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential software-properties-common
+    apt-get install -y --no-install-recommends build-essential libelf1 software-properties-common
 
 RUN add-apt-repository ppa:longsleep/golang-backports && \
     apt-get install -y --no-install-recommends golang-1.17-go
@@ -30,4 +31,4 @@ RUN dpkg -i /tmp/libbcc.deb
 
 COPY ./ /go/ebpf_exporter
 
-RUN cd /go/ebpf_exporter && GOPATH="" GOPROXY="off" GOFLAGS="-mod=vendor" go install -v ./...
+RUN cd /go/ebpf_exporter && GOPROXY="off" GOFLAGS="-mod=vendor" go install -v ./...

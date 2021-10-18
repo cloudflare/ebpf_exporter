@@ -9,26 +9,63 @@ on:
   pull_request:
 
 jobs:
-  build-bcc:
-    name: Build BCC
+  build-bcc-x86_64:
+    name: Build BCC and ebpf_exporter (x86_64)
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build BCC
+      - name: Build BCC and ebpf_exporter
         run: |
-          docker build -t ebpf-exporter-build .
-          docker run --rm ebpf-exporter-build cat /tmp/libbcc.deb > libbcc.deb
+          docker buildx build --progress plain --tag ebpf-exporter-build .
+          id=$(docker create ebpf-exporter-build)
+          docker cp $id:/tmp/libbcc.deb libbcc-x86_64.deb
+          docker cp $id:/root/go/bin/ebpf_exporter ebpf_exporter.x86_64
 
       - name: Upload libbcc.deb
         uses: actions/upload-artifact@v2
         with:
-          name: libbcc.deb
-          path: libbcc.deb
+          name: libbcc-x86_64.deb
+          path: libbcc-x86_64.deb
 
-  test-ebpf-exporter:
-    name: Test
-    needs: build-bcc
+      - name: Upload ebpf_exporter
+        uses: actions/upload-artifact@v2
+        with:
+          name: ebpf_exporter.x86_64
+          path: ebpf_exporter.x86_64
+
+  build-bcc-aarch64:
+    name: Build BCC and ebpf_exporter (aarch64 emulated, be patient)
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: dbhi/qus/action@main
+        with:
+          targets: aarch64
+
+      - uses: actions/checkout@v2
+
+      - name: Build BCC and ebpf_exporter
+        run: |
+          docker buildx build --progress plain --tag ebpf-exporter-build --platform linux/arm64 .
+          id=$(docker create ebpf-exporter-build)
+          docker cp $id:/tmp/libbcc.deb libbcc-x86_64.deb
+          docker cp $id:/root/go/bin/ebpf_exporter ebpf_exporter.aarch64
+
+      - name: Upload libbcc.deb
+        uses: actions/upload-artifact@v2
+        with:
+          name: libbcc-aarch64.deb
+          path: libbcc-aarch64.deb
+
+      - name: Upload ebpf_exporter
+        uses: actions/upload-artifact@v2
+        with:
+          name: ebpf_exporter.aarch64
+          path: ebpf_exporter.aarch64
+
+  test-ebpf-exporter-x86_64:
+    name: Test ebpf_exporter (x86_64)
+    needs: build-bcc-x86_64
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/setup-go@v2
@@ -40,11 +77,11 @@ jobs:
       - name: Download libbcc.deb
         uses: actions/download-artifact@v2
         with:
-          name: libbcc.deb
+          name: libbcc-x86_64.deb
 
       - name: Install libbcc
         run: |
-          sudo dpkg -i libbcc.deb
+          sudo dpkg -i libbcc-x86_64.deb
 
       - name: Check vendored dependencies
         run: |
@@ -56,9 +93,9 @@ jobs:
       - name: Test
         run: go test -v ./...
 
-  lint-ebpf-exporter:
-    name: Lint
-    needs: build-bcc
+  lint-ebpf-exporter-x86_64:
+    name: Lint ebpf_exporter (x86_64)
+    needs: build-bcc-x86_64
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/setup-go@v2
@@ -70,11 +107,11 @@ jobs:
       - name: Download libbcc.deb
         uses: actions/download-artifact@v2
         with:
-          name: libbcc.deb
+          name: libbcc-x86_64.deb
 
       - name: Install libbcc
         run: |
-          sudo dpkg -i libbcc.deb
+          sudo dpkg -i libbcc-x86_64.deb
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v2
