@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
+        with:
+          # Deep copy for version tagging in the release build
+          fetch-depth: 0
 
       - name: Build BCC and ebpf_exporter
         run: |
@@ -43,6 +46,9 @@ jobs:
           targets: aarch64
 
       - uses: actions/checkout@v2
+        with:
+          # Deep copy for version tagging in the release build
+          fetch-depth: 0
 
       - name: Build BCC and ebpf_exporter
         run: |

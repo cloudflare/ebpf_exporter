@@ -39,3 +39,5 @@ RUN cd /go/ebpf_exporter && \
     -X github.com/prometheus/common/version.BuildUser=docker@$(hostname) \
     -X github.com/prometheus/common/version.BuildDate=$(date --iso-8601=seconds) \
     " ./cmd/ebpf_exporter
+
+RUN /root/go/bin/ebpf_exporter --version
