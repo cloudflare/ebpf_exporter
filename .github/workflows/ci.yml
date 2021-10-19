@@ -48,7 +48,7 @@ jobs:
         run: |
           docker buildx build --progress plain --tag ebpf-exporter-build --platform linux/arm64 .
           id=$(docker create ebpf-exporter-build)
-          docker cp $id:/tmp/libbcc.deb libbcc-x86_64.deb
+          docker cp $id:/tmp/libbcc.deb libbcc-aarch64.deb
           docker cp $id:/root/go/bin/ebpf_exporter ebpf_exporter.aarch64
 
       - name: Upload libbcc.deb
