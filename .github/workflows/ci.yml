@@ -14,9 +14,12 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
-        with:
-          # Deep copy for version tagging in the release build
-          fetch-depth: 0
+
+      # Tags are needed for the build version. See:
+      # * https://github.com/actions/checkout/issues/206
+      - name: Fetch full git history
+        run: |
+          git fetch --prune --unshallow --tags
 
       - name: Build BCC and ebpf_exporter
         run: |
@@ -46,9 +49,12 @@ jobs:
           targets: aarch64
 
       - uses: actions/checkout@v2
-        with:
-          # Deep copy for version tagging in the release build
-          fetch-depth: 0
+
+      # Tags are needed for the build version. See:
+      # * https://github.com/actions/checkout/issues/206
+      - name: Fetch full git history
+        run: |
+          git fetch --prune --unshallow --tags
 
       - name: Build BCC and ebpf_exporter
         run: |
