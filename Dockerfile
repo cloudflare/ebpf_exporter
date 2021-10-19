@@ -18,7 +18,7 @@ RUN cd /root/bcc && \
 FROM ubuntu:bionic
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential libelf1 software-properties-common
+    apt-get install -y --no-install-recommends git build-essential libelf1 software-properties-common
 
 RUN add-apt-repository ppa:longsleep/golang-backports && \
     apt-get install -y --no-install-recommends golang-1.17-go
@@ -31,4 +31,11 @@ RUN dpkg -i /tmp/libbcc.deb
 
 COPY ./ /go/ebpf_exporter
 
-RUN cd /go/ebpf_exporter && GOPROXY="off" GOFLAGS="-mod=vendor" go install -v ./...
+RUN cd /go/ebpf_exporter && \
+    GOPROXY="off" GOFLAGS="-mod=vendor" go install -v -ldflags=" \
+    -X github.com/prometheus/common/version.Version=$(git describe) \
+    -X github.com/prometheus/common/version.Branch=$(git rev-parse --abbrev-ref HEAD) \
+    -X github.com/prometheus/common/version.Revision=$(git rev-parse --short HEAD) \
+    -X github.com/prometheus/common/version.BuildUser=docker@$(hostname) \
+    -X github.com/prometheus/common/version.BuildDate=$(date --iso-8601=seconds) \
+    " ./cmd/ebpf_exporter
