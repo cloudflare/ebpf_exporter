@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	configFile := kingpin.Flag("config.file", "Config file path").Default("config.yaml").File()
+	configFile := kingpin.Flag("config.file", "Config file path").File()
 	debug := kingpin.Flag("debug", "Enable debug").Bool()
 	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests").Default(":9435").String()
 	metricsPath := kingpin.Flag("web.telemetry-path", "Path under which to expose metrics").Default("/metrics").String()
