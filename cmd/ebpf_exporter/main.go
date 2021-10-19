@@ -41,6 +41,11 @@ func main() {
 
 	log.Printf("Starting with %d programs found in the config", len(config.Programs))
 
+	err = prometheus.Register(version.NewCollector("ebpf_exporter"))
+	if err != nil {
+		log.Fatalf("Error registering version collector: %s", err)
+	}
+
 	err = prometheus.Register(e)
 	if err != nil {
 		log.Fatalf("Error registering exporter: %s", err)
