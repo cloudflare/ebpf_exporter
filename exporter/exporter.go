@@ -21,6 +21,7 @@ const prometheusNamespace = "ebpf_exporter"
 // Exporter is a ebpf_exporter instance implementing prometheus.Collector
 type Exporter struct {
 	config              config.Config
+	constLabels         prometheus.Labels
 	modules             map[string]*bcc.Module
 	perfMapCollectors   []*PerfMapSink
 	kaddrs              map[string]uint64
@@ -32,7 +33,7 @@ type Exporter struct {
 }
 
 // New creates a new exporter with the provided config
-func New(cfg config.Config) (*Exporter, error) {
+func New(cfg config.Config, labels prometheus.Labels) (*Exporter, error) {
 	err := config.ValidateConfig(&cfg)
 	if err != nil {
 		return nil, fmt.Errorf("error validating config: %s", err)
@@ -42,18 +43,19 @@ func New(cfg config.Config) (*Exporter, error) {
 		prometheus.BuildFQName(prometheusNamespace, "", "enabled_programs"),
 		"The set of enabled programs",
 		[]string{"name"},
-		nil,
+		labels,
 	)
 
 	programInfoDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(prometheusNamespace, "", "ebpf_programs"),
 		"Info about ebpf programs",
 		[]string{"program", "function", "tag"},
-		nil,
+		labels,
 	)
 
 	return &Exporter{
 		config:              cfg,
+		constLabels:         labels,
 		modules:             map[string]*bcc.Module{},
 		kaddrs:              map[string]uint64{},
 		enabledProgramsDesc: enabledProgramsDesc,
@@ -170,7 +172,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 				labelNames = append(labelNames, label.Name)
 			}
 
-			e.descs[programName][name] = prometheus.NewDesc(prometheus.BuildFQName(prometheusNamespace, "", name), help, labelNames, nil)
+			e.descs[programName][name] = prometheus.NewDesc(prometheus.BuildFQName(prometheusNamespace, "", name), help, labelNames, e.constLabels)
 		}
 
 		ch <- e.descs[programName][name]

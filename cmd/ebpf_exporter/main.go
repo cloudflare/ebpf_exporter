@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/exporter"
@@ -16,6 +17,7 @@ import (
 func main() {
 	configFile := kingpin.Flag("config.file", "Config file path").File()
 	debug := kingpin.Flag("debug", "Enable debug").Bool()
+	labels := kingpin.Flag("labels", "The labels added to each metrics items, should be spilt by ,").Default("").String()
 	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests").Default(":9435").String()
 	metricsPath := kingpin.Flag("web.telemetry-path", "Path under which to expose metrics").Default("/metrics").String()
 	kingpin.Version(version.Print("ebpf_exporter"))
@@ -29,7 +31,20 @@ func main() {
 		log.Fatalf("Error reading config file: %s", err)
 	}
 
-	e, err := exporter.New(config)
+	defaultLabels := []string{}
+	constlables := prometheus.Labels{}
+
+	if len(*labels) != 0 {
+		defaultLabels = strings.Split(*labels, ",")
+		for _, label := range defaultLabels {
+			kv := strings.Split(label, "=")
+			if len(kv) == 2 {
+				constlables[kv[0]] = kv[1]
+			}
+		}
+	}
+
+	e, err := exporter.New(config, constlables)
 	if err != nil {
 		log.Fatalf("Error creating exporter: %s", err)
 	}
