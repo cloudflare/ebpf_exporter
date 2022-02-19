@@ -16,6 +16,8 @@ programs:
     kprobes:
       add_to_page_cache_lru: do_count
       mark_page_accessed: do_count
+      # account_page_dirtied kprobe was renamed to folio_account_dirtied in kernel >5.15
+      # https://github.com/torvalds/linux/commit/203a31516616111b8eaaf00c16fa3fcaa25e6f81
       account_page_dirtied: do_count
       mark_buffer_dirty: do_count
     code: |
