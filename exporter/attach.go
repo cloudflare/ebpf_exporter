@@ -1,8 +1,9 @@
-
 package exporter
 
 import (
 	"fmt"
+	"strings"
+
 	bpf "github.com/aquasecurity/libbpfgo"
 	"github.com/cloudflare/ebpf_exporter/util"
 )
@@ -45,6 +46,7 @@ func attach(module *bpf.Module, kprobes, kretprobes, tracepoints, rawTracepoints
 
 	return tags, nil
 }
+
 // attachSomething attaches some kind of probes and returns program tags
 func attachSomething(module *bpf.Module, probes map[string]string, key string) (map[string]string, error) {
 	tags := map[string]string{}
@@ -56,10 +58,10 @@ func attachSomething(module *bpf.Module, probes map[string]string, key string) (
 		}
 		fd := prog.GetFd()
 		var tag string
-		err = util.ScanFdInfo(fd,  map[string]interface{}{
-			"prog_tag":  &tag,
+		err = util.ScanFdInfo(fd, map[string]interface{}{
+			"prog_tag": &tag,
 		})
-        if err != nil {
+		if err != nil {
 			return nil, fmt.Errorf("Can't get tag of program:%v err:%v", targetName, err)
 		}
 		tags[targetName] = tag
@@ -69,7 +71,11 @@ func attachSomething(module *bpf.Module, probes map[string]string, key string) (
 		case "kretprobe":
 			_, err = prog.AttachKretprobe(probe)
 		case "tracepoint":
-			_, err = prog.AttachTracepoint(probe)
+			parts := strings.Split(probe, ":")
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("tracepoint must be in 'category:name' format")
+			}
+			_, err = prog.AttachTracepoint(parts[0], parts[1])
 		case "rawtracepoint":
 			_, err = prog.AttachRawTracepoint(probe)
 		}
