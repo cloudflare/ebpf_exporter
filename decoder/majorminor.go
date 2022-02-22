@@ -3,6 +3,7 @@ package decoder
 import (
 	"bufio"
 	"fmt"
+	"github.com/cloudflare/ebpf_exporter/util"
 	"io"
 	"log"
 	"os"
@@ -10,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/cloudflare/ebpf_exporter/config"
-	"github.com/iovisor/gobpf/bcc"
 	"golang.org/x/sys/unix"
 )
 
@@ -30,7 +30,7 @@ func (m *MajorMinor) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 	}
 
 	// We only care about 4 bytes of a field that's stored as u32
-	num := uint64(bcc.GetHostByteOrder().Uint32(in[0:4]))
+	num := uint64(util.GetHostByteOrder().Uint32(in[0:4]))
 
 	if _, ok := m.cache[num]; !ok {
 		fd, err := os.Open(partitions)

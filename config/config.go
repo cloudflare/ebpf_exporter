@@ -97,9 +97,6 @@ func ValidateConfig(c *Config) error {
 	}
 
 	for _, program := range c.Programs {
-		if program.Code == "" {
-			return fmt.Errorf("program (%s) has no code section", program.Name)
-		}
 		if len(program.Kprobes)+len(program.Kretprobes)+len(program.Tracepoints)+len(program.RawTracepoints)+len(program.PerfEvents) == 0 {
 			return fmt.Errorf("program (%s) has no probes, tracepoints, or perf events", program.Name)
 		}

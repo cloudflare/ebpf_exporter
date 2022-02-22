@@ -1,0 +1,19 @@
+programs:
+  - name: directreclaim
+    metrics:
+      histograms:
+        - name: memory_direct_reclaim_latency
+          help: memory direct latency histogram
+          table: direct_reclaim_latency
+          bucket_type: exp2
+          bucket_min: 0
+          bucket_max: 28
+          bucket_multiplier: 0.000001 # microseconds to seconds
+          labels:
+            - name: bucket
+              size: 8
+              decoders:
+                - name: uint
+    tracepoints:
+      vmscan:mm_vmscan_direct_reclaim_begin: tracepoint__vmscan__mm_vmscan_direct_reclaim_begin
+      vmscan:mm_vmscan_direct_reclaim_end: tracepoint__vmscan__mm_vmscan_direct_reclaim_end

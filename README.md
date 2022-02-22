@@ -771,7 +771,7 @@ code: [ code ]
 
 #### `perf_event`
 
-See [llcstat](examples/llcstat.yaml) as an example.
+See [llcstat](examples/BCC/llcstat.yaml) as an example.
 
 ```
 - type: [ perf event type code ]
@@ -809,7 +809,7 @@ labels:
   [ - label ]
 ```
 
-An example of `perf_map` can be found [here](examples/oomkill.yaml).
+An example of `perf_map` can be found [here](examples/BCC/oomkill.yaml).
 
 #### `histogram`
 

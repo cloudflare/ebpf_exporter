@@ -1,0 +1,22 @@
+programs:
+  # Track shrink_node latency, mainly for purposes of seeing latecy
+  # of memory allocation slowpath.
+  - name: shrinklat
+    metrics:
+      histograms:
+        - name: shrink_node_latency_seconds
+          help: Latency histogram for shrink_node calls
+          table: shrink_node_latency
+          bucket_type: exp2
+          bucket_min: 0
+          bucket_max: 26
+          bucket_multiplier: 0.000001 # microseconds to seconds
+          labels:
+            - name: bucket
+              size: 8
+              decoders:
+                - name: uint
+    kprobes:
+      shrink_node: kprobe__shrink_node
+    kretprobes:
+      shrink_node: kretprobe__shrink_node

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"path/filepath"
 
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/exporter"
@@ -33,8 +34,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating exporter: %s", err)
 	}
-
-	err = e.Attach()
+	configPath := filepath.Dir((*configFile).Name())
+	err = e.Attach(configPath)
 	if err != nil {
 		log.Fatalf("Error attaching exporter: %s", err)
 	}

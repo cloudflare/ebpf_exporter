@@ -1,0 +1,123 @@
+programs:
+  # Like bio, but with tracepoints. It may catch more than just bio, especially
+  # if you have RAID, because requests are getting split and remapped.
+  #
+  # See:
+  # * https://github.com/iovisor/bcc/issues/826
+  - name: biolatency
+    metrics:
+      histograms:
+        - name: bio_latency_seconds
+          help: Block IO latency histogram
+          table: io_latency
+          bucket_type: exp2
+          bucket_min: 0
+          bucket_max: 26
+          bucket_multiplier: 0.000001 # microseconds to seconds
+          labels:
+            - name: device
+              size: 4
+              decoders:
+                - name: majorminor
+            - name: flags
+              size: 4
+              decoders:
+                - name: uint
+                - name: static_map
+                  static_map:
+                    2048: NoWait
+                    4096: Background
+                    8192: ReadAhead
+                    16384: PreFlush
+                    32768: FUA
+                    65536: Integrity
+                    131072: Idle
+                    262144: NoMerge
+                    524288: Priority
+                    1048576: Metadata
+                    2097152: Sync
+            - name: ops
+              size: 4
+              decoders:
+                - name: uint
+                - name: static_map
+                  static_map:
+                    0: Read
+                    1: Write
+                    2: Flush
+                    3: Discard
+                    5: SecureErase
+                    6: ZoneReset
+                    7: WriteSame
+                    8: ZoneResetAll
+                    9: WriteZeroes
+                    10: ZoneOpen
+                    11: ZoneClose
+                    12: ZoneFinish
+                    32: SCSIIn
+                    33: SCSIOut
+                    34: DrvIn
+                    35: DrvOut
+            - name: bucket
+              size: 4
+              decoders:
+                - name: uint
+        - name: bio_size_bytes
+          help: Block IO size histogram with kibibyte buckets
+          table: io_size
+          bucket_type: exp2
+          bucket_min: 0
+          bucket_max: 15
+          bucket_multiplier: 1024 # kibibytes to bytes
+          labels:
+            - name: device
+              size: 4
+              decoders:
+                - name: majorminor
+            - name: flags
+              size: 4
+              decoders:
+                - name: uint
+                - name: static_map
+                  static_map:
+                    2048: NoWait
+                    4096: Background
+                    8192: ReadAhead
+                    16384: PreFlush
+                    32768: FUA
+                    65536: Integrity
+                    131072: Idle
+                    262144: NoMerge
+                    524288: Priority
+                    1048576: Metadata
+                    2097152: Sync
+            - name: ops
+              size: 4
+              decoders:
+                - name: uint
+                - name: static_map
+                  static_map:
+                    0: Read
+                    1: Write
+                    2: Flush
+                    3: Discard
+                    5: SecureErase
+                    6: ZoneReset
+                    7: WriteSame
+                    8: ZoneResetAll
+                    9: WriteZeroes
+                    10: ZoneOpen
+                    11: ZoneClose
+                    12: ZoneFinish
+                    32: SCSIIn
+                    33: SCSIOut
+                    34: DrvIn
+                    35: DrvOut
+            - name: bucket
+              size: 4
+              decoders:
+                - name: uint
+    raw_tracepoints:
+      block_rq_issue: rawtracepoint__block_rq_issue
+      block_rq_complete: rawtracepoint__block_rq_complete
+      block_rq_insert: rawtracepoint__block_rq_insert
