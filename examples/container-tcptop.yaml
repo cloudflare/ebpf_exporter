@@ -1,0 +1,166 @@
+programs:
+  - name: container-tcptop
+    metrics:
+      counters:
+        - name: ipv4_send_bytes
+          help: Summarize TCP send throughput, including container name.
+          table: ipv4_send_bytes
+          labels:
+            - name: pid
+              size: 4
+              decoders:
+                - name: uint
+            - name: name
+              size: 32
+              decoders:
+                - name: string
+            - name: container_name
+              size: 128
+              decoders:
+                - name: string
+            - name: saddr
+              size: 4
+              decoders:
+                - name: inet_ip
+            - name: daddr
+              size: 4
+              decoders:
+                - name: inet_ip
+            - name: lport
+              size: 2
+              decoders:
+                - name: uint
+            - name: dport
+              size: 2
+              decoders:
+                - name: uint
+        - name: ipv4_recv_bytes
+          help: Summarize TCP recv throughput, including container name.
+          table: ipv4_recv_bytes
+          labels:
+            - name: pid
+              size: 4
+              decoders:
+                - name: uint
+            - name: name
+              size: 32
+              decoders:
+                - name: string
+            - name: container_name
+              size: 128
+              decoders:
+                - name: string
+            - name: saddr
+              size: 4
+              decoders:
+                - name: inet_ip
+            - name: daddr
+              size: 4
+              decoders:
+                - name: inet_ip
+            - name: lport
+              size: 2
+              decoders:
+                - name: uint
+            - name: dport
+              size: 2
+              decoders:
+                - name: uint
+    kprobes:
+      tcp_sendmsg: tcp_sendmsg
+      tcp_cleanup_rbuf: tcp_cleanup_rbuf
+    code: |
+      #include <linux/nsproxy.h>
+      #include <linux/mount.h>
+      #include <linux/ns_common.h>
+      #include <uapi/linux/ptrace.h>
+      #include <net/sock.h>
+      #include <bcc/proto.h>
+      #define CONTAINER_ID_LEN 128
+      struct ipv4_key_t {
+          u32 pid;
+          char name[32];
+          char container_name[CONTAINER_ID_LEN];
+          u32 saddr;
+          u32 daddr;
+          u16 lport;
+          u16 dport;
+      };
+      BPF_HASH(ipv4_send_bytes, struct ipv4_key_t);
+      BPF_HASH(ipv4_recv_bytes, struct ipv4_key_t);
+      static void fill_container_id(char *container_id) {
+        struct task_struct *curr_task;
+        struct css_set *css;
+        struct cgroup_subsys_state *sbs;
+        struct cgroup *cg;
+        struct kernfs_node *knode, *pknode;
+        char *name;
+        int name_shift = 0;
+
+        // Initializing to root cgroup
+        memcpy(container_id, "/\0", 2);
+
+        curr_task = (struct task_struct *) bpf_get_current_task();
+        css = curr_task->cgroups;
+        bpf_probe_read(&sbs, sizeof(void *), &css->subsys[0]);
+        bpf_probe_read(&cg,  sizeof(void *), &sbs->cgroup);
+
+        // Reading fspath
+        bpf_probe_read(&knode, sizeof(void *), &cg->kn);
+        bpf_probe_read(&pknode, sizeof(void *), &knode->parent);
+
+        if(pknode != NULL) {
+          char *aus;
+
+          bpf_probe_read(&aus, sizeof(void *), &knode->name);
+          bpf_probe_read_str(container_id, CONTAINER_ID_LEN, aus);
+        }
+      }
+      int tcp_sendmsg(struct pt_regs *ctx, struct sock *sk,
+          struct msghdr *msg, size_t size)
+      {
+          u32 pid = bpf_get_current_pid_tgid() >> 32;
+          u16 dport = 0, family = sk->__sk_common.skc_family;
+
+          if (family == AF_INET) {
+              struct ipv4_key_t ipv4_key = {.pid = pid};
+              fill_container_id(ipv4_key.container_name);
+              bpf_get_current_comm(&ipv4_key.name, sizeof(ipv4_key.name));
+              ipv4_key.saddr = sk->__sk_common.skc_rcv_saddr;
+              ipv4_key.daddr = sk->__sk_common.skc_daddr;
+              ipv4_key.lport = sk->__sk_common.skc_num;
+              dport = sk->__sk_common.skc_dport;
+              ipv4_key.dport = ntohs(dport);
+              ipv4_send_bytes.increment(ipv4_key, size);
+          }
+          // else drop
+          return 0;
+      }
+      /*
+       * tcp_recvmsg() would be obvious to trace, but is less suitable because:
+       * - we'd need to trace both entry and return, to have both sock and size
+       * - misses tcp_read_sock() traffic
+       * we'd much prefer tracepoints once they are available.
+       */
+      int tcp_cleanup_rbuf(struct pt_regs *ctx, struct sock *sk, int copied)
+      {
+          u32 pid = bpf_get_current_pid_tgid() >> 32;
+          u16 dport = 0, family = sk->__sk_common.skc_family;
+          u64 *val, zero = 0;
+          if (copied <= 0)
+              return 0;
+
+          if (family == AF_INET) {
+              struct ipv4_key_t ipv4_key = {.pid = pid};
+              bpf_get_current_comm(&ipv4_key.name, sizeof(ipv4_key.name));
+              fill_container_id(ipv4_key.container_name);
+              ipv4_key.saddr = sk->__sk_common.skc_rcv_saddr;
+              ipv4_key.daddr = sk->__sk_common.skc_daddr;
+              ipv4_key.lport = sk->__sk_common.skc_num;
+              dport = sk->__sk_common.skc_dport;
+              ipv4_key.dport = ntohs(dport);
+              ipv4_recv_bytes.increment(ipv4_key, copied);
+          }
+          // else drop
+          return 0;
+      }
