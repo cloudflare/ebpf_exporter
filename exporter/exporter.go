@@ -112,7 +112,7 @@ func (e *Exporter) Attach() error {
 		for _, perfEventConfig := range program.PerfEvents {
 			target, err := module.LoadPerfEvent(perfEventConfig.Target)
 			if err != nil {
-				config.DisableProgramAndReason(programPtr, fmt.Sprintf("failed to load target %q in program %q: %s\", perfEventConfig.Target, program.Name, err", program.Name, err))
+				config.DisableProgramAndReason(programPtr, fmt.Sprintf("failed to load target %q in program %q: %s", perfEventConfig.Target, program.Name, err))
 				perfEventFailed = true
 			}
 

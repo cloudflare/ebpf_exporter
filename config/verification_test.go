@@ -4,8 +4,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/go-version"
 	"gopkg.in/yaml.v2"
 )
+
+var testKernelVersion = version.Must(version.NewVersion("0.0.0"))
 
 func TestConfigVerificationFailure(t *testing.T) {
 	reader := strings.NewReader(`programs:
@@ -28,9 +31,13 @@ func TestConfigVerificationFailure(t *testing.T) {
 		t.Errorf("failed to unmarshal config")
 	}
 
-	err = ValidateConfig(&config)
-	if err == nil {
-		t.Errorf("unexpected success validating config")
+	err = ValidateConfig(&config, testKernelVersion)
+	if err != nil {
+		t.Errorf("unexpected error validating config")
+	}
+
+	if config.Programs[0].Enabled {
+		t.Errorf("program should be disabled since it failed validation")
 	}
 }
 
@@ -65,7 +72,7 @@ func TestConfigVerificationSuccess(t *testing.T) {
 		t.Errorf("failed to unmarshal config")
 	}
 
-	err = ValidateConfig(&config)
+	err = ValidateConfig(&config, testKernelVersion)
 	if err != nil {
 		t.Errorf("unexpected failure validating config")
 	}
