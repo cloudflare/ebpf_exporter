@@ -3,7 +3,11 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log"
 	"time"
+
+	"github.com/cloudflare/ebpf_exporter/kernel_version"
+	"github.com/hashicorp/go-version"
 )
 
 // Config defines exporter configuration
@@ -13,16 +17,18 @@ type Config struct {
 
 // Program is an eBPF program with optional metrics attached to it
 type Program struct {
-	Name           string            `yaml:"name"`
-	Metrics        Metrics           `yaml:"metrics"`
-	Kprobes        map[string]string `yaml:"kprobes"`
-	Kretprobes     map[string]string `yaml:"kretprobes"`
-	Tracepoints    map[string]string `yaml:"tracepoints"`
-	RawTracepoints map[string]string `yaml:"raw_tracepoints"`
-	PerfEvents     []PerfEvent       `yaml:"perf_events"`
-	Code           string            `yaml:"code"`
-	Cflags         []string          `yaml:"cflags"`
-	Kaddrs         []string          `yaml:"kaddrs"`
+	Enabled                  bool
+	Name                     string            `yaml:"name"`
+	KernelVersionConstraints string            `yaml:"kernel_version_constraints"`
+	Metrics                  Metrics           `yaml:"metrics"`
+	Kprobes                  map[string]string `yaml:"kprobes"`
+	Kretprobes               map[string]string `yaml:"kretprobes"`
+	Tracepoints              map[string]string `yaml:"tracepoints"`
+	RawTracepoints           map[string]string `yaml:"raw_tracepoints"`
+	PerfEvents               []PerfEvent       `yaml:"perf_events"`
+	Code                     string            `yaml:"code"`
+	Cflags                   []string          `yaml:"cflags"`
+	Kaddrs                   []string          `yaml:"kaddrs"`
 }
 
 // PerfEvent describes perf_event to attach to
@@ -91,19 +97,39 @@ const (
 	HistogramBucketFixed = "fixed"
 )
 
-func ValidateConfig(c *Config) error {
+func ValidateConfig(c *Config, kernelVersion *version.Version) error {
 	if len(c.Programs) == 0 {
 		return errors.New("no programs specified")
 	}
 
-	for _, program := range c.Programs {
+	for i, program := range c.Programs {
+		programPtr := &c.Programs[i]
+
+		programPtr.Enabled = true
+
 		if program.Code == "" {
-			return fmt.Errorf("program (%s) has no code section", program.Name)
+			DisableProgramAndReason(programPtr, fmt.Sprintf("program (%s) has no code section", program.Name))
 		}
 		if len(program.Kprobes)+len(program.Kretprobes)+len(program.Tracepoints)+len(program.RawTracepoints)+len(program.PerfEvents) == 0 {
-			return fmt.Errorf("program (%s) has no probes, tracepoints, or perf events", program.Name)
+			DisableProgramAndReason(programPtr, fmt.Sprintf("program (%s) has no probes, tracepoints, or perf events", program.Name))
+		}
+		if program.KernelVersionConstraints != "" {
+			constraints, err := kernel_version.ParseKernelVersionConstraint(program.KernelVersionConstraints)
+			if err != nil {
+				DisableProgramAndReason(programPtr, fmt.Sprintf("failed to parse kernel version constraint %q: %s", program.KernelVersionConstraints, err))
+			}
+
+			if !kernel_version.ApplyKernelVersionConstraint(kernelVersion, constraints) {
+				DisableProgramAndReason(programPtr, fmt.Sprintf("current kernel %s does not fit into constraints %s", kernelVersion.String(), constraints.String()))
+			}
 		}
 	}
 
 	return nil
+}
+
+func DisableProgramAndReason(program *Program, reason string) {
+	program.Enabled = false
+
+	log.Printf("Program %q failed validation and is disabled. Reason: %s", program.Name, reason)
 }

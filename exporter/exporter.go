@@ -11,6 +11,7 @@ import (
 
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/decoder"
+	"github.com/hashicorp/go-version"
 	"github.com/iovisor/gobpf/bcc"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -20,20 +21,21 @@ const prometheusNamespace = "ebpf_exporter"
 
 // Exporter is a ebpf_exporter instance implementing prometheus.Collector
 type Exporter struct {
-	config              config.Config
-	modules             map[string]*bcc.Module
-	perfMapCollectors   []*PerfMapSink
-	kaddrs              map[string]uint64
-	enabledProgramsDesc *prometheus.Desc
-	programInfoDesc     *prometheus.Desc
-	programTags         map[string]map[string]uint64
-	descs               map[string]map[string]*prometheus.Desc
-	decoders            *decoder.Set
+	config               config.Config
+	modules              map[string]*bcc.Module
+	perfMapCollectors    []*PerfMapSink
+	kaddrs               map[string]uint64
+	enabledProgramsDesc  *prometheus.Desc
+	disabledProgramsDesc *prometheus.Desc
+	programInfoDesc      *prometheus.Desc
+	programTags          map[string]map[string]uint64
+	descs                map[string]map[string]*prometheus.Desc
+	decoders             *decoder.Set
 }
 
 // New creates a new exporter with the provided config
-func New(cfg config.Config) (*Exporter, error) {
-	err := config.ValidateConfig(&cfg)
+func New(cfg config.Config, kernelVersion *version.Version) (*Exporter, error) {
+	err := config.ValidateConfig(&cfg, kernelVersion)
 	if err != nil {
 		return nil, fmt.Errorf("error validating config: %s", err)
 	}
@@ -41,6 +43,13 @@ func New(cfg config.Config) (*Exporter, error) {
 	enabledProgramsDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(prometheusNamespace, "", "enabled_programs"),
 		"The set of enabled programs",
+		[]string{"name"},
+		nil,
+	)
+
+	disabledProgramsDesc := prometheus.NewDesc(
+		prometheus.BuildFQName(prometheusNamespace, "", "disabled_programs"),
+		"The set of disabled programs",
 		[]string{"name"},
 		nil,
 	)
@@ -53,52 +62,69 @@ func New(cfg config.Config) (*Exporter, error) {
 	)
 
 	return &Exporter{
-		config:              cfg,
-		modules:             map[string]*bcc.Module{},
-		kaddrs:              map[string]uint64{},
-		enabledProgramsDesc: enabledProgramsDesc,
-		programInfoDesc:     programInfoDesc,
-		programTags:         map[string]map[string]uint64{},
-		descs:               map[string]map[string]*prometheus.Desc{},
-		decoders:            decoder.NewSet(),
+		config:               cfg,
+		modules:              map[string]*bcc.Module{},
+		kaddrs:               map[string]uint64{},
+		enabledProgramsDesc:  enabledProgramsDesc,
+		disabledProgramsDesc: disabledProgramsDesc,
+		programInfoDesc:      programInfoDesc,
+		programTags:          map[string]map[string]uint64{},
+		descs:                map[string]map[string]*prometheus.Desc{},
+		decoders:             decoder.NewSet(),
 	}, nil
 }
 
 // Attach injects eBPF into kernel and attaches necessary kprobes
 func (e *Exporter) Attach() error {
-	for _, program := range e.config.Programs {
+	for i, program := range e.config.Programs {
+		programPtr := &e.config.Programs[i]
+
 		if _, ok := e.modules[program.Name]; ok {
 			return fmt.Errorf("multiple programs with name %q", program.Name)
 		}
 
+		if !program.Enabled {
+			continue
+		}
+
 		code, err := e.code(program)
 		if err != nil {
-			return err
+			config.DisableProgramAndReason(programPtr, err.Error())
+			continue
 		}
 
 		module := bcc.NewModule(code, program.Cflags)
 		if module == nil {
-			return fmt.Errorf("error compiling module for program %q", program.Name)
+			config.DisableProgramAndReason(programPtr, fmt.Sprintf("error compiling module for program %q", program.Name))
+			continue
 		}
 
 		tags, err := attach(module, program.Kprobes, program.Kretprobes, program.Tracepoints, program.RawTracepoints)
-
 		if err != nil {
-			return fmt.Errorf("failed to attach to program %q: %s", program.Name, err)
+			config.DisableProgramAndReason(programPtr, fmt.Sprintf("failed to attach to program %q: %s", program.Name, err))
+			module.Close()
+			continue
 		}
 
 		e.programTags[program.Name] = tags
 
+		var perfEventFailed bool
 		for _, perfEventConfig := range program.PerfEvents {
 			target, err := module.LoadPerfEvent(perfEventConfig.Target)
 			if err != nil {
-				return fmt.Errorf("failed to load target %q in program %q: %s", perfEventConfig.Target, program.Name, err)
+				config.DisableProgramAndReason(programPtr, fmt.Sprintf("failed to load target %q in program %q: %s\", perfEventConfig.Target, program.Name, err", program.Name, err))
+				perfEventFailed = true
 			}
 
 			err = module.AttachPerfEvent(perfEventConfig.Type, perfEventConfig.Name, perfEventConfig.SamplePeriod, perfEventConfig.SampleFrequency, -1, -1, -1, target)
 			if err != nil {
-				return fmt.Errorf("failed to attach perf event %d:%d to %q in program %q: %s", perfEventConfig.Type, perfEventConfig.Name, perfEventConfig.Target, program.Name, err)
+				config.DisableProgramAndReason(programPtr, fmt.Sprintf("failed to attach perf event %d:%d to %q in program %q: %s", perfEventConfig.Type, perfEventConfig.Name, perfEventConfig.Target, program.Name, err))
+				perfEventFailed = true
 			}
+		}
+		if perfEventFailed {
+			module.Close()
+			continue
 		}
 
 		e.modules[program.Name] = module
@@ -180,6 +206,10 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.programInfoDesc
 
 	for _, program := range e.config.Programs {
+		if !program.Enabled {
+			continue
+		}
+
 		if _, ok := e.descs[program.Name]; !ok {
 			e.descs[program.Name] = map[string]*prometheus.Desc{}
 		}
@@ -202,7 +232,12 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // Collect satisfies prometheus.Collector interface and sends all metrics
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, program := range e.config.Programs {
-		ch <- prometheus.MustNewConstMetric(e.enabledProgramsDesc, prometheus.GaugeValue, 1, program.Name)
+		var value float64
+		if program.Enabled {
+			value = 1
+		}
+
+		ch <- prometheus.MustNewConstMetric(e.enabledProgramsDesc, prometheus.GaugeValue, value, program.Name)
 	}
 
 	for program, tags := range e.programTags {
@@ -222,6 +257,10 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 // collectCounters sends all known counters to prometheus
 func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 	for _, program := range e.config.Programs {
+		if !program.Enabled {
+			continue
+		}
+
 		for _, counter := range program.Metrics.Counters {
 			if len(counter.PerfMap) != 0 {
 				continue
@@ -245,6 +284,10 @@ func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 // collectHistograms sends all known historams to prometheus
 func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 	for _, program := range e.config.Programs {
+		if !program.Enabled {
+			continue
+		}
+
 		for _, histogram := range program.Metrics.Histograms {
 			skip := false
 
@@ -351,6 +394,10 @@ func (e Exporter) exportTables() (map[string]map[string][]metricValue, error) {
 	tables := map[string]map[string][]metricValue{}
 
 	for _, program := range e.config.Programs {
+		if !program.Enabled {
+			continue
+		}
+
 		module := e.modules[program.Name]
 		if module == nil {
 			return nil, fmt.Errorf("module for program %q is not attached", program.Name)

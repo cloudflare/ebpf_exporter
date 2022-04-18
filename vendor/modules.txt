@@ -16,6 +16,9 @@ github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
+# github.com/hashicorp/go-version v1.4.0
+## explicit
+github.com/hashicorp/go-version
 # github.com/iovisor/gobpf v0.2.0
 ## explicit
 github.com/iovisor/gobpf/bcc
