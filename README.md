@@ -26,7 +26,7 @@ An easy way of thinking about this exporter is bcc tools as prometheus metrics:
 ### Note on bcc
 
 `ebpf_exporter` depends on `libbcc` to instrument the kernel, and you need
-to have it installed on your system. Please consule `bcc` documentation:
+to have it installed on your system. Please consult `bcc` documentation:
 
 * https://github.com/iovisor/bcc/blob/master/INSTALL.md
 
