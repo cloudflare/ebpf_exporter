@@ -2,9 +2,9 @@ package decoder
 
 import (
 	"fmt"
-	"github.com/cloudflare/ebpf_exporter/util"
 
 	"github.com/cloudflare/ebpf_exporter/config"
+	"github.com/cloudflare/ebpf_exporter/util"
 	"github.com/iovisor/gobpf/pkg/ksym"
 )
 

@@ -3,7 +3,6 @@ package exporter
 import (
 	"bufio"
 	"fmt"
-	"github.com/cloudflare/ebpf_exporter/util"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/decoder"
+	"github.com/cloudflare/ebpf_exporter/util"
 	"github.com/prometheus/client_golang/prometheus"
 
 	bpf "github.com/aquasecurity/libbpfgo"

@@ -3,7 +3,6 @@ package decoder
 import (
 	"bufio"
 	"fmt"
-	"github.com/cloudflare/ebpf_exporter/util"
 	"io"
 	"log"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/cloudflare/ebpf_exporter/config"
+	"github.com/cloudflare/ebpf_exporter/util"
 	"golang.org/x/sys/unix"
 )
 
