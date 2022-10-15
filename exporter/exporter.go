@@ -1,11 +1,14 @@
 package exporter
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"unsafe"
 
 	"github.com/cloudflare/ebpf_exporter/config"
@@ -24,6 +27,7 @@ type Exporter struct {
 	config              config.Config
 	modules             map[string]*bpf.Module
 	perfMapCollectors   []*PerfMapSink
+	kaddrs              map[string]uint64
 	enabledProgramsDesc *prometheus.Desc
 	programInfoDesc     *prometheus.Desc
 	programTags         map[string]map[string]string
@@ -55,6 +59,7 @@ func New(cfg config.Config) (*Exporter, error) {
 	return &Exporter{
 		config:              cfg,
 		modules:             map[string]*bpf.Module{},
+		kaddrs:              map[string]uint64{},
 		enabledProgramsDesc: enabledProgramsDesc,
 		programInfoDesc:     programInfoDesc,
 		programTags:         map[string]map[string]string{},
@@ -71,24 +76,31 @@ func (e *Exporter) Attach(configPath string) error {
 		}
 
 		bpfProgPath := filepath.Join(configPath, fmt.Sprintf("%s.bpf.o", program.Name))
-		bpfModule, err := bpf.NewModuleFromFile(bpfProgPath)
+		module, err := bpf.NewModuleFromFile(bpfProgPath)
 		if err != nil {
-			return fmt.Errorf("error creating module from %q: %v", bpfProgPath, err)
+			return fmt.Errorf("error creating module from %q for program %q: %v", bpfProgPath, program.Name, err)
 		}
 
-		err = bpfModule.BPFLoadObject()
+		err = module.BPFLoadObject()
 		if err != nil {
-			return fmt.Errorf("error loading bpf object from %q: %v", bpfProgPath, err)
+			return fmt.Errorf("error loading bpf object from %q for program %q: %v", bpfProgPath, program.Name, err)
 		}
 
-		tags, err := attach(bpfModule, program.Kprobes, program.Kretprobes, program.Tracepoints, program.RawTracepoints)
+		if len(program.Kaddrs) > 0 {
+			err = e.passKaddrs(module, program)
+			if err != nil {
+				return fmt.Errorf("error passing kaddrs to program %q: %v", program.Name, err)
+			}
+		}
+
+		tags, err := attach(module, program.Kprobes, program.Kretprobes, program.Tracepoints, program.RawTracepoints)
 		if err != nil {
 			return fmt.Errorf("failed to attach to program %q: %s", program.Name, err)
 		}
 
 		e.programTags[program.Name] = tags
 		for _, perfEventConfig := range program.PerfEvents {
-			target, err := bpfModule.GetProgram(perfEventConfig.Target)
+			target, err := module.GetProgram(perfEventConfig.Target)
 			if err != nil {
 				return fmt.Errorf("failed to load target %q in program %q: %s", perfEventConfig.Target, program.Name, err)
 			}
@@ -98,7 +110,7 @@ func (e *Exporter) Attach(configPath string) error {
 				return fmt.Errorf("failed to attach perf event %d:%d to %q in program %q: %s", perfEventConfig.Type, perfEventConfig.Name, perfEventConfig.Target, program.Name, err)
 			}
 		}
-		e.modules[program.Name] = bpfModule
+		e.modules[program.Name] = module
 	}
 
 	return nil
@@ -378,6 +390,57 @@ func (e *Exporter) TablesHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err = w.Write(buf); err != nil {
 		log.Printf("Error returning table contents to client %q: %s", r.RemoteAddr, err)
 	}
+}
+
+func (e *Exporter) passKaddrs(module *bpf.Module, program config.Program) error {
+	if len(e.kaddrs) == 0 {
+		if err := e.populateKaddrs(); err != nil {
+			return fmt.Errorf("error populating kaddrs: %v", err)
+		}
+	}
+
+	mapping, err := module.GetMap("kaddrs")
+	if err != nil {
+		return fmt.Errorf("error getting kaddrs map: %v", err)
+	}
+
+	for i, kaddr := range program.Kaddrs {
+		key := uint64(i)
+		value := uint64(e.kaddrs[kaddr])
+		err = mapping.Update(unsafe.Pointer(&key), unsafe.Pointer(&value))
+		if err != nil {
+			return fmt.Errorf("error setting ksym %q to kaddr %x at index %d: %v", kaddr, value, key, err)
+		}
+	}
+
+	return nil
+}
+
+// populateKaddrs populates cache of ksym -> kaddr mappings
+func (e Exporter) populateKaddrs() error {
+	fd, err := os.Open("/proc/kallsyms")
+	if err != nil {
+		return err
+	}
+
+	defer fd.Close()
+
+	s := bufio.NewScanner(fd)
+	for s.Scan() {
+		parts := strings.Split(s.Text(), " ")
+		if len(parts) != 3 {
+			continue
+		}
+
+		addr, err := strconv.ParseUint(parts[0], 16, 64)
+		if err != nil {
+			return fmt.Errorf("error parsing addr %q from line %q: %s", parts[0], s.Text(), err)
+		}
+
+		e.kaddrs[parts[2]] = addr
+	}
+
+	return s.Err()
 }
 
 // metricValue is a row in a kernel map
