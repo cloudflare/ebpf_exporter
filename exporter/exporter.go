@@ -24,7 +24,6 @@ type Exporter struct {
 	config              config.Config
 	modules             map[string]*bpf.Module
 	perfMapCollectors   []*PerfMapSink
-	kaddrs              map[string]uint64
 	enabledProgramsDesc *prometheus.Desc
 	programInfoDesc     *prometheus.Desc
 	programTags         map[string]map[string]string
@@ -56,7 +55,6 @@ func New(cfg config.Config) (*Exporter, error) {
 	return &Exporter{
 		config:              cfg,
 		modules:             map[string]*bpf.Module{},
-		kaddrs:              map[string]uint64{},
 		enabledProgramsDesc: enabledProgramsDesc,
 		programInfoDesc:     programInfoDesc,
 		programTags:         map[string]map[string]string{},
