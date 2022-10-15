@@ -1,18 +1,23 @@
 package exporter
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	bpf "github.com/aquasecurity/libbpfgo"
-	"github.com/cloudflare/ebpf_exporter/util"
 )
+
+const progTagPrefix = "prog_tag:\t"
 
 // mergeTags runs attacher and merges produced tags
 func mergedTags(dst map[string]string, src map[string]string) error {
 	for name, tag := range src {
 		dst[name] = tag
 	}
+
 	return nil
 }
 
@@ -51,20 +56,19 @@ func attach(module *bpf.Module, kprobes, kretprobes, tracepoints, rawTracepoints
 func attachSomething(module *bpf.Module, probes map[string]string, key string) (map[string]string, error) {
 	tags := map[string]string{}
 
-	for probe, targetName := range probes {
-		prog, err := module.GetProgram(targetName)
+	for probe, progName := range probes {
+		prog, err := module.GetProgram(progName)
 		if err != nil {
-			return nil, fmt.Errorf("Can't get  program:%v err:%v", targetName, err)
+			return nil, fmt.Errorf("failed to load program %q: %v", progName, err)
 		}
-		fd := prog.GetFd()
-		var tag string
-		err = util.ScanFdInfo(fd, map[string]interface{}{
-			"prog_tag": &tag,
-		})
+
+		tag, err := extractTag(prog)
 		if err != nil {
-			return nil, fmt.Errorf("Can't get tag of program:%v err:%v", targetName, err)
+			return nil, fmt.Errorf("failed to get program tag for for program %q: %v", progName, err)
 		}
-		tags[targetName] = tag
+
+		tags[progName] = tag
+
 		switch key {
 		case "kprobe":
 			_, err = prog.AttachKprobe(probe)
@@ -79,9 +83,37 @@ func attachSomething(module *bpf.Module, probes map[string]string, key string) (
 		case "rawtracepoint":
 			_, err = prog.AttachRawTracepoint(probe)
 		}
+
 		if err != nil {
-			return nil, fmt.Errorf("Can't attach probe:%v err:%v", probe, err)
+			return nil, fmt.Errorf("failed to attach probe %q to program %q: %v", progName, probe, err)
 		}
 	}
+
 	return tags, nil
+}
+
+func extractTag(prog *bpf.BPFProg) (string, error) {
+	name := fmt.Sprintf("/proc/self/fdinfo/%d", prog.FileDescriptor())
+
+	file, err := os.Open(name)
+	if err != nil {
+		return "", fmt.Errorf("can't open %s: %v", name, err)
+	}
+
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, progTagPrefix) {
+			return strings.TrimPrefix(line, progTagPrefix), nil
+		}
+	}
+
+	if err = scanner.Err(); err != nil {
+		return "", fmt.Errorf("error scanning: %v", err)
+	}
+
+	return "", errors.New("cannot find program tag")
 }
