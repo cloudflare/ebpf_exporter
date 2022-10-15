@@ -1,14 +1,11 @@
 package exporter
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"unsafe"
 
 	"github.com/cloudflare/ebpf_exporter/config"
@@ -68,99 +65,45 @@ func New(cfg config.Config) (*Exporter, error) {
 	}, nil
 }
 
-// Support CORE Mode
+// Attach injects eBPF into kernel and attaches necessary kprobes
 func (e *Exporter) Attach(configPath string) error {
 	for _, program := range e.config.Programs {
 		if _, ok := e.modules[program.Name]; ok {
 			return fmt.Errorf("multiple programs with name %q", program.Name)
 		}
-		bpfObjPath := program.Name
-		bpfProg := filepath.Join(configPath, bpfObjPath+".bpf.o")
-		_, err := os.Stat(bpfProg)
-		if err != nil {
-			return err
-		}
 
-		bpfModule, err := bpf.NewModuleFromFile(bpfProg)
+		bpfProgPath := filepath.Join(configPath, fmt.Sprintf("%s.bpf.o", program.Name))
+		bpfModule, err := bpf.NewModuleFromFile(bpfProgPath)
 		if err != nil {
-			return fmt.Errorf("Error to create new module:%v", err)
+			return fmt.Errorf("error creating module from %q: %v", bpfProgPath, err)
 		}
 
 		err = bpfModule.BPFLoadObject()
 		if err != nil {
-			return fmt.Errorf("Error to load program:%s object  %v", bpfObjPath, err)
+			return fmt.Errorf("error loading bpf object from %q: %v", bpfProgPath, err)
 		}
 
 		tags, err := attach(bpfModule, program.Kprobes, program.Kretprobes, program.Tracepoints, program.RawTracepoints)
 		if err != nil {
-			return fmt.Errorf("Error to attach program:%s, err:%v", program.Name, err)
+			return fmt.Errorf("failed to attach to program %q: %s", program.Name, err)
 		}
+
 		e.programTags[program.Name] = tags
 		for _, perfEventConfig := range program.PerfEvents {
-			prog, err := bpfModule.GetProgram(perfEventConfig.Target)
+			target, err := bpfModule.GetProgram(perfEventConfig.Target)
 			if err != nil {
-				return fmt.Errorf("failed to get target %q in program %q: %s", perfEventConfig.Target, program.Name, err)
+				return fmt.Errorf("failed to load target %q in program %q: %s", perfEventConfig.Target, program.Name, err)
 			}
 
-			fd := prog.GetFd()
-			_, err = prog.AttachPerfEvent(fd)
+			_, err = target.AttachPerfEvent(target.FileDescriptor())
 			if err != nil {
 				return fmt.Errorf("failed to attach perf event %d:%d to %q in program %q: %s", perfEventConfig.Type, perfEventConfig.Name, perfEventConfig.Target, program.Name, err)
 			}
 		}
 		e.modules[program.Name] = bpfModule
 	}
+
 	return nil
-}
-
-// code generates program code, augmented if necessary
-func (e Exporter) code(program config.Program) (string, error) {
-	preamble := ""
-
-	if len(program.Kaddrs) > 0 && len(e.kaddrs) == 0 {
-		if err := e.populateKaddrs(); err != nil {
-			return "", err
-		}
-	}
-
-	defines := make([]string, 0, len(program.Kaddrs))
-	for _, kaddr := range program.Kaddrs {
-		defines = append(defines, fmt.Sprintf("#define kaddr_%s 0x%x", kaddr, e.kaddrs[kaddr]))
-	}
-
-	preamble = preamble + strings.Join(defines, "\n")
-	if preamble == "" {
-		return program.Code, nil
-	}
-
-	return preamble + "\n\n" + program.Code, nil
-}
-
-// populateKaddrs populates cache of ksym -> kaddr mappings
-func (e Exporter) populateKaddrs() error {
-	fd, err := os.Open("/proc/kallsyms")
-	if err != nil {
-		return err
-	}
-
-	defer fd.Close()
-
-	s := bufio.NewScanner(fd)
-	for s.Scan() {
-		parts := strings.Split(s.Text(), " ")
-		if len(parts) != 3 {
-			continue
-		}
-
-		addr, err := strconv.ParseUint(parts[0], 16, 64)
-		if err != nil {
-			return fmt.Errorf("error parsing addr %q from line %q: %s", parts[0], s.Text(), err)
-		}
-
-		e.kaddrs[parts[2]] = addr
-	}
-
-	return s.Err()
 }
 
 // Describe satisfies prometheus.Collector interface by sending descriptions
@@ -173,6 +116,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 			for _, label := range labels {
 				labelNames = append(labelNames, label.Name)
 			}
+
 			e.descs[programName][name] = prometheus.NewDesc(prometheus.BuildFQName(prometheusNamespace, "", name), help, labelNames, nil)
 		}
 
@@ -229,6 +173,7 @@ func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 			if len(counter.PerfMap) != 0 {
 				continue
 			}
+
 			tableValues, err := e.tableValues(e.modules[program.Name], counter.Table, counter.Labels)
 			if err != nil {
 				log.Printf("Error getting table %q values for metric %q of program %q: %s", counter.Table, counter.Name, program.Name, err)
@@ -249,12 +194,15 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 	for _, program := range e.config.Programs {
 		for _, histogram := range program.Metrics.Histograms {
 			skip := false
+
 			histograms := map[string]histogramWithLabels{}
+
 			tableValues, err := e.tableValues(e.modules[program.Name], histogram.Table, histogram.Labels)
 			if err != nil {
 				log.Printf("Error getting table %q values for metric %q of program %q: %s", histogram.Table, histogram.Name, program.Name, err)
 				continue
 			}
+
 			// Taking the last label and using int as bucket delimiter, for example:
 			//
 			// Before:
@@ -310,12 +258,13 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 	}
 }
 
+// tableValues returns values in the requested table to be used in metircs
 func (e *Exporter) tableValues(module *bpf.Module, tableName string, labels []config.Label) ([]metricValue, error) {
 	values := []metricValue{}
 
 	table, err := module.GetMap(tableName)
 	if err != nil {
-		return nil, fmt.Errorf("Can't get table:%s", tableName)
+		return nil, fmt.Errorf("failed to retrieve table %q: %v", tableName, err)
 	}
 
 	keySize := uint(0)
@@ -324,27 +273,33 @@ func (e *Exporter) tableValues(module *bpf.Module, tableName string, labels []co
 	}
 
 	iter := table.Iterator()
+
 	for iter.Next() {
 		key := iter.Key()
 		raw := *(*string)(unsafe.Pointer(&key))
+
 		mv := metricValue{
 			raw:    raw,
 			labels: make([]string, len(labels)),
 		}
+
 		mv.labels, err = e.decoders.DecodeLabels(key, labels)
 		if err != nil {
 			if err == decoder.ErrSkipLabelSet {
 				continue
 			}
+
 			return nil, err
 		}
-		//Assume counter's value type is always u64
+
+		// Assuming counter's value type is always u64
 		v, err := table.GetValue(unsafe.Pointer(&key[0]))
 		if err != nil {
 			return nil, err
 		}
 
 		mv.value = float64(util.GetHostByteOrder().Uint64(v))
+
 		values = append(values, mv)
 	}
 
