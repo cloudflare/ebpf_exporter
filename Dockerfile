@@ -13,6 +13,8 @@ RUN mkdir /build
 RUN git clone --branch v1.0.1 --depth 1 https://github.com/libbpf/libbpf.git /build/libbpf && \
     make -C /build/libbpf/src BUILD_STATIC_ONLY=y LIBSUBDIR=lib install
 
+RUN tar -czf /build/libbpf.tar.gz /usr/lib/libbpf.a /usr/lib/pkgconfig/libbpf.pc /usr/include/bpf
+
 COPY ./ /build/ebpf_exporter
 
 RUN cd /build/ebpf_exporter && PATH="/usr/lib/go-1.19/bin:$PATH" CGO_LDFLAGS="-l bpf" GOFLAGS="-mod=vendor" go build -o /usr/sbin/ebpf_exporter -v -ldflags=" \

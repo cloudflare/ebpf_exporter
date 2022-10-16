@@ -21,11 +21,18 @@ jobs:
         run: |
           git fetch --prune --unshallow --tags --force
 
-      - name: Build ebpf_exporter
+      - name: Build libbpf and ebpf_exporter
         run: |
           docker buildx build --progress plain --tag ebpf-exporter-build .
           id=$(docker create ebpf-exporter-build)
           docker cp $id:/usr/sbin/ebpf_exporter ebpf_exporter.x86_64
+          docker cp $id:/build/libbpf.tar.gz    libbpf.x86_64.tar.gz
+
+      - name: Upload libbpf.tar.gz
+        uses: actions/upload-artifact@v2
+        with:
+          name: libbpf.x86_64.tar.gz
+          path: libbpf.x86_64.tar.gz
 
       - name: Upload ebpf_exporter
         uses: actions/upload-artifact@v2
@@ -53,7 +60,14 @@ jobs:
         run: |
           docker buildx build --progress plain --tag ebpf-exporter-build --platform linux/arm64 .
           id=$(docker create ebpf-exporter-build)
-          docker cp $id:/root/go/bin/ebpf_exporter ebpf_exporter.aarch64
+          docker cp $id:/usr/sbin/ebpf_exporter ebpf_exporter.aarch64
+          docker cp $id:/build/libbpf.tar.gz    libbpf.aarch64.tar.gz
+
+      - name: Upload libbpf.tar.gz
+        uses: actions/upload-artifact@v2
+        with:
+          name: libbpf.aarch64.tar.gz
+          path: libbpf.aarch64.tar.gz
 
       - name: Upload ebpf_exporter
         uses: actions/upload-artifact@v2
@@ -72,15 +86,28 @@ jobs:
 
       - uses: actions/checkout@v2
 
+      - name: Download libbpf.tar.gz
+        uses: actions/download-artifact@v2
+        with:
+          name: libbpf.x86_64.tar.gz
+
+      - name: Install libbpf
+        run: |
+          sudo tar -C / -xvvf libbpf.x86_64.tar.gz
+
+      - name: Install libelf-dev
+        run: |
+          sudo apt-get install -y libelf-dev
+
       - name: Check vendored dependencies
         run: |
           go mod verify
 
       - name: Build
-        run: go build -v ./...
+        run: CGO_LDFLAGS="-l bpf" go build -v ./...
 
       - name: Test
-        run: go test -v ./...
+        run: CGO_LDFLAGS="-l bpf" go test -v ./...
 
   lint-ebpf-exporter-x86_64:
     name: Lint ebpf_exporter (x86_64)
@@ -93,7 +120,22 @@ jobs:
 
       - uses: actions/checkout@v2
 
+      - name: Download libbpf.tar.gz
+        uses: actions/download-artifact@v2
+        with:
+          name: libbpf.x86_64.tar.gz
+
+      - name: Install libbpf
+        run: |
+          sudo tar -C / -xvvf libbpf.x86_64.tar.gz
+
+      - name: Install libelf-dev
+        run: |
+          sudo apt-get install -y libelf-dev
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
           version: v1.50.0
+        env:
+          CGO_LDFLAGS: "-l bpf"
