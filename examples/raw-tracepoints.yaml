@@ -1,0 +1,14 @@
+programs:
+  - name: raw-tracepoints
+    metrics:
+      counters:
+        - name: timer_start_total
+          help: Timers fired in the kernel
+          table: counts
+          labels:
+            - name: function
+              size: 8
+              decoders:
+                - name: ksym
+    raw_tracepoints:
+      timer_start: do_count

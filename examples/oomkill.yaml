@@ -1,0 +1,22 @@
+programs:
+  # See:
+  # * https://github.com/iovisor/bcc/blob/master/tools/oomkill.py
+  # * https://github.com/iovisor/bcc/blob/master/tools/oomkill_example.txt
+  - name: oomkill
+    metrics:
+      counters:
+        - name: oom_kills
+          help: Count global and cgroup level OOMs
+          perf_map: events
+          labels:
+            - name: cgroup_path
+              size: 8
+              decoders:
+                - name: uint
+                - name: cgroup
+            - name: global_oom
+              size: 1
+              decoders:
+                - name: uint
+    kprobes:
+      oom_kill_process: kprobe__oom_kill_process

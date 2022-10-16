@@ -1,0 +1,23 @@
+programs:
+  - name: accept-latency
+    metrics:
+      histograms:
+        - name: accept_latency_seconds
+          help: Latency histogram for how long sockets sit in accept queue
+          table: accept_latency
+          bucket_type: exp2
+          bucket_min: 0
+          bucket_max: 26
+          bucket_multiplier: 0.000001 # microseconds to seconds
+          labels:
+            - name: port
+              size: 8
+              decoders:
+                - name: uint
+            - name: bucket
+              size: 8
+              decoders:
+                - name: uint
+    kprobes:
+      inet_csk_reqsk_queue_hash_add: kprobe__inet_csk_reqsk_queue_hash_add
+      inet_csk_accept: kprobe__inet_csk_accept

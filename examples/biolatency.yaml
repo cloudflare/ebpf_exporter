@@ -1,0 +1,35 @@
+programs:
+  # Block IO latency with tracepoints. See:
+  # * https://github.com/iovisor/bcc/blob/master/libbpf-tools/biolatency.bpf.c
+  - name: biolatency
+    metrics:
+      histograms:
+        - name: bio_latency_seconds
+          help: Block IO latency histogram
+          table: io_latency
+          bucket_type: exp2
+          bucket_min: 0
+          bucket_max: 27
+          bucket_multiplier: 0.000001 # microseconds to seconds
+          labels:
+            - name: device
+              size: 4
+              decoders:
+                - name: majorminor
+            - name: ops
+              size: 4
+              decoders:
+                - name: uint
+                - name: static_map
+                  static_map:
+                    0: read
+                    1: write
+                    2: flush
+            - name: bucket
+              size: 8
+              decoders:
+                - name: uint
+    raw_tracepoints:
+      block_rq_issue: rawtracepoint__block_rq_issue
+      block_rq_complete: rawtracepoint__block_rq_complete
+      block_rq_insert: rawtracepoint__block_rq_insert
