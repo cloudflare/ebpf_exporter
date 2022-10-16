@@ -2,10 +2,10 @@
 #include <bpf/bpf_helpers.h>
 
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__type(key, u32);
-	__type(value, u64);
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 1024);
+    __type(key, u32);
+    __type(value, u64);
 } counts SEC(".maps");
 
 SEC("kprobe/sys_getpid")

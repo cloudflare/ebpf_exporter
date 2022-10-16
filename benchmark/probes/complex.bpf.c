@@ -8,10 +8,10 @@ struct key_t {
 };
 
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__type(key, struct key_t);
-	__type(value, u64);
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 1024);
+    __type(key, struct key_t);
+    __type(value, u64);
 } counts SEC(".maps");
 
 SEC("kprobe/sys_getpid")
