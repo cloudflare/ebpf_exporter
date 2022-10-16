@@ -14,12 +14,17 @@ github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash/v2 v2.1.2
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
+# github.com/elastic/go-perf v0.0.0-20191212140718-9c656876f595
+## explicit
+github.com/elastic/go-perf
 # github.com/golang/protobuf v1.5.2
 ## explicit; go 1.9
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes/timestamp
 # github.com/iovisor/gobpf v0.2.0
 ## explicit; go 1.15
+github.com/iovisor/gobpf/pkg/cpuonline
+github.com/iovisor/gobpf/pkg/cpurange
 github.com/iovisor/gobpf/pkg/ksym
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 ## explicit

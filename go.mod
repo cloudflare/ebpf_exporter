@@ -3,8 +3,8 @@ module github.com/cloudflare/ebpf_exporter
 go 1.17
 
 require (
-	github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 // indirect
 	github.com/aquasecurity/libbpfgo v0.4.2-libbpf-1.0.1
+	github.com/elastic/go-perf v0.0.0-20191212140718-9c656876f595
 	github.com/iovisor/gobpf v0.2.0
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/common v0.37.0
@@ -15,6 +15,7 @@ require (
 
 require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
+	github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
