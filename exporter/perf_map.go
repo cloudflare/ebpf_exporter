@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	bpf "github.com/aquasecurity/libbpfgo"
+	"github.com/aquasecurity/libbpfgo"
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/decoder"
 	"github.com/prometheus/client_golang/prometheus"
@@ -16,7 +16,7 @@ type PerfMapSink struct {
 	dropCounter   prometheus.Counter
 }
 
-func NewPerfMapSink(decoders *decoder.Set, module *bpf.Module, counterConfig config.Counter) *PerfMapSink {
+func NewPerfMapSink(decoders *decoder.Set, module *libbpfgo.Module, counterConfig config.Counter) *PerfMapSink {
 	var (
 		receiveCh = make(chan []byte)
 		lostCh    = make(chan uint64)

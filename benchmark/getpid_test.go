@@ -7,7 +7,7 @@ import (
 	"testing"
 	"unsafe"
 
-	bpf "github.com/aquasecurity/libbpfgo"
+	"github.com/aquasecurity/libbpfgo"
 	"github.com/cloudflare/ebpf_exporter/util"
 )
 
@@ -21,11 +21,11 @@ func BenchmarkGetpidWithNoProbes(b *testing.B) {
 }
 
 func BenchmarkGetpidWithSimpleMap(b *testing.B) {
-	benchmarkWithProbe(b, "probes/simple.bpf.o")
+	benchmarkWithProbe(b, "probes/simple.libbpfgo.o")
 }
 
 func BenchmarkGetpidWithComplexMap(b *testing.B) {
-	benchmarkWithProbe(b, "probes/complex.bpf.o")
+	benchmarkWithProbe(b, "probes/complex.libbpfgo.o")
 }
 
 func benchmarkWithProbe(b *testing.B, text string) {
@@ -74,8 +74,8 @@ func benchmarkWithProbe(b *testing.B, text string) {
 	b.Logf("keys = %d, value = %d", keys, value)
 }
 
-func setupGetpidProbe(name string) (*bpf.Module, error) {
-	module, err := bpf.NewModuleFromFile(name)
+func setupGetpidProbe(name string) (*libbpfgo.Module, error) {
+	module, err := libbpfgo.NewModuleFromFile(name)
 	if err != nil {
 		return nil, fmt.Errorf("error creating module from file %q: %v", name, err)
 	}

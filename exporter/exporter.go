@@ -11,11 +11,11 @@ import (
 	"strings"
 	"unsafe"
 
-	bpf "github.com/aquasecurity/libbpfgo"
+	"github.com/aquasecurity/libbpfgo"
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/decoder"
 	"github.com/cloudflare/ebpf_exporter/util"
-	perf "github.com/elastic/go-perf"
+	"github.com/elastic/go-perf"
 	"github.com/iovisor/gobpf/pkg/cpuonline"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -26,7 +26,7 @@ const prometheusNamespace = "ebpf_exporter"
 // Exporter is a ebpf_exporter instance implementing prometheus.Collector
 type Exporter struct {
 	config              config.Config
-	modules             map[string]*bpf.Module
+	modules             map[string]*libbpfgo.Module
 	perfMapCollectors   []*PerfMapSink
 	kaddrs              map[string]uint64
 	enabledProgramsDesc *prometheus.Desc
@@ -59,7 +59,7 @@ func New(cfg config.Config) (*Exporter, error) {
 
 	return &Exporter{
 		config:              cfg,
-		modules:             map[string]*bpf.Module{},
+		modules:             map[string]*libbpfgo.Module{},
 		kaddrs:              map[string]uint64{},
 		enabledProgramsDesc: enabledProgramsDesc,
 		programInfoDesc:     programInfoDesc,
@@ -76,8 +76,8 @@ func (e *Exporter) Attach(configPath string) error {
 			return fmt.Errorf("multiple programs with name %q", program.Name)
 		}
 
-		bpfProgPath := filepath.Join(configPath, fmt.Sprintf("%s.bpf.o", program.Name))
-		module, err := bpf.NewModuleFromFile(bpfProgPath)
+		bpfProgPath := filepath.Join(configPath, fmt.Sprintf("%s.libbpfgo.o", program.Name))
+		module, err := libbpfgo.NewModuleFromFile(bpfProgPath)
 		if err != nil {
 			return fmt.Errorf("error creating module from %q for program %q: %v", bpfProgPath, program.Name, err)
 		}
@@ -146,7 +146,7 @@ func (e *Exporter) Attach(configPath string) error {
 	return nil
 }
 
-func (e *Exporter) passKaddrs(module *bpf.Module, program config.Program) error {
+func (e *Exporter) passKaddrs(module *libbpfgo.Module, program config.Program) error {
 	if len(e.kaddrs) == 0 {
 		if err := e.populateKaddrs(); err != nil {
 			return fmt.Errorf("error populating kaddrs: %v", err)
@@ -350,7 +350,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 }
 
 // tableValues returns values in the requested table to be used in metircs
-func (e *Exporter) tableValues(module *bpf.Module, tableName string, labels []config.Label) ([]metricValue, error) {
+func (e *Exporter) tableValues(module *libbpfgo.Module, tableName string, labels []config.Label) ([]metricValue, error) {
 	values := []metricValue{}
 
 	table, err := module.GetMap(tableName)

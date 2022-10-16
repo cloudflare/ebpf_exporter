@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	bpf "github.com/aquasecurity/libbpfgo"
+	"github.com/aquasecurity/libbpfgo"
 )
 
 const progTagPrefix = "prog_tag:\t"
@@ -20,7 +20,7 @@ func mergedTags(dst map[string]string, src map[string]string) {
 }
 
 // attach attaches functions to tracing points in provided module
-func attach(module *bpf.Module, kprobes, kretprobes, tracepoints, rawTracepoints map[string]string) (map[string]string, error) {
+func attach(module *libbpfgo.Module, kprobes, kretprobes, tracepoints, rawTracepoints map[string]string) (map[string]string, error) {
 	tags := map[string]string{}
 
 	probes, err := attachSomething(module, kprobes, "kprobe")
@@ -51,7 +51,7 @@ func attach(module *bpf.Module, kprobes, kretprobes, tracepoints, rawTracepoints
 }
 
 // attachSomething attaches some kind of probes and returns program tags
-func attachSomething(module *bpf.Module, probes map[string]string, key string) (map[string]string, error) {
+func attachSomething(module *libbpfgo.Module, probes map[string]string, key string) (map[string]string, error) {
 	tags := map[string]string{}
 
 	for probe, progName := range probes {
@@ -90,7 +90,7 @@ func attachSomething(module *bpf.Module, probes map[string]string, key string) (
 	return tags, nil
 }
 
-func extractTag(prog *bpf.BPFProg) (string, error) {
+func extractTag(prog *libbpfgo.BPFProg) (string, error) {
 	name := fmt.Sprintf("/proc/self/fdinfo/%d", prog.FileDescriptor())
 
 	file, err := os.Open(name)
