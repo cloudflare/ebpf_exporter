@@ -164,7 +164,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	for program, tags := range e.programTags {
 		for function, tag := range tags {
-			ch <- prometheus.MustNewConstMetric(e.programInfoDesc, prometheus.GaugeValue, 1, program, function, fmt.Sprintf("%s", tag))
+			ch <- prometheus.MustNewConstMetric(e.programInfoDesc, prometheus.GaugeValue, 1, program, function, tag)
 		}
 	}
 

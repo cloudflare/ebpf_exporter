@@ -13,12 +13,10 @@ import (
 const progTagPrefix = "prog_tag:\t"
 
 // mergeTags runs attacher and merges produced tags
-func mergedTags(dst map[string]string, src map[string]string) error {
+func mergedTags(dst map[string]string, src map[string]string) {
 	for name, tag := range src {
 		dst[name] = tag
 	}
-
-	return nil
 }
 
 // attach attaches functions to tracing points in provided module
