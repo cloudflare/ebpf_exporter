@@ -116,6 +116,57 @@ func (e *Exporter) Attach(configPath string) error {
 	return nil
 }
 
+func (e *Exporter) passKaddrs(module *bpf.Module, program config.Program) error {
+	if len(e.kaddrs) == 0 {
+		if err := e.populateKaddrs(); err != nil {
+			return fmt.Errorf("error populating kaddrs: %v", err)
+		}
+	}
+
+	mapping, err := module.GetMap("kaddrs")
+	if err != nil {
+		return fmt.Errorf("error getting kaddrs map: %v", err)
+	}
+
+	for i, kaddr := range program.Kaddrs {
+		key := uint64(i)
+		value := uint64(e.kaddrs[kaddr])
+		err = mapping.Update(unsafe.Pointer(&key), unsafe.Pointer(&value))
+		if err != nil {
+			return fmt.Errorf("error setting ksym %q to kaddr %x at index %d: %v", kaddr, value, key, err)
+		}
+	}
+
+	return nil
+}
+
+// populateKaddrs populates cache of ksym -> kaddr mappings
+func (e Exporter) populateKaddrs() error {
+	fd, err := os.Open("/proc/kallsyms")
+	if err != nil {
+		return err
+	}
+
+	defer fd.Close()
+
+	s := bufio.NewScanner(fd)
+	for s.Scan() {
+		parts := strings.Split(s.Text(), " ")
+		if len(parts) != 3 {
+			continue
+		}
+
+		addr, err := strconv.ParseUint(parts[0], 16, 64)
+		if err != nil {
+			return fmt.Errorf("error parsing addr %q from line %q: %s", parts[0], s.Text(), err)
+		}
+
+		e.kaddrs[parts[2]] = addr
+	}
+
+	return s.Err()
+}
+
 // Describe satisfies prometheus.Collector interface by sending descriptions
 // for all metrics the exporter can possibly report
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
@@ -390,57 +441,6 @@ func (e *Exporter) TablesHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err = w.Write(buf); err != nil {
 		log.Printf("Error returning table contents to client %q: %s", r.RemoteAddr, err)
 	}
-}
-
-func (e *Exporter) passKaddrs(module *bpf.Module, program config.Program) error {
-	if len(e.kaddrs) == 0 {
-		if err := e.populateKaddrs(); err != nil {
-			return fmt.Errorf("error populating kaddrs: %v", err)
-		}
-	}
-
-	mapping, err := module.GetMap("kaddrs")
-	if err != nil {
-		return fmt.Errorf("error getting kaddrs map: %v", err)
-	}
-
-	for i, kaddr := range program.Kaddrs {
-		key := uint64(i)
-		value := uint64(e.kaddrs[kaddr])
-		err = mapping.Update(unsafe.Pointer(&key), unsafe.Pointer(&value))
-		if err != nil {
-			return fmt.Errorf("error setting ksym %q to kaddr %x at index %d: %v", kaddr, value, key, err)
-		}
-	}
-
-	return nil
-}
-
-// populateKaddrs populates cache of ksym -> kaddr mappings
-func (e Exporter) populateKaddrs() error {
-	fd, err := os.Open("/proc/kallsyms")
-	if err != nil {
-		return err
-	}
-
-	defer fd.Close()
-
-	s := bufio.NewScanner(fd)
-	for s.Scan() {
-		parts := strings.Split(s.Text(), " ")
-		if len(parts) != 3 {
-			continue
-		}
-
-		addr, err := strconv.ParseUint(parts[0], 16, 64)
-		if err != nil {
-			return fmt.Errorf("error parsing addr %q from line %q: %s", parts[0], s.Text(), err)
-		}
-
-		e.kaddrs[parts[2]] = addr
-	}
-
-	return s.Err()
 }
 
 // metricValue is a row in a kernel map
