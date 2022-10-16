@@ -11,8 +11,8 @@ static u64 zero = 0;
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, BUCKET_COUNT + 2);
-    __uint(key_size, sizeof(u64));
-    __uint(value_size, sizeof(u64));
+    __type(key, u64);
+    __type(value, u64);
 } buckets SEC(".maps");
 
 static int do_count(u64 backlog)
