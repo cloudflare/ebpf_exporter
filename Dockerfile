@@ -17,13 +17,8 @@ RUN tar -czf /build/libbpf.tar.gz /usr/lib/libbpf.a /usr/lib/pkgconfig/libbpf.pc
 
 COPY ./ /build/ebpf_exporter
 
-RUN cd /build/ebpf_exporter && PATH="/usr/lib/go-1.19/bin:$PATH" CGO_LDFLAGS="-l bpf" GOFLAGS="-mod=vendor" go build -o /usr/sbin/ebpf_exporter -v -ldflags=" \
-    -extldflags "-static" \
-    -X github.com/prometheus/common/version.Version=$(git describe) \
-    -X github.com/prometheus/common/version.Branch=$(git rev-parse --abbrev-ref HEAD) \
-    -X github.com/prometheus/common/version.Revision=$(git rev-parse --short HEAD) \
-    -X github.com/prometheus/common/version.BuildUser=docker@$(hostname) \
-    -X github.com/prometheus/common/version.BuildDate=$(date --iso-8601=seconds) \
-    " ./cmd/ebpf_exporter
+RUN cd /build/ebpf_exporter && \
+    PATH="/usr/lib/go-1.19/bin:$PATH" make build && \
+    mv /build/ebpf_exporter/ebpf_exporter /usr/sbin/ebpf_exporter
 
 RUN /usr/sbin/ebpf_exporter --version
