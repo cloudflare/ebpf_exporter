@@ -41,7 +41,7 @@ func attach(module *bpf.Module, kprobes, kretprobes, tracepoints, rawTracepoints
 	}
 	mergedTags(tags, probes)
 
-	probes, err = attachSomething(module, rawTracepoints, "rawtracepoint")
+	probes, err = attachSomething(module, rawTracepoints, "raw_tracepoint")
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach raw tracepoints: %s", err)
 	}
@@ -78,7 +78,7 @@ func attachSomething(module *bpf.Module, probes map[string]string, key string) (
 				return nil, fmt.Errorf("tracepoint must be in 'category:name' format")
 			}
 			_, err = prog.AttachTracepoint(parts[0], parts[1])
-		case "rawtracepoint":
+		case "raw_tracepoint":
 			_, err = prog.AttachRawTracepoint(probe)
 		}
 
