@@ -139,3 +139,21 @@ jobs:
           version: v1.50.0
         env:
           CGO_LDFLAGS: "-l bpf"
+
+  build-examples-x86_64:
+    name: Build examples (x86_64)
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install clang
+        run: |
+          sudo apt-get install -y clang
+
+      - name: Build benchmark bpf probes
+        run: |
+          make -C benchmark build
+
+      - name: Build example bpf probes
+        run: |
+          make -C examples build
