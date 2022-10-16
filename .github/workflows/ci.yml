@@ -135,9 +135,21 @@ jobs:
 
   build-examples-x86_64:
     name: Build examples (x86_64)
+    needs: build-ebpf-exporter-x86_64
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
+
+      - name: Download libbpf.tar.gz
+        uses: actions/download-artifact@v2
+        with:
+          name: libbpf.x86_64.tar.gz
+
+      - name: Install libbpf
+        run: sudo tar -C / -xvvf libbpf.x86_64.tar.gz
+
+      - name: Install libelf-dev
+        run: sudo apt-get install -y libelf-dev
 
       - name: Install clang
         run: sudo apt-get install -y clang
