@@ -1,7 +1,5 @@
 CC := clang
 
-ARCH := $(shell uname -m)
-
 SRC = ${wildcard *.bpf.c}
 OBJ = ${patsubst %.bpf.c, %.bpf.o, $(SRC)}
 
