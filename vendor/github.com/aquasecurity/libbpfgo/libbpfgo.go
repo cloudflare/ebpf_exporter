@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"debug/elf"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -46,6 +47,7 @@ type Module struct {
 	perfBufs []*PerfBuffer
 	ringBufs []*RingBuffer
 	elf      *elf.File
+	loaded   bool
 }
 
 type BPFMap struct {
@@ -345,6 +347,10 @@ func NewModuleFromBuffer(bpfObjBuff []byte, bpfObjName string) (*Module, error) 
 }
 
 func NewModuleFromBufferArgs(args NewModuleArgs) (*Module, error) {
+	f, err := elf.NewFile(bytes.NewReader(args.BPFObjBuff))
+	if err != nil {
+		return nil, err
+	}
 	C.set_print_fn()
 
 	if args.BTFObjPath == "" {
@@ -373,6 +379,7 @@ func NewModuleFromBufferArgs(args NewModuleArgs) (*Module, error) {
 
 	return &Module{
 		obj: obj,
+		elf: f,
 	}, nil
 }
 
@@ -389,7 +396,6 @@ func (m *Module) Close() {
 		}
 	}
 	C.bpf_object__close(m.obj)
-	m.elf.Close()
 }
 
 func (m *Module) BPFLoadObject() error {
@@ -397,34 +403,46 @@ func (m *Module) BPFLoadObject() error {
 	if ret != 0 {
 		return fmt.Errorf("failed to load BPF object: %w", syscall.Errno(-ret))
 	}
+	m.loaded = true
+	m.elf.Close()
 
 	return nil
 }
 
-// InitGlobalVariable init global variable (defined by .data, .data.<whatever>, .rodata or .rodata.<whatever> section) in bpf code
+// InitGlobalVariable sets global variables (defined in .data or .rodata)
+// in bpf code. It must be called before the BPF object is loaded.
 func (m *Module) InitGlobalVariable(name string, value interface{}) error {
-	s, err := getGlobalVarSymbol(m.elf, name)
+	if m.loaded {
+		return errors.New("must be called before the BPF object is loaded")
+	}
+	s, err := getGlobalVariableSymbol(m.elf, name)
 	if err != nil {
 		return err
 	}
-	bpfMap, err := m.GetMap(s.Section.Name)
+	bpfMap, err := m.GetMap(s.sectionName)
 	if err != nil {
 		return err
 	}
 
 	// get current value
 	currMapValue := bpfMap.getInitialValue()
-	newMapValue := make([]byte, bpfMap.ValueSize())
-	copy(newMapValue, currMapValue)
 
 	// generate new value
+	newMapValue := make([]byte, bpfMap.ValueSize())
+	copy(newMapValue, currMapValue)
 	data := bytes.NewBuffer(nil)
-	if err := binary.Write(data, s.ByteOrder, value); err != nil {
+	if err := binary.Write(data, s.byteOrder, value); err != nil {
 		return err
 	}
-	copy(newMapValue[s.Offset:s.Offset+len(data.Bytes())], data.Bytes())
+	varValue := data.Bytes()
+	start := s.offset
+	end := s.offset + len(varValue)
+	if len(varValue) > s.size || end > bpfMap.ValueSize() {
+		return errors.New("invalid value")
+	}
+	copy(newMapValue[start:end], varValue)
 
-	// update new value
+	// save new value
 	err = bpfMap.setInitialValue(unsafe.Pointer(&newMapValue[0]))
 	return err
 }
@@ -681,12 +699,8 @@ func (b *BPFMap) setInitialValue(value unsafe.Pointer) error {
 func (b *BPFMap) getInitialValue() []byte {
 	value := make([]byte, b.ValueSize())
 	valuePtr := unsafe.Pointer(&value[0])
-	C.get_init_value(b.bpfMap, valuePtr)
+	C.get_internal_map_init_value(b.bpfMap, valuePtr)
 	return value
-}
-
-func (b *BPFMap) IsInternal() bool {
-	return bool(C.bpf_map__is_internal(b.bpfMap))
 }
 
 // BPFMapBatchOpts mirrors the C structure bpf_map_batch_opts.
