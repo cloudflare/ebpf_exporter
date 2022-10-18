@@ -14,7 +14,7 @@ func TestConfigVerificationFailure(t *testing.T) {
       counters:
         - name: timer_start_total
           help: Timers fired in the kernel
-          table: counts
+          map: counts
           labels:
             - name: function
               size: 8
@@ -41,7 +41,7 @@ func TestConfigVerificationSuccess(t *testing.T) {
       counters:
         - name: timer_start_total
           help: Timers fired in the kernel
-          table: counts
+          map: counts
           labels:
             - name: function
               size: 8
@@ -49,14 +49,6 @@ func TestConfigVerificationSuccess(t *testing.T) {
                 - name: ksym
     tracepoints:
       timer:timer_start: tracepoint__timer__timer_start
-    code: |
-      BPF_HASH(counts, u64);
-
-      // Generates function tracepoint__timer__timer_start
-      TRACEPOINT_PROBE(timer, timer_start) {
-          counts.increment((u64) args->function);
-          return 0;
-      }
 `)
 	config := Config{}
 

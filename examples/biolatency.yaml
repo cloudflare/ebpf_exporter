@@ -6,7 +6,7 @@ programs:
       histograms:
         - name: bio_latency_seconds
           help: Block IO latency histogram
-          table: io_latency
+          map: io_latency
           bucket_type: exp2
           bucket_min: 0
           bucket_max: 27

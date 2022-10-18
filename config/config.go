@@ -44,7 +44,7 @@ type Metrics struct {
 type Counter struct {
 	Name                 string        `yaml:"name"`
 	Help                 string        `yaml:"help"`
-	Table                string        `yaml:"table"`
+	Map                  string        `yaml:"map"`
 	PerfMap              string        `yaml:"perf_map"`
 	PerfMapFlushDuration time.Duration `yaml:"perf_map_flush_duration"`
 	Labels               []Label       `yaml:"labels"`
@@ -54,7 +54,7 @@ type Counter struct {
 type Histogram struct {
 	Name             string              `yaml:"name"`
 	Help             string              `yaml:"help"`
-	Table            string              `yaml:"table"`
+	Map              string              `yaml:"map"`
 	BucketType       HistogramBucketType `yaml:"bucket_type"`
 	BucketMultiplier float64             `yaml:"bucket_multiplier"`
 	BucketMin        int                 `yaml:"bucket_min"`
@@ -63,7 +63,7 @@ type Histogram struct {
 	Labels           []Label             `yaml:"labels"`
 }
 
-// Label defines how to decode an element from eBPF table key
+// Label defines how to decode an element from eBPF map key
 // with the list of decoders
 type Label struct {
 	Name     string    `yaml:"name"`

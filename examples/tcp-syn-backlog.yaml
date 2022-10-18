@@ -4,7 +4,7 @@ programs:
       histograms:
         - name: tcp_syn_backlog
           help: TCP SYN backlog size
-          table: buckets
+          map: buckets
           bucket_type: linear
           bucket_min: 0
           bucket_max: 20

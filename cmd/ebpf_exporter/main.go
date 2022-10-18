@@ -67,8 +67,8 @@ func main() {
 	})
 
 	if *debug {
-		log.Printf("Debug enabled, exporting raw tables on /tables")
-		http.HandleFunc("/tables", e.TablesHandler)
+		log.Printf("Debug enabled, exporting raw maps on /maps")
+		http.HandleFunc("/maps", e.MapsHandler)
 	}
 
 	log.Printf("Listening on %s", *listenAddress)

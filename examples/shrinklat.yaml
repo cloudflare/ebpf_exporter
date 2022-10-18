@@ -6,7 +6,7 @@ programs:
       histograms:
         - name: shrink_node_latency_seconds
           help: Latency histogram for shrink_node calls
-          table: shrink_node_latency
+          map: shrink_node_latency
           bucket_type: exp2
           bucket_min: 0
           bucket_max: 26

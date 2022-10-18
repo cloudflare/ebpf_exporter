@@ -7,7 +7,7 @@ programs:
       counters:
         - name: llc_references_total
           help: Last level cache operations by type
-          table: references
+          map: references
           labels:
             - name: cpu
               size: 4
@@ -15,7 +15,7 @@ programs:
                 - name: uint
         - name: llc_misses_total
           help: Last level cache operations by type
-          table: misses
+          map: misses
           labels:
             - name: cpu
               size: 4

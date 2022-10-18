@@ -5,7 +5,7 @@ programs:
       counters:
         - name: cgroup_sched_migrations_total
           help: Number of sched:sched_migrate_task events per cgroup
-          table: counts
+          map: counts
           labels:
             - name: cgroup
               size: 8

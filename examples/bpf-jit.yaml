@@ -5,7 +5,7 @@ programs:
         # Technically this is a gauge, but ebpf_exporter only knows counters
         - name: bpf_jit_pages_currently_allocated
           help: Current number of pages allocated for bpf jit
-          table: current
+          map: current
           labels:
             # ebpf_exporter doesn't support metrics without labels
             - name: empty
