@@ -1,11 +1,11 @@
 programs:
-  # Count open() syscalls by cgroup
+  # Count sched:sched_migrate_task events by cgroup
   - name: cgroup
     metrics:
       counters:
-        - name: cgroup_open_calls_total
-          help: Calls to open() from cgroups
-          table: counts
+        - name: cgroup_sched_migrations_total
+          help: Number of sched:sched_migrate_task events per cgroup
+          map: counts
           labels:
             - name: cgroup
               size: 8
@@ -13,12 +13,4 @@ programs:
                 - name: uint
                 - name: cgroup
     tracepoints:
-      syscalls:sys_enter_open: tracepoint__syscalls__sys_enter_open
-    code: |
-      BPF_HASH(counts, u64);
-
-      // Generates function tracepoint__syscalls__sys_enter_open
-      TRACEPOINT_PROBE(syscalls, sys_enter_open) {
-          counts.increment((u64) bpf_get_current_cgroup_id());
-          return 0;
-      }
+      sched:sched_migrate_task: do_count

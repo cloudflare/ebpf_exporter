@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/cloudflare/ebpf_exporter/config"
-	"github.com/iovisor/gobpf/bcc"
+	"github.com/cloudflare/ebpf_exporter/util"
 )
 
 // UInt is a decoder that transforms unsigned integers into their string values
@@ -13,7 +13,7 @@ type UInt struct{}
 
 // Decode transforms unsigned integers into their string values
 func (u *UInt) Decode(in []byte, conf config.Decoder) ([]byte, error) {
-	byteOrder := bcc.GetHostByteOrder()
+	byteOrder := util.GetHostByteOrder()
 
 	result := uint64(0)
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cloudflare/ebpf_exporter/config"
-	"github.com/iovisor/gobpf/bcc"
+	"github.com/cloudflare/ebpf_exporter/util"
 	"github.com/iovisor/gobpf/pkg/ksym"
 )
 
@@ -19,7 +19,7 @@ func (k *KSym) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 		k.cache = map[string][]byte{}
 	}
 
-	addr := fmt.Sprintf("%x", bcc.GetHostByteOrder().Uint64(in))
+	addr := fmt.Sprintf("%x", util.GetHostByteOrder().Uint64(in))
 
 	if _, ok := k.cache[addr]; !ok {
 		name, err := ksym.Ksym(addr)

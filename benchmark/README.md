@@ -18,41 +18,58 @@ You can see exact code of probes in `getpid_test.go`.
 
 ## Results
 
-On idle Xeon E5-2630 v3 @ 2.40GHz running vanilla Linux 4.14.15
-with turbo disabled for stable measurements we see the following numbers:
+On idle Xeon Gold 6262 @ 1.90GHz running vanilla Linux 5.15.40 with
+turbo disabled for stable measurements we see the following numbers:
 
 ```
-$ sudo GOMAXPROCS=1 GOPATH=$GOPATH taskset -c 30 go test -bench .
-goos: linux
-goarch: amd64
-pkg: github.com/cloudflare/ebpf_exporter/benchmark
-BenchmarkGetpid               	 5000000	       316 ns/op
-BenchmarkGetpidWithSimpleMap  	 3000000	       424 ns/op
-BenchmarkGetpidWithComplexMap 	 2000000	       647 ns/op
-PASS
-ok  	github.com/cloudflare/ebpf_exporter/benchmark	7.328s
+$ make clean run
+BenchmarkGetpidWithNoProbes/getpid         	 1882503	       637.9 ns/op
+BenchmarkGetpidWithSimpleMap/getpid        	 1633400	       749.8 ns/op
+BenchmarkGetpidWithComplexMap/getpid       	 1255801	       955.0 ns/op
 ```
 
-| Case     | ns/op | overhead ns/op | ops/s     | overhead percent |
-|:---------|------:|---------------:|----------:|-----------------:|
-| no probe |   316 |              0 | 3,164,556 |               0% |
-| simple   |   424 |            108 | 2,358,490 |              34% |
-| complex  |   647 |            331 | 1,545,595 |             105% |
+With turbo you can see better numbers:
 
-105% slowdown for complex case may sounds like a terrible performance hit,
-but you have to remember that we're using a relatively fast `getpid()` syscall.
+```
+BenchmarkGetpidWithNoProbes/getpid         	 2475504	       484.4 ns/op
+BenchmarkGetpidWithSimpleMap/getpid        	 2145756	       565.6 ns/op
+BenchmarkGetpidWithComplexMap/getpid       	 1706983	       709.9 ns/op
+```
+
+On Ampere Altra Max numbers are better:
+
+```
+BenchmarkGetpidWithNoProbes/getpid         	 3740620	       322.9 ns/op
+BenchmarkGetpidWithSimpleMap/getpid        	 2444229	       488.9 ns/op
+BenchmarkGetpidWithComplexMap/getpid       	 2007832	       597.6 ns/op
+```
+
+| CPU             | Case     | ns/op | overhead ns/op | overhead percent |
+|:----------------|:---------|------:|---------------:|-----------------:|
+| Intel w/o turbo | no probe |   638 |              0 |               0% |
+|                 | simple   |   750 |            112 |              17% |
+|                 | complex  |   955 |            317 |              50% |
+| Intel w/o turbo | no probe |   484 |              0 |               0% |
+|                 | simple   |   567 |             83 |              17% |
+|                 | complex  |   710 |            226 |              47% |
+| Ampere          | no probe |   323 |              0 |               0% |
+|                 | simple   |   489 |            166 |              51% |
+|                 | complex  |   597 |            274 |              85% |
+
+Double digit % slowdown for complex case may sounds like terrible,
+but you have to remember that we're using a fast `getpid()` syscall.
 
 The main number to look at above is overhead in nanoseconds, because that's
 what you're going to pay no matter how fast or frequent function you're
-probing is. 331ns overhead for the complex case of `getpid` is a lot, but for
-tracing operations like disk access it's nothing even on fastest storage.
+probing is. 200-300ns overhead for the complex case of `getpid` is a lot, but for
+tracing operations like disk access it's nothing compared to baseline.
 
 Keep in mind that these numbers are for a single logical CPU core.
 
 ## Estimating cost of existing function calls
 
 You can use `funclatency` from [bcc-tools](https://github.com/iovisor/bcc)
-to estimate cost of function calls in the kernel.
+to estimate cost of function calls in the kernel to get a baseline.
 
 Example for `getpid` syscall:
 

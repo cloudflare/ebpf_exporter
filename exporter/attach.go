@@ -1,108 +1,117 @@
 package exporter
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
+	"os"
+	"strings"
 
-	"github.com/iovisor/gobpf/bcc"
+	"github.com/aquasecurity/libbpfgo"
 )
 
-// attacher attaches some sort of tracepoints or probes
-type attacher func(*bcc.Module, map[string]string) (map[string]uint64, error)
+const progTagPrefix = "prog_tag:\t"
 
 // mergeTags runs attacher and merges produced tags
-func mergedTags(dst map[string]uint64, attach attacher, module *bcc.Module, attachments map[string]string) error {
-	src, err := attach(module, attachments)
-
-	if err != nil {
-		return err
-	}
-
+func mergedTags(dst map[string]string, src map[string]string) {
 	for name, tag := range src {
 		dst[name] = tag
 	}
-
-	return nil
 }
 
 // attach attaches functions to tracing points in provided module
-func attach(module *bcc.Module, kprobes, kretprobes, tracepoints, rawTracepoints map[string]string) (map[string]uint64, error) {
-	tags := map[string]uint64{}
+func attach(module *libbpfgo.Module, kprobes, kretprobes, tracepoints, rawTracepoints map[string]string) (map[string]string, error) {
+	tags := map[string]string{}
 
-	if err := mergedTags(tags, attachKprobes, module, kprobes); err != nil {
+	probes, err := attachSomething(module, kprobes, "kprobe")
+	if err != nil {
 		return nil, fmt.Errorf("failed to attach kprobes: %s", err)
 	}
+	mergedTags(tags, probes)
 
-	if err := mergedTags(tags, attachKretprobes, module, kretprobes); err != nil {
+	probes, err = attachSomething(module, kretprobes, "kretprobe")
+	if err != nil {
 		return nil, fmt.Errorf("failed to attach kretprobes: %s", err)
 	}
+	mergedTags(tags, probes)
 
-	if err := mergedTags(tags, attachTracepoints, module, tracepoints); err != nil {
+	probes, err = attachSomething(module, tracepoints, "tracepoint")
+	if err != nil {
 		return nil, fmt.Errorf("failed to attach tracepoints: %s", err)
 	}
+	mergedTags(tags, probes)
 
-	if err := mergedTags(tags, attachRawTracepoints, module, rawTracepoints); err != nil {
+	probes, err = attachSomething(module, rawTracepoints, "raw_tracepoint")
+	if err != nil {
 		return nil, fmt.Errorf("failed to attach raw tracepoints: %s", err)
 	}
+	mergedTags(tags, probes)
 
 	return tags, nil
 }
-
-// probeLoader attaches some sort of probe
-type probeLoader func(string) (int, error)
-
-// probeAttacher attaches loaded some sort of probe to some sort of tracepoint
-type probeAttacher func(string, int) error
-type probeAttacherWithMaxActive func(string, int, int) error
 
 // attachSomething attaches some kind of probes and returns program tags
-func attachSomething(module *bcc.Module, loader probeLoader, attacher probeAttacher, probes map[string]string) (map[string]uint64, error) {
-	tags := map[string]uint64{}
+func attachSomething(module *libbpfgo.Module, probes map[string]string, key string) (map[string]string, error) {
+	tags := map[string]string{}
 
-	for probe, targetName := range probes {
-		target, err := loader(targetName)
+	for probe, progName := range probes {
+		prog, err := module.GetProgram(progName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load probe %q: %s", targetName, err)
+			return nil, fmt.Errorf("failed to load program %q: %v", progName, err)
 		}
 
-		tag, err := module.GetProgramTag(target)
+		tag, err := extractTag(prog)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get program tag for %q (fd=%d): %s", targetName, target, err)
+			return nil, fmt.Errorf("failed to get program tag for for program %q: %v", progName, err)
 		}
 
-		tags[targetName] = tag
+		tags[progName] = tag
 
-		err = attacher(probe, target)
+		switch key {
+		case "kprobe":
+			_, err = prog.AttachKprobe(probe)
+		case "kretprobe":
+			_, err = prog.AttachKretprobe(probe)
+		case "tracepoint":
+			parts := strings.Split(probe, ":")
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("tracepoint must be in 'category:name' format")
+			}
+			_, err = prog.AttachTracepoint(parts[0], parts[1])
+		case "raw_tracepoint":
+			_, err = prog.AttachRawTracepoint(probe)
+		}
+
 		if err != nil {
-			return nil, fmt.Errorf("failed to attach probe %q to %q: %s", probe, targetName, err)
+			return nil, fmt.Errorf("failed to attach probe %q to program %q: %v", progName, probe, err)
 		}
 	}
 
 	return tags, nil
 }
 
-// withMaxActive partially applies the maxactive value as needed by AttackK*probe
-func withMaxActive(attacherWithMaxActive probeAttacherWithMaxActive, maxActive int) probeAttacher {
-	return func(probe string, target int) error {
-		return attacherWithMaxActive(probe, target, maxActive)
+func extractTag(prog *libbpfgo.BPFProg) (string, error) {
+	name := fmt.Sprintf("/proc/self/fdinfo/%d", prog.FileDescriptor())
+
+	file, err := os.Open(name)
+	if err != nil {
+		return "", fmt.Errorf("can't open %s: %v", name, err)
 	}
-}
 
-// attachKprobes attaches functions to their kprobles in provided module
-func attachKprobes(module *bcc.Module, kprobes map[string]string) (map[string]uint64, error) {
-	return attachSomething(module, module.LoadKprobe, withMaxActive(module.AttachKprobe, 0), kprobes)
-}
+	defer file.Close()
 
-// attachKretprobes attaches functions to their kretprobles in provided module
-func attachKretprobes(module *bcc.Module, kretprobes map[string]string) (map[string]uint64, error) {
-	return attachSomething(module, module.LoadKprobe, withMaxActive(module.AttachKretprobe, 0), kretprobes)
-}
+	scanner := bufio.NewScanner(file)
 
-// attachTracepoints attaches functions to their tracepoints in provided module
-func attachTracepoints(module *bcc.Module, tracepoints map[string]string) (map[string]uint64, error) {
-	return attachSomething(module, module.LoadTracepoint, module.AttachTracepoint, tracepoints)
-}
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, progTagPrefix) {
+			return strings.TrimPrefix(line, progTagPrefix), nil
+		}
+	}
 
-// attachRawTracepoints attaches functions to their tracepoints in provided module
-func attachRawTracepoints(module *bcc.Module, tracepoints map[string]string) (map[string]uint64, error) {
-	return attachSomething(module, module.LoadRawTracepoint, module.AttachRawTracepoint, tracepoints)
+	if err = scanner.Err(); err != nil {
+		return "", fmt.Errorf("error scanning: %v", err)
+	}
+
+	return "", errors.New("cannot find program tag")
 }

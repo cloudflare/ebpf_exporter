@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/cloudflare/ebpf_exporter/config"
-	"github.com/iovisor/gobpf/bcc"
+	"github.com/cloudflare/ebpf_exporter/util"
 	"golang.org/x/sys/unix"
 )
 
@@ -44,7 +44,7 @@ func (c *CGroup) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 }
 
 func (c *CGroup) refreshCache() error {
-	byteOrder := bcc.GetHostByteOrder()
+	byteOrder := util.GetHostByteOrder()
 
 	cgroupPath := "/sys/fs/cgroup"
 

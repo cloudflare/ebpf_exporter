@@ -27,11 +27,11 @@ type Program struct {
 
 // PerfEvent describes perf_event to attach to
 type PerfEvent struct {
-	Type            int    `yaml:"type"`
-	Name            int    `yaml:"name"`
+	Type            uint64 `yaml:"type"`
+	Name            uint64 `yaml:"name"`
 	Target          string `yaml:"target"`
-	SamplePeriod    int    `yaml:"sample_period"`
-	SampleFrequency int    `yaml:"sample_frequency"`
+	SamplePeriod    uint64 `yaml:"sample_period"`
+	SampleFrequency uint64 `yaml:"sample_frequency"`
 }
 
 // Metrics is a collection of metrics attached to a program
@@ -44,7 +44,7 @@ type Metrics struct {
 type Counter struct {
 	Name                 string        `yaml:"name"`
 	Help                 string        `yaml:"help"`
-	Table                string        `yaml:"table"`
+	Map                  string        `yaml:"map"`
 	PerfMap              string        `yaml:"perf_map"`
 	PerfMapFlushDuration time.Duration `yaml:"perf_map_flush_duration"`
 	Labels               []Label       `yaml:"labels"`
@@ -54,7 +54,7 @@ type Counter struct {
 type Histogram struct {
 	Name             string              `yaml:"name"`
 	Help             string              `yaml:"help"`
-	Table            string              `yaml:"table"`
+	Map              string              `yaml:"map"`
 	BucketType       HistogramBucketType `yaml:"bucket_type"`
 	BucketMultiplier float64             `yaml:"bucket_multiplier"`
 	BucketMin        int                 `yaml:"bucket_min"`
@@ -63,7 +63,7 @@ type Histogram struct {
 	Labels           []Label             `yaml:"labels"`
 }
 
-// Label defines how to decode an element from eBPF table key
+// Label defines how to decode an element from eBPF map key
 // with the list of decoders
 type Label struct {
 	Name     string    `yaml:"name"`
@@ -97,9 +97,18 @@ func ValidateConfig(c *Config) error {
 	}
 
 	for _, program := range c.Programs {
-		if program.Code == "" {
-			return fmt.Errorf("program (%s) has no code section", program.Name)
+		for _, counter := range program.Metrics.Counters {
+			if counter.Map == "" && counter.PerfMap == "" {
+				return fmt.Errorf("counter %q in program %q lacks map definition", counter.Name, program.Name)
+			}
 		}
+
+		for _, histogram := range program.Metrics.Histograms {
+			if histogram.Map == "" {
+				return fmt.Errorf("histogram %q in program %q lacks map definition", histogram.Name, program.Name)
+			}
+		}
+
 		if len(program.Kprobes)+len(program.Kretprobes)+len(program.Tracepoints)+len(program.RawTracepoints)+len(program.PerfEvents) == 0 {
 			return fmt.Errorf("program (%s) has no probes, tracepoints, or perf events", program.Name)
 		}

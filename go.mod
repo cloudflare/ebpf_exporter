@@ -2,7 +2,12 @@ module github.com/cloudflare/ebpf_exporter
 
 go 1.17
 
+// See: https://github.com/aquasecurity/libbpfgo/pull/258
+replace github.com/aquasecurity/libbpfgo v0.4.2-libbpf-1.0.1 => github.com/bobrik/libbpfgo v0.0.0-20221018021422-cc90cc2229db
+
 require (
+	github.com/aquasecurity/libbpfgo v0.4.2-libbpf-1.0.1
+	github.com/elastic/go-perf v0.0.0-20191212140718-9c656876f595
 	github.com/iovisor/gobpf v0.2.0
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/common v0.37.0

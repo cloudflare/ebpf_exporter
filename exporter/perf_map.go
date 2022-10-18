@@ -4,9 +4,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/aquasecurity/libbpfgo"
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/decoder"
-	"github.com/iovisor/gobpf/bcc"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -16,7 +16,7 @@ type PerfMapSink struct {
 	dropCounter   prometheus.Counter
 }
 
-func NewPerfMapSink(decoders *decoder.Set, module *bcc.Module, counterConfig config.Counter) *PerfMapSink {
+func NewPerfMapSink(decoders *decoder.Set, module *libbpfgo.Module, counterConfig config.Counter) *PerfMapSink {
 	var (
 		receiveCh = make(chan []byte)
 		lostCh    = make(chan uint64)
@@ -28,11 +28,10 @@ func NewPerfMapSink(decoders *decoder.Set, module *bcc.Module, counterConfig con
 	}
 	sink.resetCounterVec()
 
-	table := bcc.NewTable(module.TableId(counterConfig.PerfMap), module)
+	pb, err := module.InitPerfBuf(counterConfig.PerfMap, receiveCh, lostCh, 1024)
 
-	perfMap, err := bcc.InitPerfMap(table, receiveCh, lostCh)
 	if err != nil {
-		log.Fatalf("Can't init PerfMap: %s", err)
+		log.Fatalf("Can't init PerfBuf: %s", err)
 	}
 
 	go func(sink *PerfMapSink, receiveCh <-chan []byte) {
@@ -78,7 +77,7 @@ func NewPerfMapSink(decoders *decoder.Set, module *bcc.Module, counterConfig con
 		}
 	}(sink)
 
-	perfMap.Start()
+	pb.Start()
 
 	return sink
 }

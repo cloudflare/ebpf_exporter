@@ -1,43 +1,24 @@
-# Building on Ubuntu Bionic (18.04) and supporting glibc 2.27. This allows
-# the following distros (and newer versions) to run the resulting binaries:
-# * Ubuntu Bionic (2.27)
-# * Debian Buster (2.28)
-# * CentOS 8 (2.28)
-FROM ubuntu:bionic as builder
+FROM ubuntu:22.04
 
 RUN apt-get update && \
-    apt-get -y --no-install-recommends install build-essential fakeroot pbuilder aptitude git openssh-client ca-certificates
+    apt-get install -y --no-install-recommends curl git ca-certificates build-essential libelf-dev gnupg2
 
-RUN git clone --branch=v0.22.0 --depth=1 https://github.com/iovisor/bcc.git /root/bcc && \
-    git -C /root/bcc submodule update --init --recursive
+RUN echo 'deb https://ppa.launchpadcontent.net/longsleep/golang-backports/ubuntu jammy main' > /etc/apt/sources.list.d/golang-backports.list && \
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 52b59b1571a79dbc054901c0f6bc817356a3d45e && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends golang-1.19-go
 
-RUN cd /root/bcc && \
-    /usr/lib/pbuilder/pbuilder-satisfydepends && \
-    PARALLEL=$(nproc) ./scripts/build-deb.sh release
+RUN mkdir /build
 
-FROM ubuntu:bionic
+RUN git clone --branch v1.0.1 --depth 1 https://github.com/libbpf/libbpf.git /build/libbpf && \
+    make -C /build/libbpf/src BUILD_STATIC_ONLY=y LIBSUBDIR=lib install
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends git build-essential libelf1 software-properties-common
+RUN tar -czf /build/libbpf.tar.gz /usr/lib/libbpf.a /usr/lib/pkgconfig/libbpf.pc /usr/include/bpf
 
-RUN add-apt-repository ppa:longsleep/golang-backports && \
-    apt-get install -y --no-install-recommends golang-1.17-go
+COPY ./ /build/ebpf_exporter
 
-ENV PATH="/usr/lib/go-1.17/bin:$PATH"
+RUN cd /build/ebpf_exporter && \
+    PATH="/usr/lib/go-1.19/bin:$PATH" make build && \
+    mv /build/ebpf_exporter/ebpf_exporter /usr/sbin/ebpf_exporter
 
-COPY --from=builder /root/bcc/libbcc_*.deb /tmp/libbcc.deb
-
-RUN dpkg -i /tmp/libbcc.deb
-
-COPY ./ /go/ebpf_exporter
-
-RUN cd /go/ebpf_exporter && \
-    GOPROXY="off" GOFLAGS="-mod=vendor" go install -v -ldflags=" \
-    -X github.com/prometheus/common/version.Version=$(git describe) \
-    -X github.com/prometheus/common/version.Branch=$(git rev-parse --abbrev-ref HEAD) \
-    -X github.com/prometheus/common/version.Revision=$(git rev-parse --short HEAD) \
-    -X github.com/prometheus/common/version.BuildUser=docker@$(hostname) \
-    -X github.com/prometheus/common/version.BuildDate=$(date --iso-8601=seconds) \
-    " ./cmd/ebpf_exporter
-
-RUN /root/go/bin/ebpf_exporter --version
+RUN /usr/sbin/ebpf_exporter --version

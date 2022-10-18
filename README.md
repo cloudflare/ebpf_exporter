@@ -16,52 +16,63 @@ An easy way of thinking about this exporter is bcc tools as prometheus metrics:
 
 * https://iovisor.github.io/bcc
 
+We use libbpf rather than legacy bcc driven code, so it's more like libbpf-tools:
+
+* https://github.com/iovisor/bcc/tree/master/libbpf-tools
+
 ## Reading material
 
-* https://github.com/iovisor/bcc/blob/master/docs/reference_guide.md
-* http://www.brendangregg.com/ebpf.html
+* https://www.brendangregg.com/ebpf.html
+* https://nakryiko.com/posts/bpf-core-reference-guide/
+* https://nakryiko.com/posts/bpf-portability-and-co-re/
+* https://nakryiko.com/posts/bcc-to-libbpf-howto-guide/
 
 ## Building and running
 
-### Note on bcc
+### Note on libbpf
 
-`ebpf_exporter` depends on `libbcc` to instrument the kernel, and you need
-to have it installed on your system. Please consult `bcc` documentation:
+`ebpf_exporter` depends on `libbpf` to load eBPF code into the kernel,
+and you need to have it installed on your system. Alternatively, you
+can use the bundled `Dockerfile` to have `libbpf` compiled in there.
 
 * https://github.com/iovisor/bcc/blob/master/INSTALL.md
 
-Note that there's a dependency between `bcc` version you have on your system
-and `gobpf`, which is Go's library to talk to `libbcc`. If you see errors
-pointing to argument mismatch, it probably means that your `libbcc` version
-doesn't match what `gobpf` expects. Currently `ebpf_exporter` works with `bcc`
-0.22.0, but if you see issues with newer versions, please file an issue.
+Note that there's a dependency between `libbpf` version you have installed
+and `libbpfgo`, which is Go's library to talk to `libbpf`
 
-This setup also prevents us from providing prebuilt static binaries.
+Currently we target `libbpf` v1.0, which has a stable interface.
 
-If you can figure out a way to statically link `bcc` into `ebpf_exporter`
-to remove this nuisance, your contribution will be most welcome.
+We compile `ebpf_exporter` with `libbpf` statically compiled in,
+so there's only ever a chance of build time issues, never at run time.
 
 ### Actual building
 
-To build a binary from latest sources:
+To build a binary, clone the repo and run:
 
 ```
-$ go get -u -v github.com/cloudflare/ebpf_exporter/...
+make build
 ```
 
-To run with [`bio`](examples/bio.yaml) config (you need `root` privileges):
+If you're having trouble building on the host, you can try building in Docker:
 
 ```
-$ ~/go/bin/ebpf_exporter --config.file=src/github.com/cloudflare/ebpf_exporter/examples/bio.yaml
+docker build -t ebpf_exporter .
+docker cp $(docker create ebpf_exporter):/usr/sbin/ebpf_exporter ebpf_exporter
 ```
 
-If you pass `--debug`, you can see raw tables at `/tables` endpoint.
+To build examples (see [building examples section](#building-examples)):
 
-### Docker image
+```
+make -C examples clean build
+```
 
-There's a `Dockerfile` in repo root that builds both `bcc` and `ebpf_exporter`.
-It's not intended for running, but rather to ensure that we have a predefined
-build environment in which everything compiles successfully.
+To run with [`biolatency`](examples/biolatency.yaml) config:
+
+```
+sudo ./ebpf_exporter --config.file examples/biolatency.yaml
+```
+
+If you pass `--debug`, you can see raw maps at `/maps` endpoint.
 
 ## Benchmarking overhead
 
@@ -69,10 +80,7 @@ See [benchmark](benchmark) directory to get an idea of how low ebpf overhead is.
 
 ## Supported scenarios
 
-Currently the only supported way of getting data out of the kernel
-is via maps (we call them tables in configuration). See:
-
-* https://github.com/iovisor/bcc/blob/master/docs/reference_guide.md#maps
+Currently the only supported way of getting data out of the kernel is via maps.
 
 See [examples](#examples) section for real world examples.
 
@@ -86,91 +94,113 @@ Skip to [format](#configuration-file-format) to see the full specification.
 
 You can find additional examples in [examples](examples) directory.
 
-Unless otherwise specified, all examples are expected to work on Linux 4.14,
-which is the latest LTS release at the time of writing.
+Unless otherwise specified, all examples are expected to work on Linux 5.15,
+which is the latest LTS release at the time of writing. Thanks to CO-RE,
+examples are also supposed to work on any modern kernel with BTF enabled.
 
-In general, exported to work from Linux 4.1. See BCC docs for more details:
+#### Building examples
 
-* https://github.com/iovisor/bcc/blob/master/INSTALL.md#kernel-configuration
+To build examples, run:
 
-#### Page cache operations for `syslog-ng` and `systemd-journald` (counters)
+```
+make -C examples clean build
+```
 
-This program attaches to kernel functions responsible for managing
-page cache and counts pages going through them.
+This will use `clang` to build examples with `vmlinux.h` we provide
+in this repo (see [include](include/README.md) for more on `vmlinux.h`).
 
-This is an adapted version of `cachestat` from bcc tools:
+Examples need to be compiled before they can be used.
 
-* https://github.com/iovisor/bcc/blob/master/tools/cachestat_example.txt
+Note that compiled examples can be used as is on any BTF enabled kernel
+with no runtime dependencies. Most modern Linux distributions have it enabled.
+
+#### Timers via tracepoints (counters)
+
+This program attaches to kernel tracepoints for timers subsystem
+and counts timers that fire with breakdown by timer name.
 
 Resulting metrics:
 
 ```
-# HELP ebpf_exporter_page_cache_ops_total Page cache operation counters by type
-# TYPE ebpf_exporter_page_cache_ops_total counter
-ebpf_exporter_page_cache_ops_total{command="syslog-ng",op="account_page_dirtied"} 1531
-ebpf_exporter_page_cache_ops_total{command="syslog-ng",op="add_to_page_cache_lru"} 1092
-ebpf_exporter_page_cache_ops_total{command="syslog-ng",op="mark_buffer_dirty"} 31205
-ebpf_exporter_page_cache_ops_total{command="syslog-ng",op="mark_page_accessed"} 54846
-ebpf_exporter_page_cache_ops_total{command="systemd-journal",op="account_page_dirtied"} 104681
-ebpf_exporter_page_cache_ops_total{command="systemd-journal",op="add_to_page_cache_lru"} 7330
-ebpf_exporter_page_cache_ops_total{command="systemd-journal",op="mark_buffer_dirty"} 125486
-ebpf_exporter_page_cache_ops_total{command="systemd-journal",op="mark_page_accessed"} 898214
+# HELP ebpf_exporter_timer_start_total Timers fired in the kernel
+# TYPE ebpf_exporter_timer_start_total counter
+ebpf_exporter_timer_start_total{function="blk_rq_timed_out_timer"} 1
+ebpf_exporter_timer_start_total{function="blk_stat_timer_fn"} 34
+ebpf_exporter_timer_start_total{function="delayed_work_timer_fn"} 47
+ebpf_exporter_timer_start_total{function="dev_watchdog"} 1
+ebpf_exporter_timer_start_total{function="neigh_timer_handler"} 1
+ebpf_exporter_timer_start_total{function="pool_mayday_timeout"} 1
+ebpf_exporter_timer_start_total{function="process_timeout"} 70
+ebpf_exporter_timer_start_total{function="reqsk_timer_handler"} 3
+ebpf_exporter_timer_start_total{function="tcp_delack_timer"} 20
+ebpf_exporter_timer_start_total{function="tcp_keepalive_timer"} 9
+ebpf_exporter_timer_start_total{function="tcp_orphan_update"} 7
+ebpf_exporter_timer_start_total{function="tcp_write_timer"} 24
+ebpf_exporter_timer_start_total{function="tw_timer_handler"} 2
+ebpf_exporter_timer_start_total{function="writeout_period"} 7
+ebpf_exporter_timer_start_total{function="xprt_init_autodisconnect	[sunrpc]"} 11
 ```
 
-You can check out `cachestat` source code to see how these translate:
-
-* https://github.com/iovisor/bcc/blob/master/tools/cachestat.py
+There's config file for it:
 
 ```yaml
 programs:
-  - name: cachestat
+  - name: timers
     metrics:
       counters:
-        - name: page_cache_ops_total
-          help: Page cache operation counters by type
-          table: counts
+        - name: timer_start_total
+          help: Timers fired in the kernel
+          map: counts
           labels:
-            - name: op
+            - name: function
               size: 8
               decoders:
                 - name: ksym
-            - name: command
-              size: 128
-              decoders:
-                - name: string
-                - name: regexp
-                  regexps:
-                    - ^systemd-journal$
-                    - ^syslog-ng$
-    kprobes:
-      add_to_page_cache_lru: do_count
-      mark_page_accessed: do_count
-      account_page_dirtied: do_count
-      mark_buffer_dirty: do_count
-    code: |
-      #include <uapi/linux/ptrace.h>
+    tracepoints:
+      timer:timer_start: do_count
+```
 
-      struct key_t {
-          u64 ip;
-          char command[128];
-      };
+And corresponding C code that compiles into an ELF file with eBPF bytecode:
 
-      BPF_HASH(counts, struct key_t);
+```C
+#include <vmlinux.h>
+#include <bpf/bpf_helpers.h>
 
-      int do_count(struct pt_regs *ctx) {
-          struct key_t key = { .ip = PT_REGS_IP(ctx) - 1 };
-          bpf_get_current_comm(&key.command, sizeof(key.command));
+static u64 zero = 0;
 
-          counts.increment(key);
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 1024);
+    __type(key, u64);
+    __type(value, u64);
+} counts SEC(".maps");
 
-          return 0;
-      }
+SEC("tracepoint/timer/timer_start")
+int do_count(struct trace_event_raw_timer_start* ctx)
+{
+    u64* count;
+    u64 function = (u64) ctx->function;
+
+    count = bpf_map_lookup_elem(&counts, &function);
+    if (!count) {
+        bpf_map_update_elem(&counts, &function, &zero, BPF_NOEXIST);
+        count = bpf_map_lookup_elem(&counts, &function);
+        if (!count) {
+            return 0;
+        }
+    }
+    __sync_fetch_and_add(count, 1);
+
+    return 0;
+}
+
+char LICENSE[] SEC("license") = "GPL";
 ```
 
 #### Block IO histograms (histograms)
 
-This program attaches to block io subsystem and reports metrics on disk
-latency and request sizes for separate disks.
+This program attaches to block io subsystem and reports disk latency
+as a prometheus histogram, allowing you to compute percentiles.
 
 The following tools are working with similar concepts:
 
@@ -188,291 +218,77 @@ Resulting metrics:
 ```
 # HELP ebpf_exporter_bio_latency_seconds Block IO latency histogram
 # TYPE ebpf_exporter_bio_latency_seconds histogram
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="1e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="2e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="4e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="8e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="1.6e-05"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="3.2e-05"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="6.4e-05"} 2
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.000128"} 388
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.000256"} 20086
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.000512"} 21601
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.001024"} 22487
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.002048"} 25592
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.004096"} 26891
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.008192"} 27835
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.016384"} 28540
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.032768"} 28725
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.065536"} 28776
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.131072"} 28786
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.262144"} 28790
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="0.524288"} 28792
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="1.048576"} 28792
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="2.097152"} 28792
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="4.194304"} 28792
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="8.388608"} 28792
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="16.777216"} 28792
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="33.554432"} 28792
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="67.108864"} 28792
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="read",le="+Inf"} 28792
-ebpf_exporter_bio_latency_seconds_sum{device="sda",operation="read"} 0
-ebpf_exporter_bio_latency_seconds_count{device="sda",operation="read"} 28792
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="1e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="2e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="4e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="8e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="1.6e-05"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="3.2e-05"} 508
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="6.4e-05"} 2828
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.000128"} 5701
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.000256"} 8520
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.000512"} 11975
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.001024"} 12448
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.002048"} 16798
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.004096"} 26909
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.008192"} 41248
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.016384"} 59030
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.032768"} 86501
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.065536"} 118934
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.131072"} 122148
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.262144"} 122373
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="0.524288"} 122462
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="1.048576"} 122470
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="2.097152"} 122470
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="4.194304"} 122470
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="8.388608"} 122470
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="16.777216"} 122470
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="33.554432"} 122470
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="67.108864"} 122470
-ebpf_exporter_bio_latency_seconds_bucket{device="sda",operation="write",le="+Inf"} 122470
-ebpf_exporter_bio_latency_seconds_sum{device="sda",operation="write"} 0
-ebpf_exporter_bio_latency_seconds_count{device="sda",operation="write"} 122470
-...
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="1e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="2e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="4e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="8e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="1.6e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="3.2e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="6.4e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.000128"} 22
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.000256"} 36
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.000512"} 40
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.001024"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.002048"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.004096"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.008192"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.016384"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.032768"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.065536"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.131072"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.262144"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.524288"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="1.048576"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="2.097152"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="4.194304"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="8.388608"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="16.777216"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="33.554432"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="67.108864"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="134.217728"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="+Inf"} 48
+ebpf_exporter_bio_latency_seconds_sum{device="nvme0n1",ops="write"} 0.021772
+ebpf_exporter_bio_latency_seconds_count{device="nvme0n1",ops="write"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="1e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="2e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="4e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="8e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="1.6e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="3.2e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="6.4e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.000128"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.000256"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.000512"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.001024"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.002048"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.004096"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.008192"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.016384"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.032768"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.065536"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.131072"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.262144"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.524288"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="1.048576"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="2.097152"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="4.194304"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="8.388608"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="16.777216"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="33.554432"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="67.108864"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="134.217728"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="+Inf"} 1
+ebpf_exporter_bio_latency_seconds_sum{device="nvme1n1",ops="write"} 0.0018239999999999999
+ebpf_exporter_bio_latency_seconds_count{device="nvme1n1",ops="write"} 1
 ```
 
-```
-# HELP ebpf_exporter_bio_size_bytes Block IO size histogram with kibibyte buckets
-# TYPE ebpf_exporter_bio_size_bytes histogram
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="1024"} 14
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="2048"} 14
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="4096"} 28778
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="8192"} 28778
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="16384"} 28778
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="32768"} 28778
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="65536"} 28779
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="131072"} 28781
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="262144"} 28785
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="524288"} 28792
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="1.048576e+06"} 28792
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="2.097152e+06"} 28792
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="4.194304e+06"} 28792
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="8.388608e+06"} 28792
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="1.6777216e+07"} 28792
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="3.3554432e+07"} 28792
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="read",le="+Inf"} 28792
-ebpf_exporter_bio_size_bytes_sum{device="sda",operation="read"} 0
-ebpf_exporter_bio_size_bytes_count{device="sda",operation="read"} 28792
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="1024"} 1507
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="2048"} 4007
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="4096"} 15902
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="8192"} 17726
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="16384"} 18429
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="32768"} 19639
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="65536"} 19676
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="131072"} 20367
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="262144"} 21952
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="524288"} 49636
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="1.048576e+06"} 122470
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="2.097152e+06"} 122470
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="4.194304e+06"} 122470
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="8.388608e+06"} 122470
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="1.6777216e+07"} 122470
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="3.3554432e+07"} 122470
-ebpf_exporter_bio_size_bytes_bucket{device="sda",operation="write",le="+Inf"} 122470
-ebpf_exporter_bio_size_bytes_sum{device="sda",operation="write"} 0
-ebpf_exporter_bio_size_bytes_count{device="sda",operation="write"} 122470
-...
-```
-
-To nicely plot these in Grafana, you'll need v5.1:
-
-* https://github.com/grafana/grafana/pull/11087
+You can nicely plot this with Grafana:
 
 ![Histogram](examples/bio.write.latency.png)
 
-```yaml
-programs:
-  # See:
-  # * https://github.com/iovisor/bcc/blob/master/tools/biolatency.py
-  # * https://github.com/iovisor/bcc/blob/master/tools/biolatency_example.txt
-  #
-  # See also: bio-tracepoints.yaml
-  - name: bio
-    metrics:
-      histograms:
-        - name: bio_latency_seconds
-          help: Block IO latency histogram
-          table: io_latency
-          bucket_type: exp2
-          bucket_min: 0
-          bucket_max: 26
-          bucket_multiplier: 0.000001 # microseconds to seconds
-          labels:
-            - name: device
-              size: 32
-              decoders:
-                - name: string
-            - name: operation
-              size: 8
-              decoders:
-                - name: uint
-                - name: static_map
-                  static_map:
-                    1: read
-                    2: write
-            - name: bucket
-              size: 8
-              decoders:
-                - name: uint
-        - name: bio_size_bytes
-          help: Block IO size histogram with kibibyte buckets
-          table: io_size
-          bucket_type: exp2
-          bucket_min: 0
-          bucket_max: 15
-          bucket_multiplier: 1024 # kibibytes to bytes
-          labels:
-            - name: device
-              size: 32
-              decoders:
-                - name: string
-            - name: operation
-              size: 8
-              decoders:
-                - name: uint
-                - name: static_map
-                  static_map:
-                    1: read
-                    2: write
-            - name: bucket
-              size: 8
-              decoders:
-                - name: uint
-    kprobes:
-      blk_start_request: trace_req_start
-      blk_mq_start_request: trace_req_start
-      blk_account_io_completion: trace_req_completion
-    code: |
-      #include <linux/blkdev.h>
-      #include <linux/blk_types.h>
+## Configuration concepts
 
-      typedef struct disk_key {
-          char disk[32];
-          u8 op;
-          u64 slot;
-      } disk_key_t;
-
-      // Max number of disks we expect to see on the host
-      const u8 max_disks = 255;
-
-      // 27 buckets for latency, max range is 33.6s .. 67.1s
-      const u8 max_latency_slot = 26;
-
-      // 16 buckets per disk in kib, max range is 16mib .. 32mib
-      const u8 max_size_slot = 15;
-
-      // Hash to temporily hold the start time of each bio request, max 10k in-flight by default
-      BPF_HASH(start, struct request *);
-
-      // Histograms to record latencies
-      BPF_HISTOGRAM(io_latency, disk_key_t, (max_latency_slot + 2) * max_disks);
-
-      // Histograms to record sizes
-      BPF_HISTOGRAM(io_size, disk_key_t, (max_size_slot + 2) * max_disks);
-
-      // Record start time of a request
-      int trace_req_start(struct pt_regs *ctx, struct request *req) {
-          u64 ts = bpf_ktime_get_ns();
-          start.update(&req, &ts);
-
-          return 0;
-      }
-
-      // Calculate request duration and store in appropriate histogram bucket
-      int trace_req_completion(struct pt_regs *ctx, struct request *req, unsigned int bytes) {
-          u64 *tsp, delta;
-
-          // Fetch timestamp and calculate delta
-          tsp = start.lookup(&req);
-          if (tsp == 0) {
-              return 0; // missed issue
-          }
-
-          // There are write request with zero length on sector zero,
-          // which do not seem to be real writes to device.
-          if (req->__sector == 0 && req->__data_len == 0) {
-            return 0;
-          }
-
-          // Disk that received the request
-          struct gendisk *disk = req->rq_disk;
-
-          // Delta in nanoseconds
-          delta = bpf_ktime_get_ns() - *tsp;
-
-          // Convert to microseconds
-          delta /= 1000;
-
-          // Latency histogram key
-          u64 latency_slot = bpf_log2l(delta);
-
-          // Cap latency bucket at max value
-          if (latency_slot > max_latency_slot) {
-              latency_slot = max_latency_slot;
-          }
-
-          disk_key_t latency_key = { .slot = latency_slot };
-          bpf_probe_read(&latency_key.disk, sizeof(latency_key.disk), &disk->disk_name);
-
-          // Size in kibibytes
-          u64 size_kib = bytes / 1024;
-
-          // Request size histogram key
-          u64 size_slot = bpf_log2(size_kib);
-
-          // Cap latency bucket at max value
-          if (size_slot > max_size_slot) {
-              size_slot = max_size_slot;
-          }
-
-          disk_key_t size_key = { .slot = size_slot };
-          bpf_probe_read(&size_key.disk, sizeof(size_key.disk), &disk->disk_name);
-
-          if ((req->cmd_flags & REQ_OP_MASK) == REQ_OP_WRITE) {
-              latency_key.op = 2;
-              size_key.op    = 2;
-          } else {
-              latency_key.op = 1;
-              size_key.op    = 1;
-          }
-
-          io_latency.increment(latency_key);
-          io_size.increment(size_key);
-
-          // Increment sum keys
-          latency_key.slot = max_latency_slot + 1;
-          io_latency.increment(latency_key, delta);
-          size_key.slot = max_size_slot + 1;
-          io_size.increment(size_key, size_kib);
-
-          start.delete(&req);
-
-          return 0;
-      }
-```
-
-There is also a tracepoint based equivalent of this example in `examples`.
+The following concepts exists within `ebpf_exporter`.
 
 ### Programs
 
@@ -486,7 +302,7 @@ Metrics define what values we get from eBPF program running in the kernel.
 
 #### Counters
 
-Counters from maps are straightforward: you pull data out of kernel,
+Counters from maps are direct transformations: you pull data out of kernel,
 transform map keys into sets of labels and export them as prometheus counters.
 
 #### Histograms
@@ -567,12 +383,12 @@ for i = 0; i < len(bucket_keys); i++ {
 
 ##### `sum` keys
 
-For `exp2` and `linear` hisograms, if `bucket_max + 1` contains a non-zero
-value, it will be used as a `sum` key in histogram, providing additional
-information.
+For `exp2` and `linear` histograms, if `bucket_max + 1` contains a non-zero
+value, it will be used as the `sum` key in histogram, providing additional
+information and allowing richer metrics.
 
-For `fixed` histograms, if `buckets_keys[len(bucket_keys) -1 ] + 1` contains
-a non-zero value, it will be used as a `sum` key.
+For `fixed` histograms, if `buckets_keys[len(bucket_keys) - 1 ] + 1` contains
+a non-zero value, it will be used as the `sum` key.
 
 ##### Advice on values outside of `[bucket_min, bucket_max]`
 
@@ -584,24 +400,20 @@ losing `+Inf` bucket, but usually it's not that big of a deal.
 Each kernel map key must count values under that key's value to match
 the behavior of prometheus. For example, `exp2` histogram key `3` should
 count values for `(exp2(2), exp2(3)]` interval: `(4, 8]`. To put it simply:
-use `bpf_log2l` or integer division and you'll be good.
-
-The side effect of implementing histograms this way is that some granularity
-is lost due to either taking `log2` or division. We explicitly set `_sum` key
-of prometheus histogram to zero to avoid confusion around this.
+use `log2l` or integer division and you'll be good.
 
 ### Labels
 
 Labels transform kernel map keys into prometheus labels.
 
 Maps coming from the kernel are binary encoded. Values are always `u64`, but
-keys can be primitive types like `u64` or structs.
+keys can be either primitive types like `u64` or complex `struct`s.
 
 Each label can be transformed with decoders (see below) according to metric
-configuration. Generally number of labels matches number of elements
+configuration. Generally the number of labels matches the number of elements
 in the kernel map key.
 
-For map keys that are represented as structs alignment rules apply:
+For map keys that are represented as `struct`s alignment rules apply:
 
 * `u64` must be aligned at 8 byte boundary
 * `u32` must be aligned at 4 byte boundary
@@ -610,24 +422,24 @@ For map keys that are represented as structs alignment rules apply:
 This means that the following struct:
 
 ```c
-typedef struct disk_key {
-    char disk[32];
+struct disk_latency_key_t {
+    u32 dev;
     u8 op;
     u64 slot;
-} disk_key_t;
+};
 ```
 
 Is represented as:
 
-* 32 byte `disk` char array
+* 4 byte `dev` integer
 * 1 byte `op` integer
-* 7 byte padding to align `slot`
+* 3 byte padding to align `slot`
 * 8 byte `slot` integer
 
 When decoding, label sizes should be supplied with padding included:
 
-* 32 for `disk`
-* 8 for `op` (1 byte value + 7 byte padding)
+* 4 for `dev`
+* 4 for `op` (1 byte value + 3 byte padding)
 * 8 byte `slot`
 
 ### Decoders
@@ -639,6 +451,32 @@ label value exporter to Prometheus.
 
 Below are decoders we have built in.
 
+#### `cgroup`
+
+With cgroup decoder you can turn the u64 from `bpf_get_current_cgroup_id`
+into a human readable string representing cgroup path, like:
+
+* `/sys/fs/cgroup/system.slice/ssh.service`
+
+#### `dname`
+
+Dname decoder read DNS qname from string in wire format, then decode
+it into '.' notation format. Could be used after `string` decoder.
+E.g.: `\x07example\03com\x00` will become `example.com`. This decoder
+could be used after `string` decode, like the following example:
+
+```yaml
+- name: qname
+  decoders:
+    - name: string
+	- name: dname
+```
+
+#### `inet_ip`
+
+Network IP decoded can turn byte encoded IPv4 and IPv6 addresses
+that kernel operates on into human readable form like `1.1.1.1`.
+
 #### `ksym`
 
 KSym decoder takes kernel address and converts that to the function name.
@@ -647,6 +485,11 @@ In your eBPF program you can use `PT_REGS_IP(ctx)` to get the address
 of the kprobe you attached to as a `u64` variable. Note that sometimes
 you can observe `PT_REGS_IP` being off by one. You can subtract 1 in your code
 to make it point to the right instruction that can be found `/proc/kallsyms`.
+
+#### `majorminor`
+
+With major-minor decoder you can turn kernel's combined u32 view
+of major and minor device numbers into a device name in `/dev`.
 
 #### `regexp`
 
@@ -660,7 +503,7 @@ Otherwise, the whole metric label set is dropped.
 
 An example to report metrics only for `systemd-journal` and `syslog-ng`:
 
-```
+```yaml
 - name: command
   decoders:
     - name: string
@@ -677,7 +520,7 @@ configuration key of the decoder. Values are expected as strings.
 
 An example to match `1` to `read` and `2` to `write`:
 
-```
+```yaml
 - name: operation
   decoders:
     - name:static_map
@@ -685,11 +528,11 @@ An example to match `1` to `read` and `2` to `write`:
         1: read
         2: write
 ```
-Unkown keys will be replaced by `"unknown:key_name"` unless `allow_unknown: true`
+Unknown keys will be replaced by `"unknown:key_name"` unless `allow_unknown: true`
 is specified in the decoder. For example, the above will decode `3` to `unknown:3`
 and the below example will decode `3` to `3`:
 
-```
+```yaml
 - name: operation
   decoders:
     - name:static_map
@@ -705,24 +548,10 @@ and the below example will decode `3` to `3`:
 String decoder transforms possibly null terminated strings coming
 from the kernel into string usable for prometheus metrics.
 
-#### `dname`
-
-Dname decoder read DNS qname from string in wire format, then decode
-it into '.' notation format. Could be used after `string` decoder.
-E.g.: `\x07example\03com\x00` will become `example.com`. This decoder
-could be used after `string` decode, like the following example:
-
-```
-- name: qname
-  decoders:
-    - name: string
-	- name: dname
-```
-
 #### `uint`
 
 UInt decoder transforms hex encoded `uint` values from the kernel
-into regular numbers. For example: `0xe -> 14`.
+into regular base10 numbers. For example: `0xe -> 14`.
 
 ### Configuration file format
 
@@ -733,6 +562,14 @@ Configuration file is defined like this:
 - programs:
   [ - <program> ]
 ```
+
+Multiple programs can be combined in one config file.
+
+For each program there's a corresponding `<program>.bpf.o` object
+that is loaded from the same directory as the config file.
+
+See [building examples section](#building-examples) to learn
+how to build `.bpf.o` files.
 
 #### `program`
 
@@ -758,15 +595,9 @@ raw_tracepoints:
 # Perf events configuration
 perf_events:
   [ - perf_event ]
-# Cflags are passed to the bcc compiler, useful for preprocessing
-cflags:
-  [ - -I/include/path
-    - -DMACRO_NAME=value ]
 # Kernel symbol addresses to define as kaddr_{symbol} from /proc/kallsyms (consider CONFIG_KALLSYMS_ALL)
 kaddrs:
   [ - symbol_to_resolve ]
-# Actual eBPF program code to inject in the kernel
-code: [ code ]
 ```
 
 #### `perf_event`
@@ -802,7 +633,7 @@ See [Counters](#counters) section for more details.
 ```
 name: <prometheus counter name>
 help: <prometheus metric help>
-table: <eBPF table name to track>
+map: <eBPF map name to track>
 perf_map: <name for a BPF_PERF_OUTPUT map> # optional
 perf_map_flush_duration: <how often should we flush metrics from perf_map: time.Duration> # optional
 labels:
@@ -818,9 +649,9 @@ See [Histograms](#histograms) section for more details.
 ```
 name: <prometheus histogram name>
 help: <prometheus metric help>
-table: <eBPF table name to track>
-bucket_type: <table bucket type: exp2 or linear>
-bucket_multiplier: <table bucket multiplier: float64>
+map: <eBPF map name to track>
+bucket_type: <map bucket type: exp2 or linear>
+bucket_multiplier: <map bucket multiplier: float64>
 bucket_min: <min bucket value: int>
 bucket_max: <max bucket value: int>
 labels:
