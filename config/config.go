@@ -97,6 +97,18 @@ func ValidateConfig(c *Config) error {
 	}
 
 	for _, program := range c.Programs {
+		for _, counter := range program.Metrics.Counters {
+			if counter.Map == "" && counter.PerfMap == "" {
+				return fmt.Errorf("counter %q in program %q lacks map definition", counter.Name, program.Name)
+			}
+		}
+
+		for _, histogram := range program.Metrics.Histograms {
+			if histogram.Map == "" {
+				return fmt.Errorf("histogram %q in program %q lacks map definition", histogram.Name, program.Name)
+			}
+		}
+
 		if len(program.Kprobes)+len(program.Kretprobes)+len(program.Tracepoints)+len(program.RawTracepoints)+len(program.PerfEvents) == 0 {
 			return fmt.Errorf("program (%s) has no probes, tracepoints, or perf events", program.Name)
 		}

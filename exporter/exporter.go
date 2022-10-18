@@ -72,18 +72,6 @@ func New(cfg config.Config) (*Exporter, error) {
 // Attach injects eBPF into kernel and attaches necessary kprobes
 func (e *Exporter) Attach(configPath string) error {
 	for _, program := range e.config.Programs {
-		for _, counter := range program.Metrics.Counters {
-			if counter.Map == "" && counter.PerfMap == "" {
-				return fmt.Errorf("counter %q in program %q lacks map definition", counter.Name, program.Name)
-			}
-		}
-
-		for _, histogram := range program.Metrics.Histograms {
-			if histogram.Map == "" {
-				return fmt.Errorf("histogram %q in program %q lacks map definition", histogram.Name, program.Name)
-			}
-		}
-
 		if _, ok := e.modules[program.Name]; ok {
 			return fmt.Errorf("multiple programs with name %q", program.Name)
 		}
