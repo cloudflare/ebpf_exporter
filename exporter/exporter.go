@@ -364,10 +364,9 @@ func (e *Exporter) tableValues(module *libbpfgo.Module, tableName string, labels
 
 	for iter.Next() {
 		key := iter.Key()
-		raw := *(*string)(unsafe.Pointer(&key))
 
 		mv := metricValue{
-			raw:    raw,
+			raw:    key,
 			labels: make([]string, len(labels)),
 		}
 
@@ -459,7 +458,7 @@ func (e *Exporter) TablesHandler(w http.ResponseWriter, r *http.Request) {
 
 			buf = append(buf, "```\n"...)
 			for _, row := range table {
-				buf = append(buf, fmt.Sprintf("%s (%v) -> %f\n", row.raw, row.labels, row.value)...)
+				buf = append(buf, fmt.Sprintf("%#v (labels: %v) -> %f\n", row.raw, row.labels, row.value)...)
 			}
 			buf = append(buf, "```\n\n"...)
 		}
@@ -473,7 +472,7 @@ func (e *Exporter) TablesHandler(w http.ResponseWriter, r *http.Request) {
 // metricValue is a row in a kernel map
 type metricValue struct {
 	// raw is a raw key value provided by kernel
-	raw string
+	raw []byte
 	// labels are decoded from the raw key
 	labels []string
 	// value is the kernel map value
