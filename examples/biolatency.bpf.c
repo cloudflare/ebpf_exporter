@@ -14,11 +14,11 @@
 #define REQ_OP_BITS 8
 #define REQ_OP_MASK ((1 << REQ_OP_BITS) - 1)
 
-typedef struct disk_key {
+struct disk_latency_key_t {
     u32 dev;
     u8 op;
     u64 slot;
-} disk_key_t;
+};
 
 static u64 zero = 0;
 
@@ -34,7 +34,7 @@ struct {
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, (MAX_LATENCY_SLOT + 1) * MAX_DISKS);
-    __type(key, disk_key_t);
+    __type(key, struct disk_latency_key_t);
     __type(value, u64);
 } io_latency SEC(".maps");
 
@@ -129,7 +129,7 @@ int rawtracepoint__block_rq_complete(struct bpf_raw_tracepoint_args *ctx)
     disk = get_disk(rq);
     flags = BPF_CORE_READ(rq, cmd_flags);
 
-    disk_key_t latency_key = {};
+    struct disk_latency_key_t latency_key = {};
     latency_key.slot = latency_slot;
     latency_key.dev = disk ? MKDEV(BPF_CORE_READ(disk, major), BPF_CORE_READ(disk, first_minor)) : 0;
     latency_key.op = flags & REQ_OP_MASK;

@@ -10,10 +10,10 @@
 // Max number of listening ports we expect to see on the host
 #define MAX_PORTS 1024
 
-typedef struct listen_socket_key {
+struct socket_latency_key_t {
     u16 port;
     u64 slot;
-} listen_socket_t;
+};
 
 static u64 zero = 0;
 
@@ -27,7 +27,7 @@ struct {
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, (MAX_LATENCY_SLOT + 1) * MAX_PORTS);
-    __type(key, listen_socket_t);
+    __type(key, struct socket_latency_key_t);
     __type(value, u64);
 } accept_latency SEC(".maps");
 
@@ -61,7 +61,7 @@ int BPF_KPROBE(kprobe__inet_csk_accept, struct sock *sk)
         latency_slot = MAX_LATENCY_SLOT;
     }
 
-    listen_socket_t latency_key = {};
+    struct socket_latency_key_t latency_key = {};
     latency_key.port = BPF_CORE_READ(sk, __sk_common).skc_num;
     latency_key.slot = latency_slot;
 
