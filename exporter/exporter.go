@@ -82,16 +82,16 @@ func (e *Exporter) Attach(configPath string) error {
 			return fmt.Errorf("error creating module from %q for program %q: %v", bpfProgPath, program.Name, err)
 		}
 
-		err = module.BPFLoadObject()
-		if err != nil {
-			return fmt.Errorf("error loading bpf object from %q for program %q: %v", bpfProgPath, program.Name, err)
-		}
-
 		if len(program.Kaddrs) > 0 {
 			err = e.passKaddrs(module, program)
 			if err != nil {
 				return fmt.Errorf("error passing kaddrs to program %q: %v", program.Name, err)
 			}
+		}
+
+		err = module.BPFLoadObject()
+		if err != nil {
+			return fmt.Errorf("error loading bpf object from %q for program %q: %v", bpfProgPath, program.Name, err)
 		}
 
 		tags, err := attach(module, program.Kprobes, program.Kretprobes, program.Tracepoints, program.RawTracepoints)
@@ -153,17 +153,14 @@ func (e *Exporter) passKaddrs(module *libbpfgo.Module, program config.Program) e
 		}
 	}
 
-	mapping, err := module.GetMap("kaddrs")
-	if err != nil {
-		return fmt.Errorf("error getting kaddrs map: %v", err)
-	}
-
-	for i, kaddr := range program.Kaddrs {
-		key := uint64(i)
-		value := uint64(e.kaddrs[kaddr])
-		err = mapping.Update(unsafe.Pointer(&key), unsafe.Pointer(&value))
-		if err != nil {
-			return fmt.Errorf("error setting ksym %q to kaddr %x at index %d: %v", kaddr, value, key, err)
+	for _, kaddr := range program.Kaddrs {
+		if addr, ok := e.kaddrs[kaddr]; !ok {
+			return fmt.Errorf("error finding kaddr for %q", kaddr)
+		} else {
+			name := fmt.Sprintf("kaddr_%s", kaddr)
+			if err := module.InitGlobalVariable(name, uint64(addr)); err != nil {
+				return fmt.Errorf("error setting kaddr value for %q (const volatile %q) to 0x%x: %v", kaddr, name, addr, err)
+			}
 		}
 	}
 

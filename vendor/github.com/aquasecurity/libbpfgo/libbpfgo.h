@@ -86,6 +86,13 @@ struct perf_buffer *init_perf_buf(int map_fd, int page_cnt, uintptr_t ctx) {
   return pb;
 }
 
+void get_init_value(struct bpf_map *map, void *value) {
+    size_t psize;
+    const void *data;
+    data = bpf_map__initial_value(map, &psize);
+    memcpy(value, data, psize);
+}
+
 int bpf_prog_attach_cgroup_legacy(
     int prog_fd,   // eBPF program file descriptor
     int target_fd, // cgroup directory file descriptor
