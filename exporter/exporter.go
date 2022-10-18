@@ -76,7 +76,7 @@ func (e *Exporter) Attach(configPath string) error {
 			return fmt.Errorf("multiple programs with name %q", program.Name)
 		}
 
-		bpfProgPath := filepath.Join(configPath, fmt.Sprintf("%s.libbpfgo.o", program.Name))
+		bpfProgPath := filepath.Join(configPath, fmt.Sprintf("%s.bpf.o", program.Name))
 		module, err := libbpfgo.NewModuleFromFile(bpfProgPath)
 		if err != nil {
 			return fmt.Errorf("error creating module from %q for program %q: %v", bpfProgPath, program.Name, err)
