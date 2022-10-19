@@ -5,66 +5,54 @@ This is a simple eBPF benchmark showing overhead of eBPF probes.
 ## Setup
 
 We're using `getpid()` as a simple syscall to provide a reference. To measure
-overhead of eBPF we measure performance in the following cases:
+the overhead of eBPF probes we measure performance in the following cases:
 
 * No probes attached
 * Simple kprobe incrementing hash map with pid as a key
 * Complex kprobe incrementing hash map with a complex key:
   * PID
-  * Random number obtained as `time_in_ns % 10000`
+  * Random number obtained as `time_in_ns % 1024`
   * Command name up to 32 chars
 
-You can see exact code of probes in `getpid_test.go`.
+You can see exact code of probes in [`probes` directory](probes).
 
 ## Results
 
-On idle Xeon Gold 6262 @ 1.90GHz running vanilla Linux 5.15.40 with
-turbo disabled for stable measurements we see the following numbers:
+The results below are from MacBook Air (M1, 2020) running Linux 6.1-rc1
+in QEMU with ftrace direct call patches applied to enable `fentry`:
+
+* https://patchwork.kernel.org/project/netdevbpf/cover/20220913162732.163631-1-xukuohai@huaweicloud.com/
+
+We see the following results:
 
 ```
-$ make clean run
-BenchmarkGetpidWithNoProbes/getpid         	 1882503	       637.9 ns/op
-BenchmarkGetpidWithSimpleMap/getpid        	 1633400	       749.8 ns/op
-BenchmarkGetpidWithComplexMap/getpid       	 1255801	       955.0 ns/op
+BenchmarkGetpidWithoutAnyProbes/getpid         	10949119	       106.3 ns/op
+BenchmarkGetpidFentryWithSimpleMap/getpid      	 8035327	       149.7 ns/op
+BenchmarkGetpidFentryWithComplexMap/getpid     	 5566742	       214.9 ns/op
+BenchmarkGetpidKprobeWithSimpleMap/getpid      	 4605552	       260.6 ns/op
+BenchmarkGetpidKprobeWithComplexMap/getpid     	 3604656	       330.3 ns/op
 ```
 
-With turbo you can see better numbers:
+| Case            | ns/op | overhead ns/op | overhead percent |
+|:----------------|------:|---------------:|-----------------:|
+| no probe        |   106 |              0 |               0% |
+| fentry simple   |   150 |             44 |              42% |
+| fentry complex  |   215 |            109 |             103% |
+| kprobe simple   |   261 |            155 |             146% |
+| kprobe complex  |   330 |            224 |             211% |
 
-```
-BenchmarkGetpidWithNoProbes/getpid         	 2475504	       484.4 ns/op
-BenchmarkGetpidWithSimpleMap/getpid        	 2145756	       565.6 ns/op
-BenchmarkGetpidWithComplexMap/getpid       	 1706983	       709.9 ns/op
-```
-
-On Ampere Altra Max numbers are better:
-
-```
-BenchmarkGetpidWithNoProbes/getpid         	 3740620	       322.9 ns/op
-BenchmarkGetpidWithSimpleMap/getpid        	 2444229	       488.9 ns/op
-BenchmarkGetpidWithComplexMap/getpid       	 2007832	       597.6 ns/op
-```
-
-| CPU             | Case     | ns/op | overhead ns/op | overhead percent |
-|:----------------|:---------|------:|---------------:|-----------------:|
-| Intel w/o turbo | no probe |   638 |              0 |               0% |
-|                 | simple   |   750 |            112 |              17% |
-|                 | complex  |   955 |            317 |              50% |
-| Intel w/o turbo | no probe |   484 |              0 |               0% |
-|                 | simple   |   567 |             83 |              17% |
-|                 | complex  |   710 |            226 |              47% |
-| Ampere          | no probe |   323 |              0 |               0% |
-|                 | simple   |   489 |            166 |              51% |
-|                 | complex  |   597 |            274 |              85% |
-
-Double digit % slowdown for complex case may sounds like terrible,
+Big slowdown in terms of % for complex case may sounds like terrible,
 but you have to remember that we're using a fast `getpid()` syscall.
 
 The main number to look at above is overhead in nanoseconds, because that's
 what you're going to pay no matter how fast or frequent function you're
-probing is. 200-300ns overhead for the complex case of `getpid` is a lot, but for
-tracing operations like disk access it's nothing compared to baseline.
+probing is. 200-300ns overhead for the complex case of `getpid` is a lot, but
+for tracing operations like disk access it's nothing compared to baseline.
 
 Keep in mind that these numbers are for a single logical CPU core.
+
+Your mileage may vary depending on your hardware, make sure to test
+if you are hyper sensitive to any slowdowns.
 
 ## Estimating cost of existing function calls
 
