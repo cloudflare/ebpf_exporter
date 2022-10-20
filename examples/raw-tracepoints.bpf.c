@@ -1,8 +1,7 @@
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
-
-static u64 zero = 0;
+#include "maps.bpf.h"
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -15,19 +14,10 @@ struct {
 SEC("raw_tp/timer_start")
 int do_count(struct bpf_raw_tracepoint_args *ctx)
 {
-    u64* count;
     struct timer_list *timer = (struct timer_list *) ctx->args[0];
     u64 function = (u64) BPF_CORE_READ(timer, function);
 
-    count = bpf_map_lookup_elem(&timer_starts_total, &function);
-    if (!count) {
-        bpf_map_update_elem(&timer_starts_total, &function, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&timer_starts_total, &function);
-        if (!count) {
-            return 0;
-        }
-    }
-    __sync_fetch_and_add(count, 1);
+    increment_map(&timer_starts_total, &function, 1);
 
     return 0;
 }

@@ -2,6 +2,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include "bits.bpf.h"
+#include "maps.bpf.h"
 
 // Max number of disks we expect to see on the host
 #define MAX_DISKS 255
@@ -19,8 +20,6 @@ struct disk_latency_key_t {
     u8 op;
     u64 slot;
 };
-
-static u64 zero = 0;
 
 extern int LINUX_KERNEL_VERSION __kconfig;
 
@@ -106,9 +105,10 @@ int block_rq_issue(struct bpf_raw_tracepoint_args *ctx)
 SEC("raw_tp/block_rq_complete")
 int block_rq_complete(struct bpf_raw_tracepoint_args *ctx)
 {
-    struct request *rq = (struct request *) ctx->args[0];
+    u64 *tsp, flags, delta_us, latency_slot;
     struct gendisk *disk;
-    u64 *count, *tsp, flags, delta_us, ts = bpf_ktime_get_ns();
+    struct request *rq = (struct request *) ctx->args[0];
+    struct disk_latency_key_t latency_key = {};
 
     tsp = bpf_map_lookup_elem(&start, &rq);
     if (!tsp) {
@@ -116,10 +116,10 @@ int block_rq_complete(struct bpf_raw_tracepoint_args *ctx)
     }
 
     // Delta in microseconds
-    delta_us = (ts - *tsp) / 1000;
+    delta_us = (bpf_ktime_get_ns() - *tsp) / 1000;
 
     // Latency histogram key
-    u64 latency_slot = log2l(delta_us);
+    latency_slot = log2l(delta_us);
 
     // Cap latency bucket at max value
     if (latency_slot > MAX_LATENCY_SLOT) {
@@ -129,34 +129,17 @@ int block_rq_complete(struct bpf_raw_tracepoint_args *ctx)
     disk = get_disk(rq);
     flags = BPF_CORE_READ(rq, cmd_flags);
 
-    struct disk_latency_key_t latency_key = {};
     latency_key.slot = latency_slot;
     latency_key.dev = disk ? MKDEV(BPF_CORE_READ(disk, major), BPF_CORE_READ(disk, first_minor)) : 0;
     latency_key.op = flags & REQ_OP_MASK;
 
-    count = bpf_map_lookup_elem(&bio_latency_seconds, &latency_key);
-    if (!count) {
-        bpf_map_update_elem(&bio_latency_seconds, &latency_key, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&bio_latency_seconds, &latency_key);
-        if (!count) {
-            goto cleanup;
-        }
-    }
-    __sync_fetch_and_add(count, 1);
+    increment_map(&bio_latency_seconds, &latency_key, 1);
 
     latency_key.slot = MAX_LATENCY_SLOT + 1;
-    count = bpf_map_lookup_elem(&bio_latency_seconds, &latency_key);
-    if (!count) {
-        bpf_map_update_elem(&bio_latency_seconds, &latency_key, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&bio_latency_seconds, &latency_key);
-        if (!count) {
-            goto cleanup;
-        }
-    }
-    __sync_fetch_and_add(count, delta_us);
+    increment_map(&bio_latency_seconds, &latency_key, delta_us);
 
-cleanup:
     bpf_map_delete_elem(&start, &rq);
+
     return 0;
 }
 

@@ -162,8 +162,7 @@ And corresponding C code that compiles into an ELF file with eBPF bytecode:
 ```C
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
-
-static u64 zero = 0;
+#include "maps.bpf.h"
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -175,18 +174,9 @@ struct {
 SEC("tracepoint/timer/timer_start")
 int do_count(struct trace_event_raw_timer_start* ctx)
 {
-    u64* count;
     u64 function = (u64) ctx->function;
 
-    count = bpf_map_lookup_elem(&timer_starts_total, &function);
-    if (!count) {
-        bpf_map_update_elem(&timer_starts_total, &function, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&timer_starts_total, &function);
-        if (!count) {
-            return 0;
-        }
-    }
-    __sync_fetch_and_add(count, 1);
+    increment_map(&timer_starts_total, &function, 1);
 
     return 0;
 }

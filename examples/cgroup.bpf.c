@@ -1,8 +1,7 @@
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include "bits.bpf.h"
-
-static u64 zero = 0;
+#include "maps.bpf.h"
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -15,18 +14,9 @@ struct {
 SEC("tracepoint/sched/sched_migrate_task")
 int do_count(struct pt_regs *ctx)
 {
-    u64* count;
     u64 cgroup_id = bpf_get_current_cgroup_id();
 
-    count = bpf_map_lookup_elem(&cgroup_sched_migrations_total, &cgroup_id);
-    if (!count) {
-        bpf_map_update_elem(&cgroup_sched_migrations_total, &cgroup_id, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&cgroup_sched_migrations_total, &cgroup_id);
-        if (!count) {
-            return 0;
-        }
-    }
-    __sync_fetch_and_add(count, 1);
+    increment_map(&cgroup_sched_migrations_total, &cgroup_id, 1);
 
     return 0;
 }
