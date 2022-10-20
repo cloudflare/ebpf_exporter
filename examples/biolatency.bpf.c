@@ -74,7 +74,7 @@ static __always_inline int trace_rq_start(struct request *rq)
 }
 
 SEC("raw_tp/block_rq_insert")
-int rawtracepoint__block_rq_insert(struct bpf_raw_tracepoint_args *ctx)
+int block_rq_insert(struct bpf_raw_tracepoint_args *ctx)
 {
     /**
      * commit a54895fa (v5.11-rc1) changed tracepoint argument list
@@ -89,7 +89,7 @@ int rawtracepoint__block_rq_insert(struct bpf_raw_tracepoint_args *ctx)
 }
 
 SEC("raw_tp/block_rq_issue")
-int rawtracepoint__block_rq_issue(struct bpf_raw_tracepoint_args *ctx)
+int block_rq_issue(struct bpf_raw_tracepoint_args *ctx)
 {
     /**
      * commit a54895fa (v5.11-rc1) changed tracepoint argument list
@@ -104,7 +104,7 @@ int rawtracepoint__block_rq_issue(struct bpf_raw_tracepoint_args *ctx)
 }
 
 SEC("raw_tp/block_rq_complete")
-int rawtracepoint__block_rq_complete(struct bpf_raw_tracepoint_args *ctx)
+int block_rq_complete(struct bpf_raw_tracepoint_args *ctx)
 {
     struct request *rq = (struct request *) ctx->args[0];
     struct gendisk *disk;

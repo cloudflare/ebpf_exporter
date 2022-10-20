@@ -22,7 +22,7 @@ struct {
 } shrink_node_latency SEC(".maps");
 
 SEC("kprobe/shrink_node")
-int kprobe__shrink_node(struct pt_regs *ctx)
+int shrink_node_enter(struct pt_regs *ctx)
 {
     u32 pid = bpf_get_current_pid_tgid();
     u64 ts = bpf_ktime_get_ns();
@@ -31,7 +31,7 @@ int kprobe__shrink_node(struct pt_regs *ctx)
 }
 
 SEC("kretprobe/shrink_node")
-int kretprobe__shrink_node(struct pt_regs *ctx)
+int shrink_node_exit(struct pt_regs *ctx)
 {
     u32 pid = bpf_get_current_pid_tgid();
     u64 *tsp, *count;
