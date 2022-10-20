@@ -150,7 +150,6 @@ programs:
       counters:
         - name: timer_start_total
           help: Timers fired in the kernel
-          map: counts
           labels:
             - name: function
               size: 8
@@ -171,7 +170,7 @@ struct {
     __uint(max_entries, 1024);
     __type(key, u64);
     __type(value, u64);
-} counts SEC(".maps");
+} timer_starts_total SEC(".maps");
 
 SEC("tracepoint/timer/timer_start")
 int do_count(struct trace_event_raw_timer_start* ctx)
@@ -179,10 +178,10 @@ int do_count(struct trace_event_raw_timer_start* ctx)
     u64* count;
     u64 function = (u64) ctx->function;
 
-    count = bpf_map_lookup_elem(&counts, &function);
+    count = bpf_map_lookup_elem(&timer_starts_total, &function);
     if (!count) {
-        bpf_map_update_elem(&counts, &function, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&counts, &function);
+        bpf_map_update_elem(&timer_starts_total, &function, &zero, BPF_NOEXIST);
+        count = bpf_map_lookup_elem(&timer_starts_total, &function);
         if (!count) {
             return 0;
         }
@@ -619,9 +618,8 @@ See [Counters](#counters) section for more details.
 ```
 name: <prometheus counter name>
 help: <prometheus metric help>
-map: <eBPF map name to track>
-perf_map: <name for a BPF_PERF_OUTPUT map> # optional
-perf_map_flush_duration: <how often should we flush metrics from perf_map: time.Duration> # optional
+perf_event_array: <whether map is a BPF_MAP_TYPE_PERF_EVENT_ARRAY map: bool>
+flush_interval: <how often should we flush metrics from the perf_event_array: time.Duration>
 labels:
   [ - label ]
 ```
@@ -635,7 +633,6 @@ See [Histograms](#histograms) section for more details.
 ```
 name: <prometheus histogram name>
 help: <prometheus metric help>
-map: <eBPF map name to track>
 bucket_type: <map bucket type: exp2 or linear>
 bucket_multiplier: <map bucket multiplier: float64>
 bucket_min: <min bucket value: int>

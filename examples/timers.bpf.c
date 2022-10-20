@@ -8,7 +8,7 @@ struct {
     __uint(max_entries, 1024);
     __type(key, u64);
     __type(value, u64);
-} counts SEC(".maps");
+} timer_starts_total SEC(".maps");
 
 SEC("tracepoint/timer/timer_start")
 int do_count(struct trace_event_raw_timer_start* ctx)
@@ -16,10 +16,10 @@ int do_count(struct trace_event_raw_timer_start* ctx)
     u64* count;
     u64 function = (u64) ctx->function;
 
-    count = bpf_map_lookup_elem(&counts, &function);
+    count = bpf_map_lookup_elem(&timer_starts_total, &function);
     if (!count) {
-        bpf_map_update_elem(&counts, &function, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&counts, &function);
+        bpf_map_update_elem(&timer_starts_total, &function, &zero, BPF_NOEXIST);
+        count = bpf_map_lookup_elem(&timer_starts_total, &function);
         if (!count) {
             return 0;
         }

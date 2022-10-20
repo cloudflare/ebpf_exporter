@@ -10,7 +10,7 @@ struct {
     __uint(max_entries, 1);
     __type(key, u32);
     __type(value, u64);
-} current SEC(".maps");
+} bpf_jit_pages_currently_allocated SEC(".maps");
 
 // Sometimes bpf_jit_charge_modmem / bpf_jit_uncharge_modmem get elided,
 // so we're tracing the outer entrypoint here instead. It's common to see
@@ -25,7 +25,7 @@ int trace_change(struct pt_regs *ctx)
     }
 
     bpf_probe_read_kernel(&current_value, sizeof(current_value), (const void*) kaddr_bpf_jit_current);
-    bpf_map_update_elem(&current, &zero, &current_value, BPF_ANY);
+    bpf_map_update_elem(&bpf_jit_pages_currently_allocated, &zero, &current_value, BPF_ANY);
 
     return 0;
 }

@@ -11,14 +11,14 @@ struct {
     __uint(max_entries, MAX_CPUS);
     __type(key, u32);
     __type(value, u64);
-} references SEC(".maps");
+} llc_references_total SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, MAX_CPUS);
     __type(key, u32);
     __type(value, u64);
-} misses SEC(".maps");
+} llc_misses_total SEC(".maps");
 
 static int trace_event(void *map, u32 cpu, u64 sample_period)
 {
@@ -40,13 +40,13 @@ static int trace_event(void *map, u32 cpu, u64 sample_period)
 SEC("perf_event")
 int on_cache_miss(struct bpf_perf_event_data *ctx)
 {
-    return trace_event(&misses, bpf_get_smp_processor_id(), ctx->sample_period);
+    return trace_event(&llc_misses_total, bpf_get_smp_processor_id(), ctx->sample_period);
 }
 
 SEC("perf_event")
 int on_cache_reference(struct bpf_perf_event_data *ctx)
 {
-    return trace_event(&references, bpf_get_smp_processor_id(), ctx->sample_period);
+    return trace_event(&llc_references_total, bpf_get_smp_processor_id(), ctx->sample_period);
 }
 
 char LICENSE[] SEC("license") = "GPL";
