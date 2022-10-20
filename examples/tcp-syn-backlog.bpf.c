@@ -2,11 +2,10 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
+#include "maps.bpf.h"
 
 #define BUCKET_MULTIPLIER 50
 #define BUCKET_COUNT 20
-
-static u64 zero = 0;
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -17,30 +16,11 @@ struct {
 
 static int do_count(u64 backlog)
 {
-    u64 *count, bucket = backlog / BUCKET_MULTIPLIER;
+    u64 bucket = backlog / BUCKET_MULTIPLIER;
 
-    count = bpf_map_lookup_elem(&tcp_syn_backlog, &bucket);
-    if (!count) {
-        bpf_map_update_elem(&tcp_syn_backlog, &bucket, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&tcp_syn_backlog, &bucket);
-        if (!count) {
-            goto cleanup;
-        }
-    }
-    __sync_fetch_and_add(count, 1);
+    increment_map(&tcp_syn_backlog, &bucket, 1);
+    increment_map(&tcp_syn_backlog, &bucket, backlog);
 
-    bucket = BUCKET_COUNT + 1;
-    count = bpf_map_lookup_elem(&tcp_syn_backlog, &bucket);
-    if (!count) {
-        bpf_map_update_elem(&tcp_syn_backlog, &bucket, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&tcp_syn_backlog, &bucket);
-        if (!count) {
-            goto cleanup;
-        }
-    }
-    __sync_fetch_and_add(count, backlog);
-
-cleanup:
     return 0;
 }
 

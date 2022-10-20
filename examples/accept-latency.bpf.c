@@ -3,6 +3,7 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
 #include "bits.bpf.h"
+#include "maps.bpf.h"
 
 // 27 buckets for latency, max range is 33.6s .. 67.1s
 #define MAX_LATENCY_SLOT 26
@@ -14,8 +15,6 @@ struct socket_latency_key_t {
     u16 port;
     u64 slot;
 };
-
-static u64 zero = 0;
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -42,9 +41,10 @@ int BPF_KPROBE(kprobe__inet_csk_reqsk_queue_hash_add, struct sock *sk, struct re
 SEC("kprobe/inet_csk_accept")
 int BPF_KPROBE(kprobe__inet_csk_accept, struct sock *sk)
 {
-    u64 *tsp, *count, delta_us;
+    u64 *tsp, delta_us, latency_slot;
     struct inet_connection_sock *icsk = (struct inet_connection_sock *) sk;
     struct request_sock *req = BPF_CORE_READ(icsk, icsk_accept_queue).rskq_accept_head;
+    struct socket_latency_key_t latency_key = {};
 
     tsp = bpf_map_lookup_elem(&start, &req);
     if (!tsp) {
@@ -54,39 +54,20 @@ int BPF_KPROBE(kprobe__inet_csk_accept, struct sock *sk)
     delta_us = (bpf_ktime_get_ns() - *tsp) / 1000;
 
     // Latency histogram key
-    u64 latency_slot = log2l(delta_us);
+    latency_slot = log2l(delta_us);
 
     // Cap latency bucket at max value
     if (latency_slot > MAX_LATENCY_SLOT) {
         latency_slot = MAX_LATENCY_SLOT;
     }
 
-    struct socket_latency_key_t latency_key = {};
     latency_key.port = BPF_CORE_READ(sk, __sk_common).skc_num;
     latency_key.slot = latency_slot;
-
-    count = bpf_map_lookup_elem(&accept_latency_seconds, &latency_key);
-    if (!count) {
-        bpf_map_update_elem(&accept_latency_seconds, &latency_key, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&accept_latency_seconds, &latency_key);
-        if (!count) {
-            goto cleanup;
-        }
-    }
-    __sync_fetch_and_add(count, 1);
+    increment_map(&accept_latency_seconds, &latency_key, 1);
 
     latency_key.slot = MAX_LATENCY_SLOT + 1;
-    count = bpf_map_lookup_elem(&accept_latency_seconds, &latency_key);
-    if (!count) {
-        bpf_map_update_elem(&accept_latency_seconds, &latency_key, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&accept_latency_seconds, &latency_key);
-        if (!count) {
-            goto cleanup;
-        }
-    }
-    __sync_fetch_and_add(count, delta_us);
+    increment_map(&accept_latency_seconds, &latency_key, delta_us);
 
-cleanup:
     bpf_map_delete_elem(&start, &req);
 
     return 0;
