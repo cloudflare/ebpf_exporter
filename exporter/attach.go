@@ -12,78 +12,33 @@ import (
 
 const progTagPrefix = "prog_tag:\t"
 
-// mergeTags runs attacher and merges produced tags
-func mergedTags(dst map[string]string, src map[string]string) {
-	for name, tag := range src {
-		dst[name] = tag
-	}
-}
-
-// attach attaches functions to tracing points in provided module
-func attach(module *libbpfgo.Module, kprobes, kretprobes, tracepoints, rawTracepoints map[string]string) (map[string]string, error) {
+func attachModule(module *libbpfgo.Module) (map[string]string, error) {
 	tags := map[string]string{}
 
-	probes, err := attachSomething(module, kprobes, "kprobe")
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach kprobes: %s", err)
-	}
-	mergedTags(tags, probes)
-
-	probes, err = attachSomething(module, kretprobes, "kretprobe")
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach kretprobes: %s", err)
-	}
-	mergedTags(tags, probes)
-
-	probes, err = attachSomething(module, tracepoints, "tracepoint")
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach tracepoints: %s", err)
-	}
-	mergedTags(tags, probes)
-
-	probes, err = attachSomething(module, rawTracepoints, "raw_tracepoint")
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach raw tracepoints: %s", err)
-	}
-	mergedTags(tags, probes)
-
-	return tags, nil
-}
-
-// attachSomething attaches some kind of probes and returns program tags
-func attachSomething(module *libbpfgo.Module, probes map[string]string, key string) (map[string]string, error) {
-	tags := map[string]string{}
-
-	for probe, progName := range probes {
-		prog, err := module.GetProgram(progName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load program %q: %v", progName, err)
+	iter := module.Iterator()
+	for {
+		prog := iter.NextProgram()
+		if prog == nil {
+			break
 		}
+
+		// We attach perf events separately
+		if prog.GetType() == libbpfgo.BPFProgTypePerfEvent {
+			continue
+		}
+
+		name := prog.Name()
 
 		tag, err := extractTag(prog)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get program tag for for program %q: %v", progName, err)
+			return nil, fmt.Errorf("failed to get program tag for for program %q: %v", name, err)
 		}
 
-		tags[progName] = tag
+		tags[name] = tag
 
-		switch key {
-		case "kprobe":
-			_, err = prog.AttachKprobe(probe)
-		case "kretprobe":
-			_, err = prog.AttachKretprobe(probe)
-		case "tracepoint":
-			parts := strings.Split(probe, ":")
-			if len(parts) != 2 {
-				return nil, fmt.Errorf("tracepoint must be in 'category:name' format")
-			}
-			_, err = prog.AttachTracepoint(parts[0], parts[1])
-		case "raw_tracepoint":
-			_, err = prog.AttachRawTracepoint(probe)
-		}
-
+		_, err = prog.AttachGeneric()
 		if err != nil {
-			return nil, fmt.Errorf("failed to attach probe %q to program %q: %v", progName, probe, err)
+			return nil, fmt.Errorf("failed to attach program %q: %v", name, err)
 		}
 	}
 

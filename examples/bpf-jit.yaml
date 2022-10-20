@@ -15,10 +15,5 @@ programs:
                 - name: static_map
                   static_map:
                     0: ""
-    kprobes:
-      # Sometimes bpf_jit_charge_modmem / bpf_jit_uncharge_modmem get elided,
-      # so we're tracing the outer entrypoints instead.
-      # It's common to see calls to bpf_jit_binary_free not being traced too.
-      bpf_jit_binary_alloc: trace_change
     kaddrs:
       - bpf_jit_current

@@ -29,7 +29,3 @@ programs:
               size: 8
               decoders:
                 - name: uint
-    raw_tracepoints:
-      block_rq_issue: rawtracepoint__block_rq_issue
-      block_rq_complete: rawtracepoint__block_rq_complete
-      block_rq_insert: rawtracepoint__block_rq_insert

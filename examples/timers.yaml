@@ -10,5 +10,3 @@ programs:
               size: 8
               decoders:
                 - name: ksym
-    tracepoints:
-      timer:timer_start: do_count

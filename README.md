@@ -156,8 +156,6 @@ programs:
               size: 8
               decoders:
                 - name: ksym
-    tracepoints:
-      timer:timer_start: do_count
 ```
 
 And corresponding C code that compiles into an ELF file with eBPF bytecode:
@@ -580,18 +578,6 @@ See [Programs](#programs) section for more details.
 name: <program name>
 # Metrics attached to the program
 [ metrics: metrics ]
-# Kprobes (kernel functions) and their targets (eBPF functions)
-kprobes:
-  [ kprobename: target ... ]
-# Kretprobes (kernel functions) and their targets (eBPF functions)
-kretprobes:
-  [ kprobename: target ... ]
-# Tracepoints (category:name, i.e. timer:timer_start) and their targets (eBPF functions)
-tracepoints:
-  [ tracepoint: target ... ]
-# Raw tracepoints (name, i.e. timer_start) and their targets (eBPF functions)
-raw_tracepoints:
-  [ tracepoint: target ... ]
 # Perf events configuration
 perf_events:
   [ - perf_event ]
