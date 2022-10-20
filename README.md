@@ -456,7 +456,7 @@ could be used after `string` decode, like the following example:
 - name: qname
   decoders:
     - name: string
-	- name: dname
+    - name: dname
 ```
 
 #### `inet_ip`
