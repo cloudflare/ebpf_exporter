@@ -314,6 +314,24 @@ func (e *Exporter) mapValues(module *libbpfgo.Module, name string, labels []conf
 		keySize += label.Size
 	}
 
+	// If there are no labels, then just use key uint32(0)
+	if len(labels) == 0 {
+		key := []byte{0x0, 0x0, 0x0, 0x0}
+
+		value, err := mapValue(m, unsafe.Pointer(&key[0]))
+		if err != nil {
+			return nil, err
+		}
+
+		return []metricValue{
+			{
+				raw:    key,
+				labels: []string{},
+				value:  value,
+			},
+		}, nil
+	}
+
 	iter := m.Iterator()
 
 	for iter.Next() {
@@ -333,13 +351,10 @@ func (e *Exporter) mapValues(module *libbpfgo.Module, name string, labels []conf
 			return nil, err
 		}
 
-		v, err := m.GetValue(unsafe.Pointer(&key[0]))
+		mv.value, err = mapValue(m, unsafe.Pointer(&key[0]))
 		if err != nil {
 			return nil, err
 		}
-
-		// Assuming counter's value type is always u64
-		mv.value = float64(util.GetHostByteOrder().Uint64(v))
 
 		values = append(values, mv)
 	}
@@ -421,6 +436,16 @@ func (e *Exporter) MapsHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err = w.Write(buf); err != nil {
 		log.Printf("Error returning map contents to client %q: %s", r.RemoteAddr, err)
 	}
+}
+
+func mapValue(m *libbpfgo.BPFMap, key unsafe.Pointer) (float64, error) {
+	v, err := m.GetValue(key)
+	if err != nil {
+		return 0.0, err
+	}
+
+	// Assuming counter's value type is always u64
+	return float64(util.GetHostByteOrder().Uint64(v)), nil
 }
 
 // metricValue is a row in a kernel map
