@@ -25,15 +25,15 @@ const prometheusNamespace = "ebpf_exporter"
 
 // Exporter is a ebpf_exporter instance implementing prometheus.Collector
 type Exporter struct {
-	config              config.Config
-	modules             map[string]*libbpfgo.Module
-	perfMapCollectors   []*PerfMapSink
-	kaddrs              map[string]uint64
-	enabledProgramsDesc *prometheus.Desc
-	programInfoDesc     *prometheus.Desc
-	programTags         map[string]map[string]string
-	descs               map[string]map[string]*prometheus.Desc
-	decoders            *decoder.Set
+	config                   config.Config
+	modules                  map[string]*libbpfgo.Module
+	perfEventArrayCollectors []*PerfEventArraySink
+	kaddrs                   map[string]uint64
+	enabledProgramsDesc      *prometheus.Desc
+	programInfoDesc          *prometheus.Desc
+	programTags              map[string]map[string]string
+	descs                    map[string]map[string]*prometheus.Desc
+	decoders                 *decoder.Set
 }
 
 // New creates a new exporter with the provided config
@@ -220,9 +220,9 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 		}
 
 		for _, counter := range program.Metrics.Counters {
-			if len(counter.PerfMap) != 0 {
-				perfSink := NewPerfMapSink(e.decoders, e.modules[program.Name], counter)
-				e.perfMapCollectors = append(e.perfMapCollectors, perfSink)
+			if counter.PerfEventArray {
+				perfSink := NewPerfEventArraySink(e.decoders, e.modules[program.Name], counter)
+				e.perfEventArrayCollectors = append(e.perfEventArrayCollectors, perfSink)
 			}
 
 			addDescs(program.Name, counter.Name, counter.Help, counter.Labels)
@@ -246,8 +246,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
-	for _, perfMapCollector := range e.perfMapCollectors {
-		perfMapCollector.Collect(ch)
+	for _, perfEventArrayCollector := range e.perfEventArrayCollectors {
+		perfEventArrayCollector.Collect(ch)
 	}
 
 	e.collectCounters(ch)
@@ -258,13 +258,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 	for _, program := range e.config.Programs {
 		for _, counter := range program.Metrics.Counters {
-			if len(counter.PerfMap) != 0 {
+			if counter.PerfEventArray {
 				continue
 			}
 
-			mapValues, err := e.mapValues(e.modules[program.Name], counter.Map, counter.Labels)
+			mapValues, err := e.mapValues(e.modules[program.Name], counter.Name, counter.Labels)
 			if err != nil {
-				log.Printf("Error getting map %q values for metric %q of program %q: %s", counter.Map, counter.Name, program.Name, err)
+				log.Printf("Error getting map %q values for metric %q of program %q: %s", counter.Name, counter.Name, program.Name, err)
 				continue
 			}
 
@@ -285,9 +285,9 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 
 			histograms := map[string]histogramWithLabels{}
 
-			mapValues, err := e.mapValues(e.modules[program.Name], histogram.Map, histogram.Labels)
+			mapValues, err := e.mapValues(e.modules[program.Name], histogram.Name, histogram.Labels)
 			if err != nil {
-				log.Printf("Error getting map %q values for metric %q of program %q: %s", histogram.Map, histogram.Name, program.Name, err)
+				log.Printf("Error getting map %q values for metric %q of program %q: %s", histogram.Name, histogram.Name, program.Name, err)
 				continue
 			}
 
@@ -314,7 +314,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 
 				leUint, err := strconv.ParseUint(metricValue.labels[len(metricValue.labels)-1], 0, 64)
 				if err != nil {
-					log.Printf("Error parsing float value for bucket %#v in map %q of program %q: %s", metricValue.labels, histogram.Map, program.Name, err)
+					log.Printf("Error parsing float value for bucket %#v in map %q of program %q: %s", metricValue.labels, histogram.Name, program.Name, err)
 					skip = true
 					break
 				}
@@ -404,14 +404,14 @@ func (e Exporter) exportMaps() (map[string]map[string][]metricValue, error) {
 		metricMaps := map[string][]config.Label{}
 
 		for _, counter := range program.Metrics.Counters {
-			if counter.Map != "" {
-				metricMaps[counter.Map] = counter.Labels
+			if counter.Name != "" {
+				metricMaps[counter.Name] = counter.Labels
 			}
 		}
 
 		for _, histogram := range program.Metrics.Histograms {
-			if histogram.Map != "" {
-				metricMaps[histogram.Map] = histogram.Labels
+			if histogram.Name != "" {
+				metricMaps[histogram.Name] = histogram.Labels
 			}
 		}
 

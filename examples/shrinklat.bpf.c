@@ -19,7 +19,7 @@ struct {
     __uint(max_entries, MAX_LATENCY_SLOT + 1);
     __type(key, u32);
     __type(value, u64);
-} shrink_node_latency SEC(".maps");
+} shrink_node_latency_seconds SEC(".maps");
 
 SEC("kprobe/shrink_node")
 int kprobe__shrink_node(struct pt_regs *ctx)
@@ -49,10 +49,10 @@ int kretprobe__shrink_node(struct pt_regs *ctx)
         latency_slot = MAX_LATENCY_SLOT;
     }
 
-    count = bpf_map_lookup_elem(&shrink_node_latency, &latency_slot);
+    count = bpf_map_lookup_elem(&shrink_node_latency_seconds, &latency_slot);
     if (!count) {
-        bpf_map_update_elem(&shrink_node_latency, &latency_slot, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&shrink_node_latency, &latency_slot);
+        bpf_map_update_elem(&shrink_node_latency_seconds, &latency_slot, &zero, BPF_NOEXIST);
+        count = bpf_map_lookup_elem(&shrink_node_latency_seconds, &latency_slot);
         if (!count) {
             goto cleanup;
         }
@@ -60,10 +60,10 @@ int kretprobe__shrink_node(struct pt_regs *ctx)
     __sync_fetch_and_add(count, 1);
 
     latency_slot = MAX_LATENCY_SLOT + 1;
-    count = bpf_map_lookup_elem(&shrink_node_latency, &latency_slot);
+    count = bpf_map_lookup_elem(&shrink_node_latency_seconds, &latency_slot);
     if (!count) {
-        bpf_map_update_elem(&shrink_node_latency, &latency_slot, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&shrink_node_latency, &latency_slot);
+        bpf_map_update_elem(&shrink_node_latency_seconds, &latency_slot, &zero, BPF_NOEXIST);
+        count = bpf_map_lookup_elem(&shrink_node_latency_seconds, &latency_slot);
         if (!count) {
             goto cleanup;
         }

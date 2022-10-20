@@ -2,9 +2,8 @@ programs:
   - name: raw-tracepoints
     metrics:
       counters:
-        - name: timer_start_total
+        - name: timer_starts_total
           help: Timers fired in the kernel
-          map: counts
           labels:
             - name: function
               size: 8

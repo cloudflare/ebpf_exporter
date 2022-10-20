@@ -4,7 +4,6 @@ programs:
       histograms:
         - name: accept_latency_seconds
           help: Latency histogram for how long sockets sit in accept queue
-          map: accept_latency
           bucket_type: exp2
           bucket_min: 0
           bucket_max: 26

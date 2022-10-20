@@ -29,7 +29,7 @@ struct {
     __uint(max_entries, (MAX_LATENCY_SLOT + 1) * MAX_PORTS);
     __type(key, struct socket_latency_key_t);
     __type(value, u64);
-} accept_latency SEC(".maps");
+} accept_latency_seconds SEC(".maps");
 
 SEC("kprobe/inet_csk_reqsk_queue_hash_add")
 int BPF_KPROBE(kprobe__inet_csk_reqsk_queue_hash_add, struct sock *sk, struct request_sock *req)
@@ -65,10 +65,10 @@ int BPF_KPROBE(kprobe__inet_csk_accept, struct sock *sk)
     latency_key.port = BPF_CORE_READ(sk, __sk_common).skc_num;
     latency_key.slot = latency_slot;
 
-    count = bpf_map_lookup_elem(&accept_latency, &latency_key);
+    count = bpf_map_lookup_elem(&accept_latency_seconds, &latency_key);
     if (!count) {
-        bpf_map_update_elem(&accept_latency, &latency_key, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&accept_latency, &latency_key);
+        bpf_map_update_elem(&accept_latency_seconds, &latency_key, &zero, BPF_NOEXIST);
+        count = bpf_map_lookup_elem(&accept_latency_seconds, &latency_key);
         if (!count) {
             goto cleanup;
         }
@@ -76,11 +76,10 @@ int BPF_KPROBE(kprobe__inet_csk_accept, struct sock *sk)
     __sync_fetch_and_add(count, 1);
 
     latency_key.slot = MAX_LATENCY_SLOT + 1;
-
-    count = bpf_map_lookup_elem(&accept_latency, &latency_key);
+    count = bpf_map_lookup_elem(&accept_latency_seconds, &latency_key);
     if (!count) {
-        bpf_map_update_elem(&accept_latency, &latency_key, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&accept_latency, &latency_key);
+        bpf_map_update_elem(&accept_latency_seconds, &latency_key, &zero, BPF_NOEXIST);
+        count = bpf_map_lookup_elem(&accept_latency_seconds, &latency_key);
         if (!count) {
             goto cleanup;
         }

@@ -36,7 +36,7 @@ struct {
     __uint(max_entries, (MAX_LATENCY_SLOT + 1) * MAX_DISKS);
     __type(key, struct disk_latency_key_t);
     __type(value, u64);
-} io_latency SEC(".maps");
+} bio_latency_seconds SEC(".maps");
 
 /**
  * commit d152c682f03c ("block: add an explicit ->disk backpointer to the
@@ -134,10 +134,10 @@ int rawtracepoint__block_rq_complete(struct bpf_raw_tracepoint_args *ctx)
     latency_key.dev = disk ? MKDEV(BPF_CORE_READ(disk, major), BPF_CORE_READ(disk, first_minor)) : 0;
     latency_key.op = flags & REQ_OP_MASK;
 
-    count = bpf_map_lookup_elem(&io_latency, &latency_key);
+    count = bpf_map_lookup_elem(&bio_latency_seconds, &latency_key);
     if (!count) {
-        bpf_map_update_elem(&io_latency, &latency_key, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&io_latency, &latency_key);
+        bpf_map_update_elem(&bio_latency_seconds, &latency_key, &zero, BPF_NOEXIST);
+        count = bpf_map_lookup_elem(&bio_latency_seconds, &latency_key);
         if (!count) {
             goto cleanup;
         }
@@ -145,10 +145,10 @@ int rawtracepoint__block_rq_complete(struct bpf_raw_tracepoint_args *ctx)
     __sync_fetch_and_add(count, 1);
 
     latency_key.slot = MAX_LATENCY_SLOT + 1;
-    count = bpf_map_lookup_elem(&io_latency, &latency_key);
+    count = bpf_map_lookup_elem(&bio_latency_seconds, &latency_key);
     if (!count) {
-        bpf_map_update_elem(&io_latency, &latency_key, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&io_latency, &latency_key);
+        bpf_map_update_elem(&bio_latency_seconds, &latency_key, &zero, BPF_NOEXIST);
+        count = bpf_map_lookup_elem(&bio_latency_seconds, &latency_key);
         if (!count) {
             goto cleanup;
         }

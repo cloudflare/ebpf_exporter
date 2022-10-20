@@ -13,16 +13,16 @@ struct {
     __uint(max_entries, BUCKET_COUNT + 2);
     __type(key, u64);
     __type(value, u64);
-} buckets SEC(".maps");
+} tcp_syn_backlog SEC(".maps");
 
 static int do_count(u64 backlog)
 {
     u64 *count, bucket = backlog / BUCKET_MULTIPLIER;
 
-    count = bpf_map_lookup_elem(&buckets, &bucket);
+    count = bpf_map_lookup_elem(&tcp_syn_backlog, &bucket);
     if (!count) {
-        bpf_map_update_elem(&buckets, &bucket, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&buckets, &bucket);
+        bpf_map_update_elem(&tcp_syn_backlog, &bucket, &zero, BPF_NOEXIST);
+        count = bpf_map_lookup_elem(&tcp_syn_backlog, &bucket);
         if (!count) {
             goto cleanup;
         }
@@ -30,11 +30,10 @@ static int do_count(u64 backlog)
     __sync_fetch_and_add(count, 1);
 
     bucket = BUCKET_COUNT + 1;
-
-    count = bpf_map_lookup_elem(&buckets, &bucket);
+    count = bpf_map_lookup_elem(&tcp_syn_backlog, &bucket);
     if (!count) {
-        bpf_map_update_elem(&buckets, &bucket, &zero, BPF_NOEXIST);
-        count = bpf_map_lookup_elem(&buckets, &bucket);
+        bpf_map_update_elem(&tcp_syn_backlog, &bucket, &zero, BPF_NOEXIST);
+        count = bpf_map_lookup_elem(&tcp_syn_backlog, &bucket);
         if (!count) {
             goto cleanup;
         }

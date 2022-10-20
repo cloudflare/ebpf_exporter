@@ -42,19 +42,17 @@ type Metrics struct {
 
 // Counter is a metric defining prometheus counter
 type Counter struct {
-	Name                 string        `yaml:"name"`
-	Help                 string        `yaml:"help"`
-	Map                  string        `yaml:"map"`
-	PerfMap              string        `yaml:"perf_map"`
-	PerfMapFlushDuration time.Duration `yaml:"perf_map_flush_duration"`
-	Labels               []Label       `yaml:"labels"`
+	Name           string        `yaml:"name"`
+	Help           string        `yaml:"help"`
+	PerfEventArray bool          `yaml:"perf_event_array"`
+	FlushInterval  time.Duration `yaml:"flush_interval"`
+	Labels         []Label       `yaml:"labels"`
 }
 
 // Histogram is a metric defining prometheus histogram
 type Histogram struct {
 	Name             string              `yaml:"name"`
 	Help             string              `yaml:"help"`
-	Map              string              `yaml:"map"`
 	BucketType       HistogramBucketType `yaml:"bucket_type"`
 	BucketMultiplier float64             `yaml:"bucket_multiplier"`
 	BucketMin        int                 `yaml:"bucket_min"`
@@ -98,14 +96,22 @@ func ValidateConfig(c *Config) error {
 
 	for _, program := range c.Programs {
 		for _, counter := range program.Metrics.Counters {
-			if counter.Map == "" && counter.PerfMap == "" {
-				return fmt.Errorf("counter %q in program %q lacks map definition", counter.Name, program.Name)
+			if counter.Name == "" {
+				return fmt.Errorf("counter %q in program %q lacks name", counter.Name, program.Name)
+			}
+
+			if counter.Help == "" {
+				return fmt.Errorf("counter %q in program %q lacks help", counter.Name, program.Name)
 			}
 		}
 
 		for _, histogram := range program.Metrics.Histograms {
-			if histogram.Map == "" {
-				return fmt.Errorf("histogram %q in program %q lacks map definition", histogram.Name, program.Name)
+			if histogram.Name == "" {
+				return fmt.Errorf("histogram %q in program %q lacks name", histogram.Name, program.Name)
+			}
+
+			if histogram.Help == "" {
+				return fmt.Errorf("histogram %q in program %q lacks help", histogram.Name, program.Name)
 			}
 		}
 
