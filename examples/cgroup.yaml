@@ -12,5 +12,3 @@ programs:
               decoders:
                 - name: uint
                 - name: cgroup
-    tracepoints:
-      sched:sched_migrate_task: do_count

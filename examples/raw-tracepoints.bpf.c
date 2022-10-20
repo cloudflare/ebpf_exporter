@@ -12,7 +12,7 @@ struct {
 } counts SEC(".maps");
 
 
-SEC("raw_tracepoint/timer_start")
+SEC("raw_tp/timer_start")
 int do_count(struct bpf_raw_tracepoint_args *ctx)
 {
     u64* count;

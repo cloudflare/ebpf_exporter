@@ -8,83 +8,105 @@ import (
 	"strings"
 
 	"github.com/aquasecurity/libbpfgo"
+	"github.com/cloudflare/ebpf_exporter/config"
+	"github.com/elastic/go-perf"
+	"github.com/iovisor/gobpf/pkg/cpuonline"
 )
 
 const progTagPrefix = "prog_tag:\t"
 
-// mergeTags runs attacher and merges produced tags
-func mergedTags(dst map[string]string, src map[string]string) {
-	for name, tag := range src {
-		dst[name] = tag
-	}
-}
-
-// attach attaches functions to tracing points in provided module
-func attach(module *libbpfgo.Module, kprobes, kretprobes, tracepoints, rawTracepoints map[string]string) (map[string]string, error) {
+func attachModule(module *libbpfgo.Module, program config.Program) (map[string]string, error) {
 	tags := map[string]string{}
 
-	probes, err := attachSomething(module, kprobes, "kprobe")
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach kprobes: %s", err)
-	}
-	mergedTags(tags, probes)
+	iter := module.Iterator()
+	for {
+		prog := iter.NextProgram()
+		if prog == nil {
+			break
+		}
 
-	probes, err = attachSomething(module, kretprobes, "kretprobe")
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach kretprobes: %s", err)
-	}
-	mergedTags(tags, probes)
+		// We attach perf events separately
+		if prog.GetType() == libbpfgo.BPFProgTypePerfEvent {
+			continue
+		}
 
-	probes, err = attachSomething(module, tracepoints, "tracepoint")
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach tracepoints: %s", err)
-	}
-	mergedTags(tags, probes)
+		name := prog.Name()
 
-	probes, err = attachSomething(module, rawTracepoints, "raw_tracepoint")
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach raw tracepoints: %s", err)
+		tag, err := extractTag(prog)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get program tag for for program %q: %v", name, err)
+		}
+
+		tags[name] = tag
+
+		_, err = prog.AttachGeneric()
+		if err != nil {
+			return nil, fmt.Errorf("failed to attach program %q: %v", name, err)
+		}
 	}
-	mergedTags(tags, probes)
+
+	perfEventProgramTags, err := attachPerfEvents(module, program)
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach perf event tags: %v", err)
+	}
+
+	for key, value := range perfEventProgramTags {
+		tags[key] = value
+	}
 
 	return tags, nil
 }
 
-// attachSomething attaches some kind of probes and returns program tags
-func attachSomething(module *libbpfgo.Module, probes map[string]string, key string) (map[string]string, error) {
+func attachPerfEvents(module *libbpfgo.Module, program config.Program) (map[string]string, error) {
 	tags := map[string]string{}
 
-	for probe, progName := range probes {
-		prog, err := module.GetProgram(progName)
+	for _, perfEventConfig := range program.PerfEvents {
+		prog, err := module.GetProgram(perfEventConfig.Target)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load program %q: %v", progName, err)
+			return nil, fmt.Errorf("failed to load target %q in program %q: %s", perfEventConfig.Target, program.Name, err)
+		}
+
+		fa := &perf.Attr{
+			Type:   perf.EventType(perfEventConfig.Type),
+			Config: perfEventConfig.Name,
+		}
+
+		if perfEventConfig.SampleFrequency != 0 {
+			fa.SetSampleFreq(perfEventConfig.SampleFrequency)
+		} else {
+			fa.SetSamplePeriod(perfEventConfig.SamplePeriod)
+		}
+
+		cpus, err := cpuonline.Get()
+		if err != nil {
+			return nil, fmt.Errorf("failed to determine online cpus: %v", err)
+		}
+
+		name := prog.Name()
+
+		for _, cpu := range cpus {
+			event, err := perf.Open(fa, perf.AllThreads, int(cpu), nil)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open perf_event: %v", err)
+			}
+
+			fd, err := event.FD()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get perf_event fd: %v", err)
+			}
+
+			_, err = prog.AttachPerfEvent(fd)
+			if err != nil {
+				return nil, fmt.Errorf("failed to attach perf event %d:%d to %q in program %q on cpu %d: %s", perfEventConfig.Type, perfEventConfig.Name, perfEventConfig.Target, name, cpu, err)
+			}
 		}
 
 		tag, err := extractTag(prog)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get program tag for for program %q: %v", progName, err)
+			return nil, fmt.Errorf("failed to get program tag for for program %q: %v", name, err)
 		}
 
-		tags[progName] = tag
-
-		switch key {
-		case "kprobe":
-			_, err = prog.AttachKprobe(probe)
-		case "kretprobe":
-			_, err = prog.AttachKretprobe(probe)
-		case "tracepoint":
-			parts := strings.Split(probe, ":")
-			if len(parts) != 2 {
-				return nil, fmt.Errorf("tracepoint must be in 'category:name' format")
-			}
-			_, err = prog.AttachTracepoint(parts[0], parts[1])
-		case "raw_tracepoint":
-			_, err = prog.AttachRawTracepoint(probe)
-		}
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to attach probe %q to program %q: %v", progName, probe, err)
-		}
+		tags[name] = tag
 	}
 
 	return tags, nil

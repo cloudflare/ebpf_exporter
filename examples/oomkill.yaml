@@ -18,5 +18,3 @@ programs:
               size: 1
               decoders:
                 - name: uint
-    kprobes:
-      oom_kill_process: kprobe__oom_kill_process

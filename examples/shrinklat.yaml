@@ -16,7 +16,3 @@ programs:
               size: 4
               decoders:
                 - name: uint
-    kprobes:
-      shrink_node: kprobe__shrink_node
-    kretprobes:
-      shrink_node: kretprobe__shrink_node

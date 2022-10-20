@@ -12,6 +12,9 @@ struct {
     __type(value, u64);
 } current SEC(".maps");
 
+// Sometimes bpf_jit_charge_modmem / bpf_jit_uncharge_modmem get elided,
+// so we're tracing the outer entrypoint here instead. It's common to see
+// calls to bpf_jit_binary_free not being traced too, so we skip that.
 SEC("kprobe/bpf_jit_binary_alloc")
 int trace_change(struct pt_regs *ctx)
 {

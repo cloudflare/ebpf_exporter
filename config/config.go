@@ -13,16 +13,10 @@ type Config struct {
 
 // Program is an eBPF program with optional metrics attached to it
 type Program struct {
-	Name           string            `yaml:"name"`
-	Metrics        Metrics           `yaml:"metrics"`
-	Kprobes        map[string]string `yaml:"kprobes"`
-	Kretprobes     map[string]string `yaml:"kretprobes"`
-	Tracepoints    map[string]string `yaml:"tracepoints"`
-	RawTracepoints map[string]string `yaml:"raw_tracepoints"`
-	PerfEvents     []PerfEvent       `yaml:"perf_events"`
-	Code           string            `yaml:"code"`
-	Cflags         []string          `yaml:"cflags"`
-	Kaddrs         []string          `yaml:"kaddrs"`
+	Name       string      `yaml:"name"`
+	Metrics    Metrics     `yaml:"metrics"`
+	PerfEvents []PerfEvent `yaml:"perf_events"`
+	Kaddrs     []string    `yaml:"kaddrs"`
 }
 
 // PerfEvent describes perf_event to attach to
@@ -107,10 +101,6 @@ func ValidateConfig(c *Config) error {
 			if histogram.Map == "" {
 				return fmt.Errorf("histogram %q in program %q lacks map definition", histogram.Name, program.Name)
 			}
-		}
-
-		if len(program.Kprobes)+len(program.Kretprobes)+len(program.Tracepoints)+len(program.RawTracepoints)+len(program.PerfEvents) == 0 {
-			return fmt.Errorf("program (%s) has no probes, tracepoints, or perf events", program.Name)
 		}
 	}
 

@@ -18,6 +18,3 @@ programs:
               size: 8
               decoders:
                 - name: uint
-    kprobes:
-      inet_csk_reqsk_queue_hash_add: kprobe__inet_csk_reqsk_queue_hash_add
-      inet_csk_accept: kprobe__inet_csk_accept

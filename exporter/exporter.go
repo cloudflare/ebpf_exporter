@@ -15,8 +15,7 @@ import (
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/decoder"
 	"github.com/cloudflare/ebpf_exporter/util"
-	"github.com/elastic/go-perf"
-	"github.com/iovisor/gobpf/pkg/cpuonline"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -94,52 +93,12 @@ func (e *Exporter) Attach(configPath string) error {
 			return fmt.Errorf("error loading bpf object from %q for program %q: %v", bpfProgPath, program.Name, err)
 		}
 
-		tags, err := attach(module, program.Kprobes, program.Kretprobes, program.Tracepoints, program.RawTracepoints)
+		tags, err := attachModule(module, program)
 		if err != nil {
 			return fmt.Errorf("failed to attach to program %q: %s", program.Name, err)
 		}
 
 		e.programTags[program.Name] = tags
-
-		for _, perfEventConfig := range program.PerfEvents {
-			target, err := module.GetProgram(perfEventConfig.Target)
-			if err != nil {
-				return fmt.Errorf("failed to load target %q in program %q: %s", perfEventConfig.Target, program.Name, err)
-			}
-
-			fa := &perf.Attr{
-				Type:   perf.EventType(perfEventConfig.Type),
-				Config: perfEventConfig.Name,
-			}
-
-			if perfEventConfig.SampleFrequency != 0 {
-				fa.SetSampleFreq(perfEventConfig.SampleFrequency)
-			} else {
-				fa.SetSamplePeriod(perfEventConfig.SamplePeriod)
-			}
-
-			cpus, err := cpuonline.Get()
-			if err != nil {
-				return fmt.Errorf("failed to determine online cpus: %v", err)
-			}
-
-			for _, cpu := range cpus {
-				event, err := perf.Open(fa, perf.AllThreads, int(cpu), nil)
-				if err != nil {
-					return fmt.Errorf("failed to open perf_event: %v", err)
-				}
-
-				fd, err := event.FD()
-				if err != nil {
-					return fmt.Errorf("failed to get perf_event fd: %v", err)
-				}
-
-				_, err = target.AttachPerfEvent(fd)
-				if err != nil {
-					return fmt.Errorf("failed to attach perf event %d:%d to %q in program %q on cpu %d: %s", perfEventConfig.Type, perfEventConfig.Name, perfEventConfig.Target, program.Name, cpu, err)
-				}
-			}
-		}
 		e.modules[program.Name] = module
 	}
 
