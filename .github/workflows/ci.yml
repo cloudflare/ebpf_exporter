@@ -22,10 +22,10 @@ jobs:
 
       - name: Build libbpf and ebpf_exporter
         run: |
-          docker buildx build --progress plain --tag ebpf-exporter-build .
-          id=$(docker create ebpf-exporter-build)
-          docker cp $id:/usr/sbin/ebpf_exporter ebpf_exporter.x86_64
-          docker cp $id:/build/libbpf.tar.gz    libbpf.x86_64.tar.gz
+          docker buildx build --progress plain --tag ebpf_exporter:builder --target builder .
+          id=$(docker create ebpf_exporter:builder)
+          docker cp $id:/build/ebpf_exporter/ebpf_exporter  ebpf_exporter.x86_64
+          docker cp $id:/build/libbpf.tar.gz                libbpf.x86_64.tar.gz
 
       - name: Upload libbpf.tar.gz
         uses: actions/upload-artifact@v2
@@ -56,10 +56,10 @@ jobs:
 
       - name: Build ebpf_exporter
         run: |
-          docker buildx build --progress plain --tag ebpf-exporter-build --platform linux/arm64 .
-          id=$(docker create ebpf-exporter-build)
-          docker cp $id:/usr/sbin/ebpf_exporter ebpf_exporter.aarch64
-          docker cp $id:/build/libbpf.tar.gz    libbpf.aarch64.tar.gz
+          docker buildx build --progress plain --tag ebpf_exporter:builder --target builder --platform linux/arm64 .
+          id=$(docker create ebpf_exporter:builder)
+          docker cp $id:/build/ebpf_exporter/ebpf_exporter  ebpf_exporter.aarch64
+          docker cp $id:/build/libbpf.tar.gz                libbpf.aarch64.tar.gz
 
       - name: Upload libbpf.tar.gz
         uses: actions/upload-artifact@v2

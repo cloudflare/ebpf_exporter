@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:22.04 as builder
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl git ca-certificates build-essential libelf-dev gnupg2
@@ -19,6 +19,10 @@ COPY ./ /build/ebpf_exporter
 
 RUN cd /build/ebpf_exporter && \
     PATH="/usr/lib/go-1.19/bin:$PATH" make build && \
-    mv /build/ebpf_exporter/ebpf_exporter /usr/sbin/ebpf_exporter
+    /build/ebpf_exporter/ebpf_exporter --version
 
-RUN /usr/sbin/ebpf_exporter --version
+FROM scratch as ebpf_exporter
+
+COPY --from=builder /build/ebpf_exporter/ebpf_exporter /ebpf_exporter
+
+ENTRYPOINT ["/ebpf_exporter"]
