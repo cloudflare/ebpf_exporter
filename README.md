@@ -74,6 +74,40 @@ sudo ./ebpf_exporter --config.file examples/biolatency.yaml
 
 If you pass `--debug`, you can see raw maps at `/maps` endpoint.
 
+### Docker image
+
+A docker image can be built from this repo. It is not yet published.
+
+To build the image, run the following:
+
+```
+docker build --tag ebpf_exporter .
+```
+
+To run it with the examples, you need to build them first (see above).
+Then you can run by running a privileged container and bind-mounting:
+
+* `$(pwd)/examples:/examples:ro` to allow access to examples
+* `/sys/kernel/debug:/sys/kernel/debug:ro` to allow finding tracepoints
+* `/sys/fs/cgroup:/sys/fs/cgroup:ro` to allow resolving cgroups
+
+You might have to bind-mount additional directories depending on your needs.
+You might also not need to bind-mount anything for simple kprobe examples.
+
+The actual command to run the docker container (from the repo directory):
+
+```
+docker run --rm -it --privileged -p 9435:9435 \
+  -v $(pwd)/examples:/examples \
+  -v /sys/kernel/debug:/sys/kernel/debug:ro \
+  -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+  ebpf_exporter --config.file=examples/timers.yaml
+```
+
+For production use you would either bind-mount your own config and compiled
+bpf programs corresponding to it, or build your own image based on ours
+with your own config baked in.
+
 ## Benchmarking overhead
 
 See [benchmark](benchmark) directory to get an idea of how low ebpf overhead is.
