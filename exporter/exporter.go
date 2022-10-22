@@ -15,7 +15,6 @@ import (
 	"github.com/cloudflare/ebpf_exporter/config"
 	"github.com/cloudflare/ebpf_exporter/decoder"
 	"github.com/cloudflare/ebpf_exporter/util"
-
 	"github.com/prometheus/client_golang/prometheus"
 )
 

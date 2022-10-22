@@ -10,8 +10,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/yaml.v2"
 )
 
 func main() {
