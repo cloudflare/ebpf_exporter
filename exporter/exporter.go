@@ -70,6 +70,11 @@ func New(cfg config.Config) (*Exporter, error) {
 
 // Attach injects eBPF into kernel and attaches necessary kprobes
 func (e *Exporter) Attach(configPath string) error {
+	err := registerHandlers()
+	if err != nil {
+		return fmt.Errorf("error registering libbpf handlers: %v", err)
+	}
+
 	for _, program := range e.config.Programs {
 		if _, ok := e.modules[program.Name]; ok {
 			return fmt.Errorf("multiple programs with name %q", program.Name)

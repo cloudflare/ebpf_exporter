@@ -19,12 +19,3 @@ programs:
               size: 4
               decoders:
                 - name: uint
-    perf_events:
-      - type: 0x0 # HARDWARE
-        name: 0x3 # PERF_COUNT_HW_CACHE_MISSES
-        target: on_cache_miss
-        sample_frequency: 99
-      - type: 0x0 # HARDWARE
-        name: 0x2 # PERF_COUNT_HW_CACHE_REFERENCES
-        target: on_cache_reference
-        sample_frequency: 99

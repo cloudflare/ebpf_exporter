@@ -601,28 +601,10 @@ See [Programs](#programs) section for more details.
 name: <program name>
 # Metrics attached to the program
 [ metrics: metrics ]
-# Perf events configuration
-perf_events:
-  [ - perf_event ]
 # Kernel symbol addresses to define as kaddr_{symbol} from /proc/kallsyms (consider CONFIG_KALLSYMS_ALL)
 kaddrs:
   [ - symbol_to_resolve ]
 ```
-
-#### `perf_event`
-
-See [llcstat](examples/llcstat.yaml) as an example.
-
-```
-- type: [ perf event type code ]
-  name: [ perf event name code ]
-  target: [ target eBPF function ]
-  sample_period: [ sample period ]
-  sample_frequency: [ sample frequency ]
-```
-
-It's preferred to use `sample_frequency` to let kernel pick the sample period
-automatically, otherwise you may end up with invalid metrics on overflow.
 
 #### `metrics`
 
