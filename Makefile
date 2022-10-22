@@ -1,5 +1,4 @@
 export CGO_LDFLAGS := -l bpf
-export GOFLAGS := -mod=vendor
 
 .PHONY: lint
 lint:
