@@ -106,6 +106,8 @@ func (e *Exporter) Attach(configPath string) error {
 		e.modules[program.Name] = module
 	}
 
+	postAttachMark()
+
 	return nil
 }
 
