@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -13,8 +14,8 @@ import (
 
 const progTagPrefix = "prog_tag:\t"
 
-func attachModule(module *libbpfgo.Module, program config.Program) (map[string]string, error) {
-	tags := map[string]string{}
+func attachModule(module *libbpfgo.Module, program config.Program) ([]progAttachment, error) {
+	attachments := []progAttachment{}
 
 	iter := module.Iterator()
 	for {
@@ -30,15 +31,22 @@ func attachModule(module *libbpfgo.Module, program config.Program) (map[string]s
 			return nil, fmt.Errorf("failed to get program tag for for program %q: %v", name, err)
 		}
 
-		tags[name] = tag
+		attachment := progAttachment{
+			name: name,
+			tag:  tag,
+		}
 
 		_, err = prog.AttachGeneric()
 		if err != nil {
-			return nil, fmt.Errorf("failed to attach program %q: %v", name, err)
+			log.Printf("Failed to attach program %q for %q: %v", name, program.Name, err)
+		} else {
+			attachment.attached = true
 		}
+
+		attachments = append(attachments, attachment)
 	}
 
-	return tags, nil
+	return attachments, nil
 }
 
 func extractTag(prog *libbpfgo.BPFProg) (string, error) {
@@ -65,4 +73,10 @@ func extractTag(prog *libbpfgo.BPFProg) (string, error) {
 	}
 
 	return "", errors.New("cannot find program tag")
+}
+
+type progAttachment struct {
+	name     string
+	tag      string
+	attached bool
 }

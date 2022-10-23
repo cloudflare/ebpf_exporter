@@ -691,6 +691,8 @@ ebpf_exporter_ebpf_programs{function="xfs_fs_nr_cached_objects_end",program="xfs
 ebpf_exporter_ebpf_programs{function="xfs_fs_nr_cached_objects_start",program="xfs_reclaim",tag="cf30348184f983dd"} 1
 ```
 
+If any program failed to attach, it will have a metric value of zero.
+
 Here `tag` can be used for tracing and performance analysis with two conditions:
 
 * `net.core.bpf_jit_kallsyms=1` sysctl is set

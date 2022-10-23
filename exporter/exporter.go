@@ -29,7 +29,7 @@ type Exporter struct {
 	kaddrs                   map[string]uint64
 	enabledProgramsDesc      *prometheus.Desc
 	programInfoDesc          *prometheus.Desc
-	programTags              map[string]map[string]string
+	attachments              map[string][]progAttachment
 	descs                    map[string]map[string]*prometheus.Desc
 	decoders                 *decoder.Set
 }
@@ -61,7 +61,7 @@ func New(cfg config.Config) (*Exporter, error) {
 		kaddrs:              map[string]uint64{},
 		enabledProgramsDesc: enabledProgramsDesc,
 		programInfoDesc:     programInfoDesc,
-		programTags:         map[string]map[string]string{},
+		attachments:         map[string][]progAttachment{},
 		descs:               map[string]map[string]*prometheus.Desc{},
 		decoders:            decoder.NewSet(),
 	}, nil
@@ -97,12 +97,12 @@ func (e *Exporter) Attach(configPath string) error {
 			return fmt.Errorf("error loading bpf object from %q for program %q: %v", bpfProgPath, program.Name, err)
 		}
 
-		tags, err := attachModule(module, program)
+		attachments, err := attachModule(module, program)
 		if err != nil {
 			return fmt.Errorf("failed to attach to program %q: %s", program.Name, err)
 		}
 
-		e.programTags[program.Name] = tags
+		e.attachments[program.Name] = attachments
 		e.modules[program.Name] = module
 	}
 
@@ -205,9 +205,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(e.enabledProgramsDesc, prometheus.GaugeValue, 1, program.Name)
 	}
 
-	for program, tags := range e.programTags {
-		for function, tag := range tags {
-			ch <- prometheus.MustNewConstMetric(e.programInfoDesc, prometheus.GaugeValue, 1, program, function, tag)
+	for program, attachments := range e.attachments {
+		for _, attachment := range attachments {
+			value := 0.0
+			if attachment.attached {
+				value = 1.0
+			}
+			ch <- prometheus.MustNewConstMetric(e.programInfoDesc, prometheus.GaugeValue, value, program, attachment.name, attachment.tag)
 		}
 	}
 
