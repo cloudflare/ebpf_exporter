@@ -1,0 +1,15 @@
+programs:
+  # See:
+  # * https://github.com/iovisor/bcc/blob/master/tools/cachestat.py
+  # * https://github.com/iovisor/bcc/blob/master/tools/cachestat_example.txt
+  - name: cachestat
+    metrics:
+      counters:
+        - name: page_cache_ops_total
+          help: Page cache operation counters by type
+          table: counts
+          labels:
+            - name: op
+              size: 8
+              decoders:
+                - name: ksym
