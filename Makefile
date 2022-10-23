@@ -1,3 +1,18 @@
+BUILD_VAR_PREFIX := github.com/prometheus/common/version
+BUILD_VERSION := $(shell git describe)
+BUILD_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+BUILD_REVISION := $(shell git rev-parse --short HEAD)
+BUILD_USER := $(shell id -u -n)@$(shell hostname)
+BUILD_DATE := $(shell date --iso-8601=seconds)
+
+GO_LDFLAGS_VARS := -X $(BUILD_VAR_PREFIX).Version=$(BUILD_VERSION) \
+	-X $(BUILD_VAR_PREFIX).Branch=$(BUILD_BRANCH) \
+	-X $(BUILD_VAR_PREFIX).Revision=$(BUILD_REVISION) \
+	-X $(BUILD_VAR_PREFIX).BuildUser=$(BUILD_USER) \
+	-X $(BUILD_VAR_PREFIX).BuildDate=$(BUILD_DATE)
+
+GO_LDFLAGS := -ldflags="-extldflags "-static" $(GO_LDFLAGS_VARS)"
+
 export CGO_LDFLAGS := -l bpf
 
 .PHONY: lint
@@ -11,11 +26,4 @@ test:
 
 .PHONY: build
 build:
-	go build -o ebpf_exporter -v -ldflags=" \
-		-extldflags "-static" \
-		-X github.com/prometheus/common/version.Version=$(shell git describe) \
-		-X github.com/prometheus/common/version.Branch=$(shell git rev-parse --abbrev-ref HEAD) \
-		-X github.com/prometheus/common/version.Revision=$(shell git rev-parse --short HEAD) \
-		-X github.com/prometheus/common/version.BuildUser=docker@$(shell hostname) \
-		-X github.com/prometheus/common/version.BuildDate=$(shell date --iso-8601=seconds) \
-		" ./cmd/ebpf_exporter
+	go build -o ebpf_exporter -v $(GO_LDFLAGS) ./cmd/ebpf_exporter
