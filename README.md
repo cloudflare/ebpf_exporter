@@ -502,10 +502,9 @@ that kernel operates on into human readable form like `1.1.1.1`.
 
 KSym decoder takes kernel address and converts that to the function name.
 
-In your eBPF program you can use `PT_REGS_IP(ctx)` to get the address
-of the kprobe you attached to as a `u64` variable. Note that sometimes
-you can observe `PT_REGS_IP` being off by one. You can subtract 1 in your code
-to make it point to the right instruction that can be found `/proc/kallsyms`.
+In your eBPF program you can use `PT_REGS_IP_CORE(ctx)` to get the address
+of the function you attached to as a `u64` variable. Note that for kprobes
+you need to wrap it with `KPROBE_REGS_IP_FIX()` from `regs-ip.bpf.h`.
 
 #### `majorminor`
 
