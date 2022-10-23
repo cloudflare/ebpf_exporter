@@ -57,7 +57,7 @@ If you're having trouble building on the host, you can try building in Docker:
 
 ```
 docker build -t ebpf_exporter .
-docker cp $(docker create ebpf_exporter):/usr/sbin/ebpf_exporter ebpf_exporter
+docker cp $(docker create ebpf_exporter):/ebpf_exporter ./
 ```
 
 To build examples (see [building examples section](#building-examples)):
