@@ -250,8 +250,16 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			}
 
 			ch <- prometheus.MustNewConstMetric(e.programAttachedDesc, prometheus.GaugeValue, attachedValue, id)
-			ch <- prometheus.MustNewConstMetric(e.programRunTimeDesc, prometheus.CounterValue, info.runTime.Seconds(), id)
-			ch <- prometheus.MustNewConstMetric(e.programRunCountDesc, prometheus.CounterValue, float64(info.runCount), id)
+
+			statsEnabled, err := bpfStatsEnabled()
+			if err != nil {
+				log.Printf("Error checking whether bpf stats are enabled: %v", err)
+			} else {
+				if statsEnabled {
+					ch <- prometheus.MustNewConstMetric(e.programRunTimeDesc, prometheus.CounterValue, info.runTime.Seconds(), id)
+					ch <- prometheus.MustNewConstMetric(e.programRunCountDesc, prometheus.CounterValue, float64(info.runCount), id)
+				}
+			}
 		}
 	}
 

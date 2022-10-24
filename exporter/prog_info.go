@@ -11,6 +11,8 @@ import (
 	"github.com/aquasecurity/libbpfgo"
 )
 
+const bpfStatsFile = "/proc/sys/kernel/bpf_stats_enabled"
+
 type progInfo struct {
 	id       int
 	tag      string
@@ -62,4 +64,27 @@ func extractProgInfo(prog *libbpfgo.BPFProg) (progInfo, error) {
 	}
 
 	return info, nil
+}
+
+func bpfStatsEnabled() (bool, error) {
+	f, err := os.Open(bpfStatsFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("error opening %q: %v", bpfStatsFile, err)
+	}
+
+	defer f.Close()
+
+	buf := make([]byte, 1)
+
+	_, err = f.Read(buf)
+	if err != nil {
+		return false, fmt.Errorf("error reading %q: %v", bpfStatsFile, err)
+	}
+
+	// 0x31 is '1' in ascii
+	return buf[0] == 0x31, nil
 }
