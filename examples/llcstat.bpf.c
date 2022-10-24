@@ -26,13 +26,13 @@ static int trace_event(void *map, u32 cpu, u64 sample_period)
 	return 0;
 }
 
-SEC("perf_event/type=0,config=3,frequency=99")
+SEC("perf_event/type=0,config=3,frequency=1")
 int on_cache_miss(struct bpf_perf_event_data *ctx)
 {
     return trace_event(&llc_misses_total, bpf_get_smp_processor_id(), ctx->sample_period);
 }
 
-SEC("perf_event/type=0,config=2,frequency=99")
+SEC("perf_event/type=0,config=2,frequency=1")
 int on_cache_reference(struct bpf_perf_event_data *ctx)
 {
     return trace_event(&llc_references_total, bpf_get_smp_processor_id(), ctx->sample_period);
