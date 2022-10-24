@@ -29,7 +29,10 @@ type Exporter struct {
 	kaddrs                   map[string]uint64
 	enabledProgramsDesc      *prometheus.Desc
 	programInfoDesc          *prometheus.Desc
-	attachments              map[string][]progAttachment
+	programAttachedDesc      *prometheus.Desc
+	programRunTimeDesc       *prometheus.Desc
+	programRunCountDesc      *prometheus.Desc
+	attachedProgs            map[string]map[*libbpfgo.BPFProg]bool
 	descs                    map[string]map[string]*prometheus.Desc
 	decoders                 *decoder.Set
 }
@@ -49,9 +52,30 @@ func New(cfg config.Config) (*Exporter, error) {
 	)
 
 	programInfoDesc := prometheus.NewDesc(
-		prometheus.BuildFQName(prometheusNamespace, "", "ebpf_programs"),
+		prometheus.BuildFQName(prometheusNamespace, "", "ebpf_program_info"),
 		"Info about ebpf programs",
-		[]string{"program", "function", "tag"},
+		[]string{"program", "function", "tag", "id"},
+		nil,
+	)
+
+	programAttachedDesc := prometheus.NewDesc(
+		prometheus.BuildFQName(prometheusNamespace, "", "ebpf_program_attached"),
+		"Whether a program is attached",
+		[]string{"id"},
+		nil,
+	)
+
+	programRunTimeDesc := prometheus.NewDesc(
+		prometheus.BuildFQName(prometheusNamespace, "", "ebpf_program_run_time_seconds"),
+		"How long has the program been executing",
+		[]string{"id"},
+		nil,
+	)
+
+	programRunCountDesc := prometheus.NewDesc(
+		prometheus.BuildFQName(prometheusNamespace, "", "ebpf_program_run_count_total"),
+		"How many times has the program been executed",
+		[]string{"id"},
 		nil,
 	)
 
@@ -61,7 +85,10 @@ func New(cfg config.Config) (*Exporter, error) {
 		kaddrs:              map[string]uint64{},
 		enabledProgramsDesc: enabledProgramsDesc,
 		programInfoDesc:     programInfoDesc,
-		attachments:         map[string][]progAttachment{},
+		programAttachedDesc: programAttachedDesc,
+		programRunTimeDesc:  programRunTimeDesc,
+		programRunCountDesc: programRunCountDesc,
+		attachedProgs:       map[string]map[*libbpfgo.BPFProg]bool{},
 		descs:               map[string]map[string]*prometheus.Desc{},
 		decoders:            decoder.NewSet(),
 	}, nil
@@ -102,7 +129,7 @@ func (e *Exporter) Attach(configPath string) error {
 			return fmt.Errorf("failed to attach to program %q: %s", program.Name, err)
 		}
 
-		e.attachments[program.Name] = attachments
+		e.attachedProgs[program.Name] = attachments
 		e.modules[program.Name] = module
 	}
 
@@ -178,6 +205,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 	ch <- e.enabledProgramsDesc
 	ch <- e.programInfoDesc
+	ch <- e.programAttachedDesc
 
 	for _, program := range e.config.Programs {
 		if _, ok := e.descs[program.Name]; !ok {
@@ -205,13 +233,25 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(e.enabledProgramsDesc, prometheus.GaugeValue, 1, program.Name)
 	}
 
-	for program, attachments := range e.attachments {
-		for _, attachment := range attachments {
-			value := 0.0
-			if attachment.attached {
-				value = 1.0
+	for program, attachments := range e.attachedProgs {
+		for prog, attached := range attachments {
+			info, err := extractProgInfo(prog)
+			if err != nil {
+				log.Printf("Error extracting prog info for %q in %q: %v", prog.Name(), program, err)
 			}
-			ch <- prometheus.MustNewConstMetric(e.programInfoDesc, prometheus.GaugeValue, value, program, attachment.name, attachment.tag)
+
+			id := strconv.Itoa(info.id)
+
+			ch <- prometheus.MustNewConstMetric(e.programInfoDesc, prometheus.GaugeValue, 1, program, prog.Name(), info.tag, id)
+
+			attachedValue := 0.0
+			if attached {
+				attachedValue = 1.0
+			}
+
+			ch <- prometheus.MustNewConstMetric(e.programAttachedDesc, prometheus.GaugeValue, attachedValue, id)
+			ch <- prometheus.MustNewConstMetric(e.programRunTimeDesc, prometheus.CounterValue, info.runTime.Seconds(), id)
+			ch <- prometheus.MustNewConstMetric(e.programRunCountDesc, prometheus.CounterValue, float64(info.runCount), id)
 		}
 	}
 

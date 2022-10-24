@@ -678,20 +678,18 @@ This gauge reports a timeseries for every loaded logical program:
 ebpf_exporter_enabled_programs{name="xfs_reclaim"} 1
 ```
 
-### `ebpf_exporter_ebpf_programs`
+### `ebpf_exporter_ebpf_program_info`
 
 This gauge reports information available for every ebpf program:
 
 ```
 # HELP ebpf_exporter_ebpf_programs Info about ebpf programs
 # TYPE ebpf_exporter_ebpf_programs gauge
-ebpf_exporter_ebpf_programs{function="xfs_fs_free_cached_objects_end",program="xfs_reclaim",tag="d5e845dc27b372e4"} 1
-ebpf_exporter_ebpf_programs{function="xfs_fs_free_cached_objects_start",program="xfs_reclaim",tag="c2439d02dd0ba000"} 1
-ebpf_exporter_ebpf_programs{function="xfs_fs_nr_cached_objects_end",program="xfs_reclaim",tag="598375893f34ef39"} 1
-ebpf_exporter_ebpf_programs{function="xfs_fs_nr_cached_objects_start",program="xfs_reclaim",tag="cf30348184f983dd"} 1
+ebpf_exporter_ebpf_program_info{function="add_to_page_cache_lru",id="247",program="cachestat",tag="6c007da3187b5b32"} 1
+ebpf_exporter_ebpf_program_info{function="folio_account_dirtied",id="249",program="cachestat",tag="6c007da3187b5b32"} 1
+ebpf_exporter_ebpf_program_info{function="mark_buffer_dirty",id="250",program="cachestat",tag="6c007da3187b5b32"} 1
+ebpf_exporter_ebpf_program_info{function="mark_page_accessed",id="248",program="cachestat",tag="6c007da3187b5b32"} 1
 ```
-
-If any program failed to attach, it will have a metric value of zero.
 
 Here `tag` can be used for tracing and performance analysis with two conditions:
 
@@ -702,6 +700,58 @@ Newer kernels allow `--kallsyms` to `perf top` as well,
 in the future it may not be required at all:
 
 * https://www.spinics.net/lists/linux-perf-users/msg07216.html
+
+### `ebpf_exporter_ebpf_program_attached`
+
+This gauge reports whether individual programs were successfully attached.
+
+```
+# HELP ebpf_exporter_ebpf_program_attached Whether a program is attached
+# TYPE ebpf_exporter_ebpf_program_attached gauge
+ebpf_exporter_ebpf_program_attached{id="247"} 1
+ebpf_exporter_ebpf_program_attached{id="248"} 1
+ebpf_exporter_ebpf_program_attached{id="249"} 0
+ebpf_exporter_ebpf_program_attached{id="250"} 1
+```
+
+It needs to be joined by `id` label with `ebpf_exporter_ebpf_program_info`
+to get more information about the program.
+
+### `ebpf_exporter_ebpf_program_run_time_seconds`
+
+This counter reports how much time individual programs spent running.
+
+```
+# HELP ebpf_exporter_ebpf_program_run_time_seconds How long has the program been executing
+# TYPE ebpf_exporter_ebpf_program_run_time_seconds counter
+ebpf_exporter_ebpf_program_run_time_seconds{id="247"} 0
+ebpf_exporter_ebpf_program_run_time_seconds{id="248"} 0.001252621
+ebpf_exporter_ebpf_program_run_time_seconds{id="249"} 0
+ebpf_exporter_ebpf_program_run_time_seconds{id="250"} 3.6668e-05
+```
+
+It requires `kernel.bpf_stats_enabled` sysctl to be enabled.
+
+It needs to be joined by `id` label with `ebpf_exporter_ebpf_program_info`
+to get more information about the program.
+
+### `ebpf_exporter_ebpf_program_run_count_total`
+
+This counter reports how many times individual programs ran.
+
+```
+# HELP ebpf_exporter_ebpf_program_run_count_total How many times has the program been executed
+# TYPE ebpf_exporter_ebpf_program_run_count_total counter
+ebpf_exporter_ebpf_program_run_count_total{id="247"} 0
+ebpf_exporter_ebpf_program_run_count_total{id="248"} 11336
+ebpf_exporter_ebpf_program_run_count_total{id="249"} 0
+ebpf_exporter_ebpf_program_run_count_total{id="250"} 69
+```
+
+It requires `kernel.bpf_stats_enabled` sysctl to be enabled.
+
+It needs to be joined by `id` label with `ebpf_exporter_ebpf_program_info`
+to get more information about the program.
 
 ## License
 
