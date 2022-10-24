@@ -1,20 +1,14 @@
 package exporter
 
 import (
-	"bufio"
-	"errors"
-	"fmt"
-	"os"
-	"strings"
+	"log"
 
 	"github.com/aquasecurity/libbpfgo"
 	"github.com/cloudflare/ebpf_exporter/config"
 )
 
-const progTagPrefix = "prog_tag:\t"
-
-func attachModule(module *libbpfgo.Module, program config.Program) (map[string]string, error) {
-	tags := map[string]string{}
+func attachModule(module *libbpfgo.Module, program config.Program) (map[*libbpfgo.BPFProg]bool, error) {
+	attached := map[*libbpfgo.BPFProg]bool{}
 
 	iter := module.Iterator()
 	for {
@@ -23,46 +17,14 @@ func attachModule(module *libbpfgo.Module, program config.Program) (map[string]s
 			break
 		}
 
-		name := prog.Name()
-
-		tag, err := extractTag(prog)
+		_, err := prog.AttachGeneric()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get program tag for for program %q: %v", name, err)
-		}
-
-		tags[name] = tag
-
-		_, err = prog.AttachGeneric()
-		if err != nil {
-			return nil, fmt.Errorf("failed to attach program %q: %v", name, err)
+			log.Printf("Failed to attach program %q for %q: %v", prog.Name(), program.Name, err)
+			attached[prog] = false
+		} else {
+			attached[prog] = true
 		}
 	}
 
-	return tags, nil
-}
-
-func extractTag(prog *libbpfgo.BPFProg) (string, error) {
-	name := fmt.Sprintf("/proc/self/fdinfo/%d", prog.FileDescriptor())
-
-	file, err := os.Open(name)
-	if err != nil {
-		return "", fmt.Errorf("can't open %s: %v", name, err)
-	}
-
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, progTagPrefix) {
-			return strings.TrimPrefix(line, progTagPrefix), nil
-		}
-	}
-
-	if err = scanner.Err(); err != nil {
-		return "", fmt.Errorf("error scanning: %v", err)
-	}
-
-	return "", errors.New("cannot find program tag")
+	return attached, nil
 }
