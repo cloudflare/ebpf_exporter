@@ -1,13 +1,10 @@
-programs:
-  # Count sched:sched_migrate_task events by cgroup
-  - name: cgroup
-    metrics:
-      counters:
-        - name: cgroup_sched_migrations_total
-          help: Number of sched:sched_migrate_task events per cgroup
-          labels:
+metrics:
+  counters:
+    - name: cgroup_sched_migrations_total
+      help: Number of sched:sched_migrate_task events per cgroup
+      labels:
+        - name: cgroup
+          size: 8
+          decoders:
+            - name: uint
             - name: cgroup
-              size: 8
-              decoders:
-                - name: uint
-                - name: cgroup

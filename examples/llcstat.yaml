@@ -1,21 +1,16 @@
-programs:
-  # See:
-  # * https://github.com/iovisor/bcc/blob/master/tools/llcstat.py
-  # * https://github.com/iovisor/bcc/blob/master/tools/llcstat_example.txt
-  - name: llcstat
-    metrics:
-      counters:
-        - name: llc_references_total
-          help: Last level cache operations by type
-          labels:
-            - name: cpu
-              size: 4
-              decoders:
-                - name: uint
-        - name: llc_misses_total
-          help: Last level cache operations by type
-          labels:
-            - name: cpu
-              size: 4
-              decoders:
-                - name: uint
+metrics:
+  counters:
+    - name: llc_references_total
+      help: Last level cache operations by type
+      labels:
+        - name: cpu
+          size: 4
+          decoders:
+            - name: uint
+    - name: llc_misses_total
+      help: Last level cache operations by type
+      labels:
+        - name: cpu
+          size: 4
+          decoders:
+            - name: uint

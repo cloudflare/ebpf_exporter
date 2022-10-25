@@ -7,7 +7,7 @@ import (
 	"github.com/cloudflare/ebpf_exporter/config"
 )
 
-func attachModule(module *libbpfgo.Module, program config.Program) (map[*libbpfgo.BPFProg]bool, error) {
+func attachModule(module *libbpfgo.Module, cfg config.Config) (map[*libbpfgo.BPFProg]bool, error) {
 	attached := map[*libbpfgo.BPFProg]bool{}
 
 	iter := module.Iterator()
@@ -19,7 +19,7 @@ func attachModule(module *libbpfgo.Module, program config.Program) (map[*libbpfg
 
 		_, err := prog.AttachGeneric()
 		if err != nil {
-			log.Printf("Failed to attach program %q for %q: %v", prog.Name(), program.Name, err)
+			log.Printf("Failed to attach program %q for config %q: %v", prog.Name(), cfg.Name, err)
 			attached[prog] = false
 		} else {
 			attached[prog] = true

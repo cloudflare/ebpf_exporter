@@ -1,22 +1,21 @@
 package config
 
 import (
-	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
-// Config defines exporter configuration
+// Config describes how to configure and extract metrics
 type Config struct {
-	Programs []Program `yaml:"programs"`
-}
-
-// Program is an eBPF program with optional metrics attached to it
-type Program struct {
 	Name       string      `yaml:"name"`
 	Metrics    Metrics     `yaml:"metrics"`
 	PerfEvents []PerfEvent `yaml:"perf_events"`
 	Kaddrs     []string    `yaml:"kaddrs"`
+	BPFPath    string
 }
 
 // PerfEvent describes perf_event to attach to
@@ -83,30 +82,59 @@ const (
 	HistogramBucketFixed = "fixed"
 )
 
-func ValidateConfig(c *Config) error {
-	if len(c.Programs) == 0 {
-		return errors.New("no programs specified")
-	}
+func ParseConfigs(dir string, names []string) ([]Config, error) {
+	configs := make([]Config, len(names))
 
-	for _, program := range c.Programs {
-		for _, counter := range program.Metrics.Counters {
-			if counter.Name == "" {
-				return fmt.Errorf("counter %q in program %q lacks name", counter.Name, program.Name)
-			}
+	for i, name := range names {
+		path := filepath.Join(dir, fmt.Sprintf("%s.yaml", name))
 
-			if counter.Help == "" {
-				return fmt.Errorf("counter %q in program %q lacks help", counter.Name, program.Name)
-			}
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, fmt.Errorf("error opening %q for config %q: %v", path, name, err)
 		}
 
-		for _, histogram := range program.Metrics.Histograms {
-			if histogram.Name == "" {
-				return fmt.Errorf("histogram %q in program %q lacks name", histogram.Name, program.Name)
-			}
+		defer f.Close()
 
-			if histogram.Help == "" {
-				return fmt.Errorf("histogram %q in program %q lacks help", histogram.Name, program.Name)
-			}
+		err = yaml.NewDecoder(f).Decode(&configs[i])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing %q for config %q: %v", path, name, err)
+		}
+
+		configs[i].Name = name
+
+		err = validateConfig(&configs[i])
+		if err != nil {
+			return nil, fmt.Errorf("error validating config: %v", err)
+		}
+
+		configs[i].BPFPath = filepath.Join(dir, fmt.Sprintf("%s.bpf.o", name))
+	}
+
+	return configs, nil
+}
+
+func validateConfig(cfg *Config) error {
+	if cfg.Metrics.Counters == nil && cfg.Metrics.Histograms == nil {
+		return fmt.Errorf("metrics are not defined for config %q", cfg.Name)
+	}
+
+	for _, counter := range cfg.Metrics.Counters {
+		if counter.Name == "" {
+			return fmt.Errorf("counter %q in config %q lacks name", counter.Name, cfg.Name)
+		}
+
+		if counter.Help == "" {
+			return fmt.Errorf("counter %q in config %q lacks help", counter.Name, cfg.Name)
+		}
+	}
+
+	for _, histogram := range cfg.Metrics.Histograms {
+		if histogram.Name == "" {
+			return fmt.Errorf("histogram %q in config %q lacks name", histogram.Name, cfg.Name)
+		}
+
+		if histogram.Help == "" {
+			return fmt.Errorf("histogram %q in config %q lacks help", histogram.Name, cfg.Name)
 		}
 	}
 

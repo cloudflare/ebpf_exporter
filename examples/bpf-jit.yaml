@@ -1,9 +1,7 @@
-programs:
-  - name: bpf-jit
-    metrics:
-      counters:
-        # Technically this is a gauge, but ebpf_exporter only knows counters
-        - name: bpf_jit_pages_currently_allocated
-          help: Current number of pages allocated for bpf jit
-    kaddrs:
-      - bpf_jit_current
+metrics:
+  counters:
+    # Technically this is a gauge, but ebpf_exporter only knows counters
+    - name: bpf_jit_pages_currently_allocated
+      help: Current number of pages allocated for bpf jit
+kaddrs:
+  - bpf_jit_current

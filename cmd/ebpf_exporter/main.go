@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
-	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/cloudflare/ebpf_exporter/config"
@@ -12,39 +12,36 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/yaml.v2"
 )
 
 func main() {
-	configFile := kingpin.Flag("config.file", "Config file path").File()
-	debug := kingpin.Flag("debug", "Enable debug").Bool()
-	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests").Default(":9435").String()
-	metricsPath := kingpin.Flag("web.telemetry-path", "Path under which to expose metrics").Default("/metrics").String()
+	configDir := kingpin.Flag("config.dir", "Config dir path.").Required().ExistingDir()
+	configNames := kingpin.Flag("config.names", "Comma separated names of configs to load.").Required().String()
+	debug := kingpin.Flag("debug", "Enable debug.").Bool()
+	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9435").String()
+	metricsPath := kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	kingpin.Version(version.Print("ebpf_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
 	started := time.Now()
 
-	config := config.Config{}
-
-	err := yaml.NewDecoder(*configFile).Decode(&config)
+	configs, err := config.ParseConfigs(*configDir, strings.Split(*configNames, ","))
 	if err != nil {
-		log.Fatalf("Error reading config file: %s", err)
+		log.Fatalf("Error parsing configs: %v", err)
 	}
 
-	e, err := exporter.New(config)
+	e, err := exporter.New(configs)
 	if err != nil {
 		log.Fatalf("Error creating exporter: %s", err)
 	}
 
-	configPath := filepath.Dir((*configFile).Name())
-	err = e.Attach(configPath)
+	err = e.Attach()
 	if err != nil {
 		log.Fatalf("Error attaching exporter: %s", err)
 	}
 
-	log.Printf("Started with %d programs found in the config in %dms", len(config.Programs), time.Since(started).Milliseconds())
+	log.Printf("Started with %d programs found in the config in %dms", len(configs), time.Since(started).Milliseconds())
 
 	err = prometheus.Register(version.NewCollector("ebpf_exporter"))
 	if err != nil {

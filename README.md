@@ -69,7 +69,7 @@ make -C examples clean build
 To run with [`biolatency`](examples/biolatency.yaml) config:
 
 ```
-sudo ./ebpf_exporter --config.file examples/biolatency.yaml
+sudo ./ebpf_exporter --config.dir examples --config.names biolatency
 ```
 
 If you pass `--debug`, you can see raw maps at `/maps` endpoint.
@@ -101,7 +101,7 @@ docker run --rm -it --privileged -p 9435:9435 \
   -v $(pwd)/examples:/examples \
   -v /sys/kernel/debug:/sys/kernel/debug:ro \
   -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
-  ebpf_exporter --config.file=examples/timers.yaml
+  ebpf_exporter --config.dir examples --config.names timers
 ```
 
 For production use you would either bind-mount your own config and compiled
@@ -150,45 +150,42 @@ with no runtime dependencies. Most modern Linux distributions have it enabled.
 
 #### Timers via tracepoints (counters)
 
-This program attaches to kernel tracepoints for timers subsystem
+This config attaches to kernel tracepoints for timers subsystem
 and counts timers that fire with breakdown by timer name.
 
 Resulting metrics:
 
 ```
-# HELP ebpf_exporter_timer_start_total Timers fired in the kernel
-# TYPE ebpf_exporter_timer_start_total counter
-ebpf_exporter_timer_start_total{function="blk_rq_timed_out_timer"} 1
-ebpf_exporter_timer_start_total{function="blk_stat_timer_fn"} 34
-ebpf_exporter_timer_start_total{function="delayed_work_timer_fn"} 47
-ebpf_exporter_timer_start_total{function="dev_watchdog"} 1
-ebpf_exporter_timer_start_total{function="neigh_timer_handler"} 1
-ebpf_exporter_timer_start_total{function="pool_mayday_timeout"} 1
-ebpf_exporter_timer_start_total{function="process_timeout"} 70
-ebpf_exporter_timer_start_total{function="reqsk_timer_handler"} 3
-ebpf_exporter_timer_start_total{function="tcp_delack_timer"} 20
-ebpf_exporter_timer_start_total{function="tcp_keepalive_timer"} 9
-ebpf_exporter_timer_start_total{function="tcp_orphan_update"} 7
-ebpf_exporter_timer_start_total{function="tcp_write_timer"} 24
-ebpf_exporter_timer_start_total{function="tw_timer_handler"} 2
-ebpf_exporter_timer_start_total{function="writeout_period"} 7
-ebpf_exporter_timer_start_total{function="xprt_init_autodisconnect	[sunrpc]"} 11
+# HELP ebpf_exporter_timer_starts_total Timers fired in the kernel
+# TYPE ebpf_exporter_timer_starts_total counter
+ebpf_exporter_timer_starts_total{function="blk_stat_timer_fn"} 10
+ebpf_exporter_timer_starts_total{function="commit_timeout	[jbd2]"} 1
+ebpf_exporter_timer_starts_total{function="delayed_work_timer_fn"} 25
+ebpf_exporter_timer_starts_total{function="dev_watchdog"} 1
+ebpf_exporter_timer_starts_total{function="mix_interrupt_randomness"} 3
+ebpf_exporter_timer_starts_total{function="neigh_timer_handler"} 1
+ebpf_exporter_timer_starts_total{function="process_timeout"} 49
+ebpf_exporter_timer_starts_total{function="reqsk_timer_handler"} 2
+ebpf_exporter_timer_starts_total{function="tcp_delack_timer"} 5
+ebpf_exporter_timer_starts_total{function="tcp_keepalive_timer"} 6
+ebpf_exporter_timer_starts_total{function="tcp_orphan_update"} 16
+ebpf_exporter_timer_starts_total{function="tcp_write_timer"} 12
+ebpf_exporter_timer_starts_total{function="tw_timer_handler"} 1
+ebpf_exporter_timer_starts_total{function="writeout_period"} 5
 ```
 
 There's config file for it:
 
 ```yaml
-programs:
-  - name: timers
-    metrics:
-      counters:
-        - name: timer_start_total
-          help: Timers fired in the kernel
-          labels:
-            - name: function
-              size: 8
-              decoders:
-                - name: ksym
+metrics:
+  counters:
+    - name: timer_starts_total
+      help: Timers fired in the kernel
+      labels:
+        - name: function
+          size: 8
+          decoders:
+            - name: ksym
 ```
 
 And corresponding C code that compiles into an ELF file with eBPF bytecode:
@@ -220,7 +217,7 @@ char LICENSE[] SEC("license") = "GPL";
 
 #### Block IO histograms (histograms)
 
-This program attaches to block io subsystem and reports disk latency
+This config attaches to block io subsystem and reports disk latency
 as a prometheus histogram, allowing you to compute percentiles.
 
 The following tools are working with similar concepts:
@@ -239,68 +236,68 @@ Resulting metrics:
 ```
 # HELP ebpf_exporter_bio_latency_seconds Block IO latency histogram
 # TYPE ebpf_exporter_bio_latency_seconds histogram
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="1e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="2e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="4e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="8e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="1.6e-05"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="3.2e-05"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="6.4e-05"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.000128"} 22
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.000256"} 36
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.000512"} 40
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.001024"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.002048"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.004096"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.008192"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.016384"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.032768"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.065536"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.131072"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.262144"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="0.524288"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="1.048576"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="2.097152"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="4.194304"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="8.388608"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="16.777216"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="33.554432"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="67.108864"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="134.217728"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",ops="write",le="+Inf"} 48
-ebpf_exporter_bio_latency_seconds_sum{device="nvme0n1",ops="write"} 0.021772
-ebpf_exporter_bio_latency_seconds_count{device="nvme0n1",ops="write"} 48
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="1e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="2e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="4e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="8e-06"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="1.6e-05"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="3.2e-05"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="6.4e-05"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.000128"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.000256"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.000512"} 0
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.001024"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.002048"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.004096"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.008192"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.016384"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.032768"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.065536"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.131072"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.262144"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="0.524288"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="1.048576"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="2.097152"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="4.194304"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="8.388608"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="16.777216"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="33.554432"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="67.108864"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="134.217728"} 1
-ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",ops="write",le="+Inf"} 1
-ebpf_exporter_bio_latency_seconds_sum{device="nvme1n1",ops="write"} 0.0018239999999999999
-ebpf_exporter_bio_latency_seconds_count{device="nvme1n1",ops="write"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="1e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="2e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="4e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="8e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="1.6e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="3.2e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="6.4e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.000128"} 22
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.000256"} 36
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.000512"} 40
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.001024"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.002048"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.004096"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.008192"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.016384"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.032768"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.065536"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.131072"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.262144"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="0.524288"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="1.048576"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="2.097152"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="4.194304"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="8.388608"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="16.777216"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="33.554432"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="67.108864"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="134.217728"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme0n1",operation="write",le="+Inf"} 48
+ebpf_exporter_bio_latency_seconds_sum{device="nvme0n1",operation="write"} 0.021772
+ebpf_exporter_bio_latency_seconds_count{device="nvme0n1",operation="write"} 48
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="1e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="2e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="4e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="8e-06"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="1.6e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="3.2e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="6.4e-05"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.000128"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.000256"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.000512"} 0
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.001024"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.002048"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.004096"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.008192"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.016384"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.032768"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.065536"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.131072"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.262144"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="0.524288"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="1.048576"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="2.097152"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="4.194304"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="8.388608"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="16.777216"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="33.554432"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="67.108864"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="134.217728"} 1
+ebpf_exporter_bio_latency_seconds_bucket{device="nvme1n1",operation="write",le="+Inf"} 1
+ebpf_exporter_bio_latency_seconds_sum{device="nvme1n1",operation="write"} 0.0018239999999999999
+ebpf_exporter_bio_latency_seconds_count{device="nvme1n1",operation="write"} 1
 ```
 
 You can nicely plot this with Grafana:
@@ -311,11 +308,12 @@ You can nicely plot this with Grafana:
 
 The following concepts exists within `ebpf_exporter`.
 
-### Programs
+### Configs
 
-Programs combine a piece of eBPF code running in the kernel with configuration
-describing how to export collected data as prometheus metrics. There may
-be multiple programs running from one exporter instance.
+Configs describe how to extract metrics from kernel. Each config has
+a corresponding eBPF code that runs in kernel to produce these metrics.
+
+Multiple configs can be loaded at the same time.
 
 ### Metrics
 
@@ -578,26 +576,6 @@ into regular base10 numbers. For example: `0xe -> 14`.
 Configuration file is defined like this:
 
 ```
-# List of eBPF programs to run
-- programs:
-  [ - <program> ]
-```
-
-Multiple programs can be combined in one config file.
-
-For each program there's a corresponding `<program>.bpf.o` object
-that is loaded from the same directory as the config file.
-
-See [building examples section](#building-examples) to learn
-how to build `.bpf.o` files.
-
-#### `program`
-
-See [Programs](#programs) section for more details.
-
-```
-# Program name
-name: <program name>
 # Metrics attached to the program
 [ metrics: metrics ]
 # Kernel symbol addresses to define as kaddr_{symbol} from /proc/kallsyms (consider CONFIG_KALLSYMS_ALL)
@@ -668,14 +646,14 @@ name: <decoder name>
 
 ## Built-in metrics
 
-### `ebpf_exporter_enabled_programs`
+### `ebpf_exporter_enabled_configs`
 
-This gauge reports a timeseries for every loaded logical program:
+This gauge reports a timeseries for every loaded config:
 
 ```
-# HELP ebpf_exporter_enabled_programs The set of enabled programs
-# TYPE ebpf_exporter_enabled_programs gauge
-ebpf_exporter_enabled_programs{name="xfs_reclaim"} 1
+# HELP ebpf_exporter_enabled_configs The set of enabled configs
+# TYPE ebpf_exporter_enabled_configs gauge
+ebpf_exporter_enabled_configs{name="cachestat"} 1
 ```
 
 ### `ebpf_exporter_ebpf_program_info`
@@ -685,10 +663,10 @@ This gauge reports information available for every ebpf program:
 ```
 # HELP ebpf_exporter_ebpf_programs Info about ebpf programs
 # TYPE ebpf_exporter_ebpf_programs gauge
-ebpf_exporter_ebpf_program_info{function="add_to_page_cache_lru",id="247",program="cachestat",tag="6c007da3187b5b32"} 1
-ebpf_exporter_ebpf_program_info{function="folio_account_dirtied",id="249",program="cachestat",tag="6c007da3187b5b32"} 1
-ebpf_exporter_ebpf_program_info{function="mark_buffer_dirty",id="250",program="cachestat",tag="6c007da3187b5b32"} 1
-ebpf_exporter_ebpf_program_info{function="mark_page_accessed",id="248",program="cachestat",tag="6c007da3187b5b32"} 1
+ebpf_exporter_ebpf_program_info{config="cachestat",id="545",program="add_to_page_cache_lru",tag="6c007da3187b5b32"} 1
+ebpf_exporter_ebpf_program_info{config="cachestat",id="546",program="mark_page_accessed",tag="6c007da3187b5b32"} 1
+ebpf_exporter_ebpf_program_info{config="cachestat",id="547",program="folio_account_dirtied",tag="6c007da3187b5b32"} 1
+ebpf_exporter_ebpf_program_info{config="cachestat",id="548",program="mark_buffer_dirty",tag="6c007da3187b5b32"} 1
 ```
 
 Here `tag` can be used for tracing and performance analysis with two conditions:

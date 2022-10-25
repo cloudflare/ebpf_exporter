@@ -1,17 +1,13 @@
-programs:
-  # Track shrink_node latency, mainly for purposes of seeing latency
-  # of memory allocation slowpath.
-  - name: shrinklat
-    metrics:
-      histograms:
-        - name: shrink_node_latency_seconds
-          help: Latency histogram for shrink_node calls
-          bucket_type: exp2
-          bucket_min: 0
-          bucket_max: 26
-          bucket_multiplier: 0.000001 # microseconds to seconds
-          labels:
-            - name: bucket
-              size: 4
-              decoders:
-                - name: uint
+metrics:
+  histograms:
+    - name: shrink_node_latency_seconds
+      help: Latency histogram for shrink_node calls
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 26
+      bucket_multiplier: 0.000001 # microseconds to seconds
+      labels:
+        - name: bucket
+          size: 4
+          decoders:
+            - name: uint

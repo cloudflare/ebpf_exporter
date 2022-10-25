@@ -1,12 +1,10 @@
-programs:
-  - name: uprobe
-    metrics:
-      counters:
-        - name: libc_malloc_calls_total
-          help: Number of libc malloc calls per cgroup
-          labels:
+metrics:
+  counters:
+    - name: libc_malloc_calls_total
+      help: Number of libc malloc calls per cgroup
+      labels:
+        - name: cgroup
+          size: 8
+          decoders:
+            - name: uint
             - name: cgroup
-              size: 8
-              decoders:
-                - name: uint
-                - name: cgroup
