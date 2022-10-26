@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"unsafe"
@@ -23,11 +22,11 @@ const prometheusNamespace = "ebpf_exporter"
 
 // Exporter is a ebpf_exporter instance implementing prometheus.Collector
 type Exporter struct {
-	config                   config.Config
+	configs                  []config.Config
 	modules                  map[string]*libbpfgo.Module
 	perfEventArrayCollectors []*PerfEventArraySink
 	kaddrs                   map[string]uint64
-	enabledProgramsDesc      *prometheus.Desc
+	enabledConfigsDesc       *prometheus.Desc
 	programInfoDesc          *prometheus.Desc
 	programAttachedDesc      *prometheus.Desc
 	programRunTimeDesc       *prometheus.Desc
@@ -38,15 +37,10 @@ type Exporter struct {
 }
 
 // New creates a new exporter with the provided config
-func New(cfg config.Config) (*Exporter, error) {
-	err := config.ValidateConfig(&cfg)
-	if err != nil {
-		return nil, fmt.Errorf("error validating config: %s", err)
-	}
-
-	enabledProgramsDesc := prometheus.NewDesc(
-		prometheus.BuildFQName(prometheusNamespace, "", "enabled_programs"),
-		"The set of enabled programs",
+func New(configs []config.Config) (*Exporter, error) {
+	enabledConfigsDesc := prometheus.NewDesc(
+		prometheus.BuildFQName(prometheusNamespace, "", "enabled_configs"),
+		"The set of enabled configs",
 		[]string{"name"},
 		nil,
 	)
@@ -54,7 +48,7 @@ func New(cfg config.Config) (*Exporter, error) {
 	programInfoDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(prometheusNamespace, "", "ebpf_program_info"),
 		"Info about ebpf programs",
-		[]string{"program", "function", "tag", "id"},
+		[]string{"config", "program", "tag", "id"},
 		nil,
 	)
 
@@ -80,10 +74,10 @@ func New(cfg config.Config) (*Exporter, error) {
 	)
 
 	return &Exporter{
-		config:              cfg,
+		configs:             configs,
 		modules:             map[string]*libbpfgo.Module{},
 		kaddrs:              map[string]uint64{},
-		enabledProgramsDesc: enabledProgramsDesc,
+		enabledConfigsDesc:  enabledConfigsDesc,
 		programInfoDesc:     programInfoDesc,
 		programAttachedDesc: programAttachedDesc,
 		programRunTimeDesc:  programRunTimeDesc,
@@ -94,43 +88,42 @@ func New(cfg config.Config) (*Exporter, error) {
 	}, nil
 }
 
-// Attach injects eBPF into kernel and attaches necessary kprobes
-func (e *Exporter) Attach(configPath string) error {
+// Attach injects eBPF into kernel and attaches necessary programs
+func (e *Exporter) Attach() error {
 	err := registerHandlers()
 	if err != nil {
 		return fmt.Errorf("error registering libbpf handlers: %v", err)
 	}
 
-	for _, program := range e.config.Programs {
-		if _, ok := e.modules[program.Name]; ok {
-			return fmt.Errorf("multiple programs with name %q", program.Name)
+	for _, cfg := range e.configs {
+		if _, ok := e.modules[cfg.Name]; ok {
+			return fmt.Errorf("multiple configs with name %q", cfg.Name)
 		}
 
-		bpfProgPath := filepath.Join(configPath, fmt.Sprintf("%s.bpf.o", program.Name))
-		module, err := libbpfgo.NewModuleFromFile(bpfProgPath)
+		module, err := libbpfgo.NewModuleFromFile(cfg.BPFPath)
 		if err != nil {
-			return fmt.Errorf("error creating module from %q for program %q: %v", bpfProgPath, program.Name, err)
+			return fmt.Errorf("error creating module from %q for config %q: %v", cfg.BPFPath, cfg.Name, err)
 		}
 
-		if len(program.Kaddrs) > 0 {
-			err = e.passKaddrs(module, program)
+		if len(cfg.Kaddrs) > 0 {
+			err = e.passKaddrs(module, cfg)
 			if err != nil {
-				return fmt.Errorf("error passing kaddrs to program %q: %v", program.Name, err)
+				return fmt.Errorf("error passing kaddrs to config %q: %v", cfg.Name, err)
 			}
 		}
 
 		err = module.BPFLoadObject()
 		if err != nil {
-			return fmt.Errorf("error loading bpf object from %q for program %q: %v", bpfProgPath, program.Name, err)
+			return fmt.Errorf("error loading bpf object from %q for config %q: %v", cfg.BPFPath, cfg.Name, err)
 		}
 
-		attachments, err := attachModule(module, program)
+		attachments, err := attachModule(module, cfg)
 		if err != nil {
-			return fmt.Errorf("failed to attach to program %q: %s", program.Name, err)
+			return fmt.Errorf("failed to attach to config %q: %s", cfg.Name, err)
 		}
 
-		e.attachedProgs[program.Name] = attachments
-		e.modules[program.Name] = module
+		e.attachedProgs[cfg.Name] = attachments
+		e.modules[cfg.Name] = module
 	}
 
 	postAttachMark()
@@ -138,14 +131,14 @@ func (e *Exporter) Attach(configPath string) error {
 	return nil
 }
 
-func (e *Exporter) passKaddrs(module *libbpfgo.Module, program config.Program) error {
+func (e *Exporter) passKaddrs(module *libbpfgo.Module, cfg config.Config) error {
 	if len(e.kaddrs) == 0 {
 		if err := e.populateKaddrs(); err != nil {
 			return fmt.Errorf("error populating kaddrs: %v", err)
 		}
 	}
 
-	for _, kaddr := range program.Kaddrs {
+	for _, kaddr := range cfg.Kaddrs {
 		if addr, ok := e.kaddrs[kaddr]; !ok {
 			return fmt.Errorf("error finding kaddr for %q", kaddr)
 		} else {
@@ -203,46 +196,46 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 		ch <- e.descs[programName][name]
 	}
 
-	ch <- e.enabledProgramsDesc
+	ch <- e.enabledConfigsDesc
 	ch <- e.programInfoDesc
 	ch <- e.programAttachedDesc
 
-	for _, program := range e.config.Programs {
-		if _, ok := e.descs[program.Name]; !ok {
-			e.descs[program.Name] = map[string]*prometheus.Desc{}
+	for _, cfg := range e.configs {
+		if _, ok := e.descs[cfg.Name]; !ok {
+			e.descs[cfg.Name] = map[string]*prometheus.Desc{}
 		}
 
-		for _, counter := range program.Metrics.Counters {
+		for _, counter := range cfg.Metrics.Counters {
 			if counter.PerfEventArray {
-				perfSink := NewPerfEventArraySink(e.decoders, e.modules[program.Name], counter)
+				perfSink := NewPerfEventArraySink(e.decoders, e.modules[cfg.Name], counter)
 				e.perfEventArrayCollectors = append(e.perfEventArrayCollectors, perfSink)
 			}
 
-			addDescs(program.Name, counter.Name, counter.Help, counter.Labels)
+			addDescs(cfg.Name, counter.Name, counter.Help, counter.Labels)
 		}
 
-		for _, histogram := range program.Metrics.Histograms {
-			addDescs(program.Name, histogram.Name, histogram.Help, histogram.Labels[0:len(histogram.Labels)-1])
+		for _, histogram := range cfg.Metrics.Histograms {
+			addDescs(cfg.Name, histogram.Name, histogram.Help, histogram.Labels[0:len(histogram.Labels)-1])
 		}
 	}
 }
 
 // Collect satisfies prometheus.Collector interface and sends all metrics
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	for _, program := range e.config.Programs {
-		ch <- prometheus.MustNewConstMetric(e.enabledProgramsDesc, prometheus.GaugeValue, 1, program.Name)
+	for _, cfg := range e.configs {
+		ch <- prometheus.MustNewConstMetric(e.enabledConfigsDesc, prometheus.GaugeValue, 1, cfg.Name)
 	}
 
-	for program, attachments := range e.attachedProgs {
-		for prog, attached := range attachments {
-			info, err := extractProgInfo(prog)
+	for name, attachments := range e.attachedProgs {
+		for program, attached := range attachments {
+			info, err := extractProgramInfo(program)
 			if err != nil {
-				log.Printf("Error extracting prog info for %q in %q: %v", prog.Name(), program, err)
+				log.Printf("Error extracting program info for %q in config %q: %v", program.Name(), name, err)
 			}
 
 			id := strconv.Itoa(info.id)
 
-			ch <- prometheus.MustNewConstMetric(e.programInfoDesc, prometheus.GaugeValue, 1, program, prog.Name(), info.tag, id)
+			ch <- prometheus.MustNewConstMetric(e.programInfoDesc, prometheus.GaugeValue, 1, name, program.Name(), info.tag, id)
 
 			attachedValue := 0.0
 			if attached {
@@ -273,19 +266,19 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 // collectCounters sends all known counters to prometheus
 func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
-	for _, program := range e.config.Programs {
-		for _, counter := range program.Metrics.Counters {
+	for _, cfg := range e.configs {
+		for _, counter := range cfg.Metrics.Counters {
 			if counter.PerfEventArray {
 				continue
 			}
 
-			mapValues, err := e.mapValues(e.modules[program.Name], counter.Name, counter.Labels)
+			mapValues, err := e.mapValues(e.modules[cfg.Name], counter.Name, counter.Labels)
 			if err != nil {
-				log.Printf("Error getting map %q values for metric %q of program %q: %s", counter.Name, counter.Name, program.Name, err)
+				log.Printf("Error getting map %q values for metric %q of config %q: %s", counter.Name, counter.Name, cfg.Name, err)
 				continue
 			}
 
-			desc := e.descs[program.Name][counter.Name]
+			desc := e.descs[cfg.Name][counter.Name]
 
 			for _, metricValue := range mapValues {
 				ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, metricValue.value, metricValue.labels...)
@@ -294,17 +287,17 @@ func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 	}
 }
 
-// collectHistograms sends all known historams to prometheus
+// collectHistograms sends all known histograms to prometheus
 func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
-	for _, program := range e.config.Programs {
-		for _, histogram := range program.Metrics.Histograms {
+	for _, cfg := range e.configs {
+		for _, histogram := range cfg.Metrics.Histograms {
 			skip := false
 
 			histograms := map[string]histogramWithLabels{}
 
-			mapValues, err := e.mapValues(e.modules[program.Name], histogram.Name, histogram.Labels)
+			mapValues, err := e.mapValues(e.modules[cfg.Name], histogram.Name, histogram.Labels)
 			if err != nil {
-				log.Printf("Error getting map %q values for metric %q of program %q: %s", histogram.Name, histogram.Name, program.Name, err)
+				log.Printf("Error getting map %q values for metric %q of config %q: %s", histogram.Name, histogram.Name, cfg.Name, err)
 				continue
 			}
 
@@ -331,7 +324,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 
 				leUint, err := strconv.ParseUint(metricValue.labels[len(metricValue.labels)-1], 0, 64)
 				if err != nil {
-					log.Printf("Error parsing float value for bucket %#v in map %q of program %q: %s", metricValue.labels, histogram.Name, program.Name, err)
+					log.Printf("Error parsing float value for bucket %#v in map %q of config %q: %s", metricValue.labels, histogram.Name, cfg.Name, err)
 					skip = true
 					break
 				}
@@ -343,12 +336,12 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 				continue
 			}
 
-			desc := e.descs[program.Name][histogram.Name]
+			desc := e.descs[cfg.Name][histogram.Name]
 
 			for _, histogramSet := range histograms {
 				buckets, count, sum, err := transformHistogram(histogramSet.buckets, histogram)
 				if err != nil {
-					log.Printf("Error transforming histogram for metric %q in program %q: %s", histogram.Name, program.Name, err)
+					log.Printf("Error transforming histogram for metric %q in config %q: %s", histogram.Name, cfg.Name, err)
 					continue
 				}
 
@@ -423,37 +416,37 @@ func (e *Exporter) mapValues(module *libbpfgo.Module, name string, labels []conf
 func (e Exporter) exportMaps() (map[string]map[string][]metricValue, error) {
 	maps := map[string]map[string][]metricValue{}
 
-	for _, program := range e.config.Programs {
-		module := e.modules[program.Name]
+	for _, cfg := range e.configs {
+		module := e.modules[cfg.Name]
 		if module == nil {
-			return nil, fmt.Errorf("module for program %q is not attached", program.Name)
+			return nil, fmt.Errorf("module for config %q is not attached", cfg.Name)
 		}
 
-		if _, ok := maps[program.Name]; !ok {
-			maps[program.Name] = map[string][]metricValue{}
+		if _, ok := maps[cfg.Name]; !ok {
+			maps[cfg.Name] = map[string][]metricValue{}
 		}
 
 		metricMaps := map[string][]config.Label{}
 
-		for _, counter := range program.Metrics.Counters {
+		for _, counter := range cfg.Metrics.Counters {
 			if counter.Name != "" {
 				metricMaps[counter.Name] = counter.Labels
 			}
 		}
 
-		for _, histogram := range program.Metrics.Histograms {
+		for _, histogram := range cfg.Metrics.Histograms {
 			if histogram.Name != "" {
 				metricMaps[histogram.Name] = histogram.Labels
 			}
 		}
 
 		for name, labels := range metricMaps {
-			metricValues, err := e.mapValues(e.modules[program.Name], name, labels)
+			metricValues, err := e.mapValues(e.modules[cfg.Name], name, labels)
 			if err != nil {
-				return nil, fmt.Errorf("error getting values for map %q of program %q: %s", name, program.Name, err)
+				return nil, fmt.Errorf("error getting values for map %q of config %q: %s", name, cfg.Name, err)
 			}
 
-			maps[program.Name][name] = metricValues
+			maps[cfg.Name][name] = metricValues
 		}
 	}
 
@@ -477,8 +470,8 @@ func (e *Exporter) MapsHandler(w http.ResponseWriter, r *http.Request) {
 
 	buf := []byte{}
 
-	for program, maps := range maps {
-		buf = append(buf, fmt.Sprintf("## Program: %s\n\n", program)...)
+	for cfg, maps := range maps {
+		buf = append(buf, fmt.Sprintf("## Config: %s\n\n", cfg)...)
 
 		for name, m := range maps {
 			buf = append(buf, fmt.Sprintf("### Map: %s\n\n", name)...)

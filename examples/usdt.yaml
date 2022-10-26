@@ -1,15 +1,13 @@
-programs:
-  - name: usdt
-    metrics:
-      counters:
-        - name: python_function_entries_total
-          help: Number of python:function__entry USDT calls per function
-          labels:
-            - name: module
-              size: 128
-              decoders:
-                - name: string
-            - name: function
-              size: 128
-              decoders:
-                - name: string
+metrics:
+  counters:
+    - name: python_function_entries_total
+      help: Number of python:function__entry USDT calls per function
+      labels:
+        - name: module
+          size: 128
+          decoders:
+            - name: string
+        - name: function
+          size: 128
+          decoders:
+            - name: string

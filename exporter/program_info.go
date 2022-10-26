@@ -13,15 +13,15 @@ import (
 
 const bpfStatsFile = "/proc/sys/kernel/bpf_stats_enabled"
 
-type progInfo struct {
+type programInfo struct {
 	id       int
 	tag      string
 	runTime  time.Duration
 	runCount int
 }
 
-func extractProgInfo(prog *libbpfgo.BPFProg) (progInfo, error) {
-	info := progInfo{}
+func extractProgramInfo(prog *libbpfgo.BPFProg) (programInfo, error) {
+	info := programInfo{}
 
 	name := fmt.Sprintf("/proc/self/fdinfo/%d", prog.FileDescriptor())
 

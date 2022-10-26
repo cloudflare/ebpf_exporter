@@ -1,15 +1,13 @@
-programs:
-  - name: tcp-syn-backlog
-    metrics:
-      histograms:
-        - name: tcp_syn_backlog
-          help: TCP SYN backlog size
-          bucket_type: linear
-          bucket_min: 0
-          bucket_max: 20
-          bucket_multiplier: 50
-          labels:
-            - name: bucket
-              size: 8
-              decoders:
-                - name: uint
+metrics:
+  histograms:
+    - name: tcp_syn_backlog
+      help: TCP SYN backlog size
+      bucket_type: linear
+      bucket_min: 0
+      bucket_max: 20
+      bucket_multiplier: 50
+      labels:
+        - name: bucket
+          size: 8
+          decoders:
+            - name: uint
