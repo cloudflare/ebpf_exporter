@@ -25,13 +25,13 @@ jobs:
           docker cp $id:/build/libbpf.tar.gz                libbpf.x86_64.tar.gz
 
       - name: Upload libbpf.tar.gz
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: libbpf.x86_64.tar.gz
           path: libbpf.x86_64.tar.gz
 
       - name: Upload ebpf_exporter
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ebpf_exporter.x86_64
           path: ebpf_exporter.x86_64
@@ -56,13 +56,13 @@ jobs:
           docker cp $id:/build/libbpf.tar.gz                libbpf.aarch64.tar.gz
 
       - name: Upload libbpf.tar.gz
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: libbpf.aarch64.tar.gz
           path: libbpf.aarch64.tar.gz
 
       - name: Upload ebpf_exporter
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ebpf_exporter.aarch64
           path: ebpf_exporter.aarch64
