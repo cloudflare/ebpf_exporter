@@ -13,12 +13,9 @@ jobs:
     name: Build ebpf_exporter (x86_64)
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-
-      # Tags are needed for the build version. See:
-      # * https://github.com/actions/checkout/issues/206
-      - name: Fetch full git history
-        run: git fetch --prune --unshallow --tags --force
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Fetch with tags to have the build version attached
 
       - name: Build libbpf and ebpf_exporter
         run: |
@@ -47,12 +44,9 @@ jobs:
         with:
           targets: aarch64
 
-      - uses: actions/checkout@v2
-
-      # Tags are needed for the build version. See:
-      # * https://github.com/actions/checkout/issues/206
-      - name: Fetch full git history
-        run: git fetch --prune --unshallow --tags --force
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Fetch with tags to have the build version attached
 
       - name: Build ebpf_exporter
         run: |
@@ -82,7 +76,7 @@ jobs:
         with:
           go-version: ^1.19
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Download libbpf.tar.gz
         uses: actions/download-artifact@v2
@@ -110,7 +104,7 @@ jobs:
         with:
           go-version: ^1.19
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Download libbpf.tar.gz
         uses: actions/download-artifact@v2
@@ -138,7 +132,7 @@ jobs:
     needs: build-ebpf-exporter-x86_64
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Download libbpf.tar.gz
         uses: actions/download-artifact@v2
