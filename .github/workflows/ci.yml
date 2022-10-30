@@ -155,7 +155,7 @@ jobs:
         run: sudo apt-get install -y clang
 
       - name: Build benchmark bpf probes
-        run: make -C benchmark build
+        run: make -j $(nproc) -C benchmark build
 
       - name: Build example bpf probes
-        run: make -C examples build
+        run: make -j $(nproc) -C examples build
