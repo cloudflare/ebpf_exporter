@@ -1,5 +1,5 @@
 BUILD_VAR_PREFIX := github.com/prometheus/common/version
-BUILD_VERSION := $(shell git describe)
+BUILD_VERSION := $(shell git describe --tags)
 BUILD_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 BUILD_REVISION := $(shell git rev-parse --short HEAD)
 BUILD_USER := $(shell id -u -n)@$(shell hostname)
