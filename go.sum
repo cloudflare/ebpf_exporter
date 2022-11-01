@@ -41,8 +41,8 @@ github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4/go.mod h1:ybxpYRF
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
 github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 h1:8ypNbf5sd3Sm3cKJ9waOGoQv6dKAFiFty9L6NP1AqJ4=
 github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922/go.mod h1:OMCwj8VM1Kc9e19TLln2VL61YJF0x1XFtfdL4JdbSyE=
-github.com/aquasecurity/libbpfgo v0.4.3-libbpf-1.0.1 h1:xDHt+EJM/EJt9BXS2YheZNuynT/QNdraL/LHSSpdOxg=
-github.com/aquasecurity/libbpfgo v0.4.3-libbpf-1.0.1/go.mod h1:v+Nk+v6BtHLfdT4kVdsp+fYt4AeUa3cIG2P0y+nBuuY=
+github.com/aquasecurity/libbpfgo v0.4.4-libbpf-1.0.1 h1:cjdRq/YhQ5ZVU0jm6H3VXVcHgMzAAslrlexPq8acgSk=
+github.com/aquasecurity/libbpfgo v0.4.4-libbpf-1.0.1/go.mod h1:v+Nk+v6BtHLfdT4kVdsp+fYt4AeUa3cIG2P0y+nBuuY=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
