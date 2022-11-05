@@ -38,6 +38,7 @@ type Counter struct {
 	Name           string        `yaml:"name"`
 	Help           string        `yaml:"help"`
 	PerfEventArray bool          `yaml:"perf_event_array"`
+	RingBuf        bool          `yaml:"ring_buf"`
 	FlushInterval  time.Duration `yaml:"flush_interval"`
 	Labels         []Label       `yaml:"labels"`
 }

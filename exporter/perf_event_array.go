@@ -91,10 +91,10 @@ func (s *PerfEventArraySink) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (s *PerfEventArraySink) resetCounterVec() {
-	s.counterVec = createCounterVecForPerfMap(s.counterConfig, labelNamesFromCounterConfig(s.counterConfig))
+	s.counterVec = createCounterVecForMap(s.counterConfig, labelNamesFromCounterConfig(s.counterConfig))
 }
 
-func createCounterVecForPerfMap(counterConfig config.Counter, labelNames []string) *prometheus.CounterVec {
+func createCounterVecForMap(counterConfig config.Counter, labelNames []string) *prometheus.CounterVec {
 	return prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: prometheusNamespace,
 		Name:      counterConfig.Name,

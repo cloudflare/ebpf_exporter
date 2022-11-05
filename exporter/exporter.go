@@ -20,20 +20,26 @@ import (
 // Namespace to use for all metrics
 const prometheusNamespace = "ebpf_exporter"
 
+type outputMapSink interface {
+	Collect(chan<- prometheus.Metric)
+	Describe(ch chan<- *prometheus.Desc)
+	resetCounterVec()
+}
+
 // Exporter is a ebpf_exporter instance implementing prometheus.Collector
 type Exporter struct {
-	configs                  []config.Config
-	modules                  map[string]*libbpfgo.Module
-	perfEventArrayCollectors []*PerfEventArraySink
-	kaddrs                   map[string]uint64
-	enabledConfigsDesc       *prometheus.Desc
-	programInfoDesc          *prometheus.Desc
-	programAttachedDesc      *prometheus.Desc
-	programRunTimeDesc       *prometheus.Desc
-	programRunCountDesc      *prometheus.Desc
-	attachedProgs            map[string]map[*libbpfgo.BPFProg]bool
-	descs                    map[string]map[string]*prometheus.Desc
-	decoders                 *decoder.Set
+	configs             []config.Config
+	modules             map[string]*libbpfgo.Module
+	outputMapCollectors []outputMapSink
+	kaddrs              map[string]uint64
+	enabledConfigsDesc  *prometheus.Desc
+	programInfoDesc     *prometheus.Desc
+	programAttachedDesc *prometheus.Desc
+	programRunTimeDesc  *prometheus.Desc
+	programRunCountDesc *prometheus.Desc
+	attachedProgs       map[string]map[*libbpfgo.BPFProg]bool
+	descs               map[string]map[string]*prometheus.Desc
+	decoders            *decoder.Set
 }
 
 // New creates a new exporter with the provided config
@@ -208,7 +214,10 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 		for _, counter := range cfg.Metrics.Counters {
 			if counter.PerfEventArray {
 				perfSink := NewPerfEventArraySink(e.decoders, e.modules[cfg.Name], counter)
-				e.perfEventArrayCollectors = append(e.perfEventArrayCollectors, perfSink)
+				e.outputMapCollectors = append(e.outputMapCollectors, perfSink)
+			} else if counter.RingBuf {
+				ringBufSink := NewRingBufSink(e.decoders, e.modules[cfg.Name], counter)
+				e.outputMapCollectors = append(e.outputMapCollectors, ringBufSink)
 			}
 
 			addDescs(cfg.Name, counter.Name, counter.Help, counter.Labels)
@@ -256,8 +265,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
-	for _, perfEventArrayCollector := range e.perfEventArrayCollectors {
-		perfEventArrayCollector.Collect(ch)
+	for _, outputMapCollector := range e.outputMapCollectors {
+		outputMapCollector.Collect(ch)
 	}
 
 	e.collectCounters(ch)
@@ -268,7 +277,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 	for _, cfg := range e.configs {
 		for _, counter := range cfg.Metrics.Counters {
-			if counter.PerfEventArray {
+			if counter.PerfEventArray || counter.RingBuf {
 				continue
 			}
 
