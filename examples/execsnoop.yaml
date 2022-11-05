@@ -1,0 +1,14 @@
+metrics:
+  counters:
+    - name: process_exec_total
+      help: Count process starts
+      ring_buf: true
+      labels:
+        - name: comm
+          size: 16
+          decoders:
+            - name: string
+        - name: filename
+          size: 127
+          decoders:
+            - name: string

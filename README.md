@@ -601,13 +601,12 @@ See [Counters](#counters) section for more details.
 ```
 name: <prometheus counter name>
 help: <prometheus metric help>
-perf_event_array: <whether map is a BPF_MAP_TYPE_PERF_EVENT_ARRAY map: bool>
 flush_interval: <how often should we flush metrics from the perf_event_array: time.Duration>
 labels:
   [ - label ]
 ```
 
-An example of `perf_map` can be found [here](examples/oomkill.yaml).
+An example of `perf_map` can be found [here](examples/oomkill.yaml), and another example of `ring_buf_map` output can be found [here](examples/execsnoop.yaml)
 
 #### `histogram`
 
