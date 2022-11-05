@@ -185,6 +185,21 @@ func (e Exporter) populateKaddrs() error {
 	return s.Err()
 }
 
+func newOutputMapSink(decoders *decoder.Set, module *libbpfgo.Module, counterConfig config.Counter) outputMapSink {
+	outputMap, err := module.GetMap(counterConfig.Name)
+	if err != nil {
+		log.Printf("error getting output map %q: %v", counterConfig.Name, err)
+		return nil
+	}
+	mapType := outputMap.Type()
+	if mapType == libbpfgo.MapTypePerfEventArray {
+		return NewPerfEventArraySink(decoders, module, counterConfig)
+	} else if mapType == libbpfgo.MapTypeRingbuf {
+		return NewRingBufSink(decoders, module, counterConfig)
+	}
+	return nil
+}
+
 // Describe satisfies prometheus.Collector interface by sending descriptions
 // for all metrics the exporter can possibly report
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
@@ -212,13 +227,11 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 		}
 
 		for _, counter := range cfg.Metrics.Counters {
-			if counter.PerfEventArray {
-				perfSink := NewPerfEventArraySink(e.decoders, e.modules[cfg.Name], counter)
-				e.outputMapCollectors = append(e.outputMapCollectors, perfSink)
-			} else if counter.RingBuf {
-				ringBufSink := NewRingBufSink(e.decoders, e.modules[cfg.Name], counter)
-				e.outputMapCollectors = append(e.outputMapCollectors, ringBufSink)
+			outputMapSink := newOutputMapSink(e.decoders, e.modules[cfg.Name], counter)
+			if outputMapSink == nil {
+				continue
 			}
+			e.outputMapCollectors = append(e.outputMapCollectors, outputMapSink)
 
 			addDescs(cfg.Name, counter.Name, counter.Help, counter.Labels)
 		}
@@ -277,7 +290,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 	for _, cfg := range e.configs {
 		for _, counter := range cfg.Metrics.Counters {
-			if counter.PerfEventArray || counter.RingBuf {
+			outputMap, err := e.modules[cfg.Name].GetMap(counter.Name)
+			if err != nil || outputMap.Type() == libbpfgo.MapTypePerfEventArray || outputMap.Type() == libbpfgo.MapTypeRingbuf {
 				continue
 			}
 
