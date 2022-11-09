@@ -20,17 +20,10 @@ import (
 // Namespace to use for all metrics
 const prometheusNamespace = "ebpf_exporter"
 
-type outputMapSink interface {
-	Collect(chan<- prometheus.Metric)
-	Describe(ch chan<- *prometheus.Desc)
-	resetCounterVec()
-}
-
 // Exporter is a ebpf_exporter instance implementing prometheus.Collector
 type Exporter struct {
 	configs             []config.Config
 	modules             map[string]*libbpfgo.Module
-	outputMapCollectors []outputMapSink
 	kaddrs              map[string]uint64
 	enabledConfigsDesc  *prometheus.Desc
 	programInfoDesc     *prometheus.Desc
@@ -39,6 +32,7 @@ type Exporter struct {
 	programRunCountDesc *prometheus.Desc
 	attachedProgs       map[string]map[*libbpfgo.BPFProg]bool
 	descs               map[string]map[string]*prometheus.Desc
+	outputMapCollectors map[string]map[string]prometheus.Collector
 	decoders            *decoder.Set
 }
 
@@ -90,6 +84,7 @@ func New(configs []config.Config) (*Exporter, error) {
 		programRunCountDesc: programRunCountDesc,
 		attachedProgs:       map[string]map[*libbpfgo.BPFProg]bool{},
 		descs:               map[string]map[string]*prometheus.Desc{},
+		outputMapCollectors: map[string]map[string]prometheus.Collector{},
 		decoders:            decoder.NewSet(),
 	}, nil
 }
@@ -133,6 +128,31 @@ func (e *Exporter) Attach() error {
 	}
 
 	postAttachMark()
+
+	err = e.startOutputMapCollectors()
+	if err != nil {
+		return fmt.Errorf("error starting output map collectors: %v", err)
+	}
+
+	return nil
+}
+
+func (e *Exporter) startOutputMapCollectors() error {
+	for _, cfg := range e.configs {
+		e.outputMapCollectors[cfg.Name] = map[string]prometheus.Collector{}
+
+		for _, counter := range cfg.Metrics.Counters {
+			outputMapSink, err := newOutputMap(e.decoders, e.modules[cfg.Name], counter)
+			if err != nil {
+				return fmt.Errorf("error getting output map sink for counter %q: %v", counter.Name, err)
+			}
+
+			if outputMapSink != nil {
+				e.outputMapCollectors[cfg.Name][counter.Name] = outputMapSink
+			}
+
+		}
+	}
 
 	return nil
 }
@@ -185,21 +205,6 @@ func (e Exporter) populateKaddrs() error {
 	return s.Err()
 }
 
-func newOutputMapSink(decoders *decoder.Set, module *libbpfgo.Module, counterConfig config.Counter) outputMapSink {
-	outputMap, err := module.GetMap(counterConfig.Name)
-	if err != nil {
-		log.Printf("error getting output map %q: %v", counterConfig.Name, err)
-		return nil
-	}
-	mapType := outputMap.Type()
-	if mapType == libbpfgo.MapTypePerfEventArray {
-		return NewPerfEventArraySink(decoders, module, counterConfig)
-	} else if mapType == libbpfgo.MapTypeRingbuf {
-		return NewRingBufSink(decoders, module, counterConfig)
-	}
-	return nil
-}
-
 // Describe satisfies prometheus.Collector interface by sending descriptions
 // for all metrics the exporter can possibly report
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
@@ -227,12 +232,6 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 		}
 
 		for _, counter := range cfg.Metrics.Counters {
-			outputMapSink := newOutputMapSink(e.decoders, e.modules[cfg.Name], counter)
-			if outputMapSink == nil {
-				continue
-			}
-			e.outputMapCollectors = append(e.outputMapCollectors, outputMapSink)
-
 			addDescs(cfg.Name, counter.Name, counter.Help, counter.Labels)
 		}
 
@@ -278,10 +277,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
-	for _, outputMapCollector := range e.outputMapCollectors {
-		outputMapCollector.Collect(ch)
-	}
-
 	e.collectCounters(ch)
 	e.collectHistograms(ch)
 }
@@ -290,8 +285,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 	for _, cfg := range e.configs {
 		for _, counter := range cfg.Metrics.Counters {
-			outputMap, err := e.modules[cfg.Name].GetMap(counter.Name)
-			if err != nil || outputMap.Type() == libbpfgo.MapTypePerfEventArray || outputMap.Type() == libbpfgo.MapTypeRingbuf {
+			if collector, ok := e.outputMapCollectors[cfg.Name][counter.Name]; ok {
+				collector.Collect(ch)
 				continue
 			}
 
