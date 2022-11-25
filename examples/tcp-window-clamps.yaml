@@ -1,0 +1,8 @@
+# Linux memory management can overestimate memory pressure and punish well behaving
+# TCP sockets with a window clamp. The clamp limits max throughput.
+# See: https://lore.kernel.org/netdev/CABWYdi0G7cyNFbndM-ELTDAR3x4Ngm0AehEp5aP0tfNkXUE+Uw@mail.gmail.com/
+metrics:
+  counters:
+    - name: tcp_window_clamps_total
+      help: Number of times that TCP window was clamped to a low value
+      labels: []
