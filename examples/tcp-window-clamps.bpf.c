@@ -13,6 +13,36 @@ struct {
     __type(value, u64);
 } tcp_window_clamps_total SEC(".maps");
 
+static int handle_tcp_sock(struct tcp_sock *tp)
+{
+    u32 zero = 0, rcv_ssthresh;
+
+    if (!tp) {
+        return 0;
+    }
+
+    rcv_ssthresh = BPF_CORE_READ(tp, rcv_ssthresh);
+
+    if (rcv_ssthresh < MIN_CLAMP) {
+        increment_map(&tcp_window_clamps_total, &zero, 1);
+    }
+
+    return 0;
+}
+
+#ifdef FENTRY_SUPPORT
+// If fentry/fexit is supported, use it for simpler and faster probe.
+// You need to pass -DFENTRY_SUPPORT in compiler flags to enable this.
+
+SEC("fexit/tcp_try_rmem_schedule")
+int BPF_PROG(tcp_try_rmem_schedule_exit, struct sock *sk)
+{
+    return handle_tcp_sock((struct tcp_sock *) sk);
+}
+
+#else
+// Otherwise, fall back to good old kprobe.
+
 struct {
     __uint(type, BPF_MAP_TYPE_LRU_HASH);
     __uint(max_entries, 1024);
@@ -43,29 +73,18 @@ int BPF_KPROBE(tcp_try_rmem_schedule, struct sock *sk)
 SEC("kretprobe/tcp_try_rmem_schedule")
 int BPF_KRETPROBE(tcp_try_rmem_schedule_ret)
 {
-    u32 rcv_ssthresh, zero = 0;
     u64 key = enter_key();
     struct sock **skp = bpf_map_lookup_elem(&tcp_rmem_schedule_enters, &key);
-    struct tcp_sock *tp;
 
     if (!skp) {
         return 0;
     }
 
-    tp = (struct tcp_sock *) *skp;
-
-    if (!tp) {
-        return 0;
-    }
-
-    rcv_ssthresh = BPF_CORE_READ(tp, rcv_ssthresh);
-
-    if (rcv_ssthresh < MIN_CLAMP) {
-        increment_map(&tcp_window_clamps_total, &zero, 1);
-    }
-
     bpf_map_delete_elem(&tcp_rmem_schedule_enters, &key);
-    return 0;
+
+    return handle_tcp_sock((struct tcp_sock *) *skp);
 }
+
+#endif
 
 char LICENSE[] SEC("license") = "GPL";
