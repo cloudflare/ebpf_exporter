@@ -18,7 +18,7 @@ CLANG_BPF_SYS_INCLUDES = $(shell $(CC) -v -E - </dev/null 2>&1 \
 	| sed -n '/<...> search starts here:/,/End of search list./{ s| \(/.*\)|-idirafter \1|p }')
 
 $(OBJ): %.bpf.o: %.bpf.c
-	$(CC) -g -O2 -Wall -Werror -D__TARGET_ARCH_$(ARCH) $(CLANG_BPF_SYS_INCLUDES) -I../include/$(ARCH) -c -target bpf $< -o $@
+	$(CC) -g -O2 -Wall -Werror -D__TARGET_ARCH_$(ARCH) $(CFLAGS) $(CLANG_BPF_SYS_INCLUDES) -I../include/$(ARCH) -c -target bpf $< -o $@
 
 .PHONY: clean
 clean:
