@@ -50,14 +50,16 @@ struct {
     __type(value, struct sock *);
 } tcp_rmem_schedule_enters SEC(".maps");
 
-static int enter_key()
+static u64 enter_key()
 {
-    u64 pid = bpf_get_current_pid_tgid();
-    if (pid) {
-        return pid;
+    u32 tgid = bpf_get_current_pid_tgid() >> 32;
+    if (tgid) {
+        // If tgid is present, use it as high bits in the compound key.
+        return ((u64) tgid) << 32;
     }
 
-    return bpf_get_smp_processor_id();
+    // If tgid is zero, combine it with processor id to prevent tgid / cpu collisions.
+    return ((u64) tgid << 32) | (u32) bpf_get_smp_processor_id();
 }
 
 SEC("kprobe/tcp_try_rmem_schedule")
