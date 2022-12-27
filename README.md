@@ -132,6 +132,10 @@ Unless otherwise specified, all examples are expected to work on Linux 5.15,
 which is the latest LTS release at the time of writing. Thanks to CO-RE,
 examples are also supposed to work on any modern kernel with BTF enabled.
 
+You can find the list of supported distros in `libbpf` README:
+
+* https://github.com/libbpf/libbpf#bpf-co-re-compile-once--run-everywhere
+
 #### Building examples
 
 To build examples, run:
