@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/cloudflare/ebpf_exporter/config"
-	"github.com/cloudflare/ebpf_exporter/util"
+	"github.com/cloudflare/ebpf_exporter/v2/config"
+	"github.com/cloudflare/ebpf_exporter/v2/util"
 	"golang.org/x/sys/unix"
 )
 
