@@ -75,11 +75,11 @@ type HistogramBucketType string
 
 const (
 	// HistogramBucketExp2 means histograms with power-of-two keys
-	HistogramBucketExp2 = "exp2"
+	HistogramBucketExp2 HistogramBucketType = "exp2"
 	// HistogramBucketLinear means histogram with linear keys
-	HistogramBucketLinear = "linear"
+	HistogramBucketLinear HistogramBucketType = "linear"
 	// HistogramBucketFixed means histogram with fixed user-defined keys
-	HistogramBucketFixed = "fixed"
+	HistogramBucketFixed HistogramBucketType = "fixed"
 )
 
 func ParseConfigs(dir string, names []string) ([]Config, error) {
