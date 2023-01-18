@@ -87,27 +87,33 @@ func ParseConfigs(dir string, names []string) ([]Config, error) {
 
 	for i, name := range names {
 		path := filepath.Join(dir, fmt.Sprintf("%s.yaml", name))
+		err := func(path, name string) error {
+			f, err := os.Open(path)
+			if err != nil {
+				return fmt.Errorf("error opening %q for config %q: %v", path, name, err)
+			}
+			defer f.Close()
 
-		f, err := os.Open(path)
+			err = yaml.NewDecoder(f).Decode(&configs[i])
+			if err != nil {
+				return fmt.Errorf("error parsing %q for config %q: %v", path, name, err)
+			}
+
+			configs[i].Name = name
+
+			err = validateConfig(&configs[i])
+			if err != nil {
+				return fmt.Errorf("error validating config: %v", err)
+			}
+
+			configs[i].BPFPath = filepath.Join(dir, fmt.Sprintf("%s.bpf.o", name))
+
+			return nil
+
+		}(path, name)
 		if err != nil {
-			return nil, fmt.Errorf("error opening %q for config %q: %v", path, name, err)
+			return nil, err
 		}
-
-		defer f.Close()
-
-		err = yaml.NewDecoder(f).Decode(&configs[i])
-		if err != nil {
-			return nil, fmt.Errorf("error parsing %q for config %q: %v", path, name, err)
-		}
-
-		configs[i].Name = name
-
-		err = validateConfig(&configs[i])
-		if err != nil {
-			return nil, fmt.Errorf("error validating config: %v", err)
-		}
-
-		configs[i].BPFPath = filepath.Join(dir, fmt.Sprintf("%s.bpf.o", name))
 	}
 
 	return configs, nil
