@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/cloudflare/ebpf_exporter/config"
+	"github.com/cloudflare/ebpf_exporter/v2/config"
 )
 
 // Regexp is a decoder that only allows inputs matching regexp

@@ -11,9 +11,9 @@ import (
 	"unsafe"
 
 	"github.com/aquasecurity/libbpfgo"
-	"github.com/cloudflare/ebpf_exporter/config"
-	"github.com/cloudflare/ebpf_exporter/decoder"
-	"github.com/cloudflare/ebpf_exporter/util"
+	"github.com/cloudflare/ebpf_exporter/v2/config"
+	"github.com/cloudflare/ebpf_exporter/v2/decoder"
+	"github.com/cloudflare/ebpf_exporter/v2/util"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

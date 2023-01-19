@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/cloudflare/ebpf_exporter/config"
+	"github.com/cloudflare/ebpf_exporter/v2/config"
 )
 
 func TestStaticMapDecoder(t *testing.T) {

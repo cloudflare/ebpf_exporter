@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/aquasecurity/libbpfgo"
-	"github.com/cloudflare/ebpf_exporter/config"
+	"github.com/cloudflare/ebpf_exporter/v2/config"
 )
 
 func attachModule(module *libbpfgo.Module, cfg config.Config) (map[*libbpfgo.BPFProg]bool, error) {
