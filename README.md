@@ -26,6 +26,7 @@ We use libbpf rather than legacy bcc driven code, so it's more like libbpf-tools
 * https://nakryiko.com/posts/bpf-core-reference-guide/
 * https://nakryiko.com/posts/bpf-portability-and-co-re/
 * https://nakryiko.com/posts/bcc-to-libbpf-howto-guide/
+* https://libbpf.readthedocs.io/en/latest/program_types.html
 
 ## Building and running
 
