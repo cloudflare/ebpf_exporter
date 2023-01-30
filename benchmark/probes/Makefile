@@ -6,7 +6,7 @@ SRC = ${wildcard *.bpf.c}
 OBJ = ${patsubst %.bpf.c, %.bpf.o, $(SRC)}
 
 $(OBJ): %.bpf.o: %.bpf.c
-	$(CC) -g -O2 -Wall -Werror -D__TARGET_ARCH_$(ARCH) -I../../include/$(ARCH) -c -target bpf $< -o $@
+	$(CC) -mcpu=v3 -g -O2 -Wall -Werror -D__TARGET_ARCH_$(ARCH) -I../../include/$(ARCH) -c -target bpf $< -o $@
 
 .PHONY: clean
 clean:
