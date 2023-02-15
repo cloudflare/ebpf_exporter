@@ -40,7 +40,10 @@ func (c *CGroup) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 		return path, nil
 	}
 
-	return []byte(fmt.Sprintf("unknown_cgroup_id:%d", cgroupID)), nil
+	name := []byte(fmt.Sprintf("unknown_cgroup_id:%d", cgroupID))
+	c.cache[uint64(cgroupID)] = name
+
+	return name, nil
 }
 
 func (c *CGroup) refreshCache() error {
