@@ -1,0 +1,17 @@
+apiVersion: v2
+name: ebpf-exporter
+description: A Helm chart for ebpf_exporter
+keywords:
+- metric
+- prometheus
+- kubernetes
+- ebpf
+type: application
+version: 0.0.1
+appVersion: 2.0.0
+home: https://github.com/cloudflare/ebpf_exporter
+sources:
+- https://github.com/cloudflare/ebpf_exporter
+maintainers:
+- name: dongjiang1989
+  email: dongjiang1989@126.com

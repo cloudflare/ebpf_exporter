@@ -1,0 +1,117 @@
+# Specify Pod affinity constraints.
+affinity: {}
+
+# Path to ebpf_exporter.
+command:
+  - /ebpf_exporter
+  
+# Args to pass to ebpf_exporter.
+args:
+  - --config.dir
+  - /examples/
+  - --web.listen-address
+  - 0.0.0.0:9435
+  - --config.names
+  - timers,uprobe,usdt,shrinklat,oomkill,biolatency,accept-latency,bpf-jit,cachestat,cgroup,llcstat,raw-tracepoints,tcp-syn-backlog,tcp-window-clamps
+
+# Extra volumeMounts.
+extraVolumeMounts: []
+# Extra volumes.
+extraVolumes: []
+# Full name override.
+fullnameOverride: ""
+image:
+  # Docker image pull policy.
+  pullPolicy: IfNotPresent
+  # Docker image registry.
+  registry: docker.io
+  # Docker image repository.
+  repository: dongjiang1989/ebpf-exporter-amd64
+  # Docker image tag.
+  tag: latest
+
+# Name override.
+nameOverride: ""
+# Node selector.
+nodeSelector: {}
+# Pod annotations.
+podAnnotations: {}
+# Container resources.
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+  #  memory: 128Mi
+  #
+securityContext:
+  # ebpf_exporter requires elevated privileges.
+  privileged: true
+service:
+  type: ClusterIP
+  port: 80
+  # Add service annotations.
+  annotations: {}
+# Specify taint tolerations.
+tolerations:
+  - effect: NoSchedule
+    operator: Exists
+# Default volumeMounts for the daemonset.
+volumeMounts:
+  - mountPath: /sys/kernel/debug
+    name: kernel
+  - mountPath: /lib/modules/
+    name: modules
+# Default volumes for the daemonset.
+volumes:
+  - hostPath:
+      path: /sys/kernel/debug
+      type: Directory
+    name: kernel
+  - hostPath:
+      path: /lib/modules/
+      type: Directory
+    name: modules
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name:
+  annotations: {}
+  imagePullSecrets: []
+  automountServiceAccountToken: false
+    
+prometheus:
+  monitor:
+    enabled: true
+    additionalLabels: {}
+    namespace: ""
+
+    jobLabel: ""
+
+    scheme: http
+    basicAuth: {}
+    bearerTokenFile:
+    tlsConfig: {}
+
+    ## proxyUrl: URL of a proxy that should be used for scraping.
+    ##
+    proxyUrl: ""
+
+    ## Override serviceMonitor selector
+    ##
+    selectorOverride: {}
+
+    relabelings: []
+    metricRelabelings: []
+    interval: ""
+    scrapeTimeout: 10s
+    ## prometheus.monitor.apiVersion ApiVersion for the serviceMonitor Resource(defaults to "monitoring.coreos.com/v1")
+    apiVersion: ""

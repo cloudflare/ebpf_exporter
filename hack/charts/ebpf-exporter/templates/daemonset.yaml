@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ template "ebpf-exporter.fullname" . }}
+  namespace: {{ template "ebpf-exporter.namespace" . }}
+  labels: 
+    app.kubernetes.io/name: {{ include "ebpf-exporter.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "ebpf-exporter.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  {{- if .Values.updateStrategy }}
+  updateStrategy:
+    {{ toYaml .Values.updateStrategy | indent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      labels: 
+        app.kubernetes.io/name: {{ include "ebpf-exporter.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- if .Values.podAnnotations }}
+      annotations:
+      {{- toYaml .Values.podAnnotations | nindent 8 }}
+      {{- end }}
+    spec:
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      serviceAccountName: {{ template "ebpf-exporter.serviceAccountName" . }}
+{{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+{{- end }}
+      {{- if .Values.extraInitContainers }}
+      initContainers:
+      {{ toYaml .Values.extraInitContainers | nindent 6 }}
+      {{- end }}
+      containers:
+        - name: {{ .Release.Name  }}
+          {{- if .Values.command }}
+          command:
+            {{- toYaml .Values.command | nindent 12 }}
+          {{- end }}
+          {{- if .Values.args }}
+          args:
+            {{- toYaml .Values.args | nindent 12 }}
+          {{- end }}
+          {{- if .Values.image }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- end }}
+          ports:
+          - name: metrics
+            containerPort: 9435
+            protocol: TCP
+          volumeMounts:
+          {{- if not (empty .Values.volumeMounts) }}
+          {{- toYaml .Values.volumeMounts | trim | nindent 12 }}
+          {{- end }}
+          {{- if not (empty .Values.extraVolumeMounts) }}
+          {{- toYaml .Values.extraVolumeMounts | trim | nindent 12 }}
+          {{- end }}
+          {{- if .Values.resources }}
+          resources:
+            {{- toYaml .Values.resources | trim | nindent 12 }}
+          {{- end }}
+          {{- if .Values.securityContext }}
+          securityContext:
+            {{ toYaml .Values.securityContext | trim | nindent 12 }}
+          {{- end }}
+      dnsPolicy: ClusterFirst
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | trim | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | trim | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | trim | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      volumes:
+      {{- if not (empty .Values.volumes) }}
+        {{- toYaml .Values.volumes | trim | nindent 8 }}
+      {{- end }}
+      {{- if not (empty .Values.extraVolumes) }}
+        {{- toYaml .Values.extraVolumes | trim | nindent 8 }}
+      {{- end }}
