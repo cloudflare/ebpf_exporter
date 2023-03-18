@@ -16,34 +16,34 @@ struct {
 SEC("kprobe/add_to_page_cache_lru")
 int add_to_page_cache_lru(struct pt_regs *ctx)
 {
-	u64 ip = KPROBE_REGS_IP_FIX(PT_REGS_IP_CORE(ctx));
-	increment_map(&page_cache_ops_total, &ip, 1);
-	return 0;
+    u64 ip = KPROBE_REGS_IP_FIX(PT_REGS_IP_CORE(ctx));
+    increment_map(&page_cache_ops_total, &ip, 1);
+    return 0;
 }
 
 SEC("kprobe/mark_page_accessed")
 int mark_page_accessed(struct pt_regs *ctx)
 {
-	u64 ip = KPROBE_REGS_IP_FIX(PT_REGS_IP_CORE(ctx));
-	increment_map(&page_cache_ops_total, &ip, 1);
-	return 0;
+    u64 ip = KPROBE_REGS_IP_FIX(PT_REGS_IP_CORE(ctx));
+    increment_map(&page_cache_ops_total, &ip, 1);
+    return 0;
 }
 
 // This function is usually not visible.
 SEC("kprobe/folio_account_dirtied")
 int folio_account_dirtied(struct pt_regs *ctx)
 {
-	u64 ip = KPROBE_REGS_IP_FIX(PT_REGS_IP_CORE(ctx));
-	increment_map(&page_cache_ops_total, &ip, 1);
-	return 0;
+    u64 ip = KPROBE_REGS_IP_FIX(PT_REGS_IP_CORE(ctx));
+    increment_map(&page_cache_ops_total, &ip, 1);
+    return 0;
 }
 
 SEC("kprobe/mark_buffer_dirty")
 int mark_buffer_dirty(struct pt_regs *ctx)
 {
-	u64 ip = KPROBE_REGS_IP_FIX(PT_REGS_IP_CORE(ctx));
-	increment_map(&page_cache_ops_total, &ip, 1);
-	return 0;
+    u64 ip = KPROBE_REGS_IP_FIX(PT_REGS_IP_CORE(ctx));
+    increment_map(&page_cache_ops_total, &ip, 1);
+    return 0;
 }
 
 char LICENSE[] SEC("license") = "GPL";

@@ -23,7 +23,7 @@ static int trace_event(void *map, u32 cpu, u64 sample_period)
 {
     increment_map(map, &cpu, sample_period);
 
-	return 0;
+    return 0;
 }
 
 SEC("perf_event/type=0,config=3,frequency=1")
