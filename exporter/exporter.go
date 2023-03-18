@@ -278,9 +278,11 @@ func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 				continue
 			}
 
+			aggregatedMapValues := aggregateMapValues(mapValues)
+
 			desc := e.descs[cfg.Name][counter.Name]
 
-			for _, metricValue := range mapValues {
+			for _, metricValue := range aggregatedMapValues {
 				ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, metricValue.value, metricValue.labels...)
 			}
 		}
@@ -301,6 +303,8 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 				continue
 			}
 
+			aggregatedMapValues := aggregateMapValues(mapValues)
+
 			// Taking the last label and using int as bucket delimiter, for example:
 			//
 			// Before:
@@ -310,7 +314,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 			//
 			// After:
 			// * [sda, read] -> {1ms -> 10, 2ms -> 2, 4ms -> 5}
-			for _, metricValue := range mapValues {
+			for _, metricValue := range aggregatedMapValues {
 				labels := metricValue.labels[0 : len(metricValue.labels)-1]
 
 				key := fmt.Sprintf("%#v", labels)
@@ -489,6 +493,36 @@ func (e *Exporter) MapsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// aggregateMapValues aggregates values so that the same set of labels is not repeated.
+// This is useful for cases when underlying id maps to the same value for metrics.
+// A concrete example is changing cgroup id mapping to the same cgroup name,
+// as systemd recycles cgroup when the service is restarted. Without pre-aggregation
+// here the metrics would break as prometheus does not allow the same set of labels
+// to be repeated. This assumes that values are counters and should be summed.
+func aggregateMapValues(values []metricValue) []aggregatedMetricValue {
+	aggregated := []aggregatedMetricValue{}
+	mapping := map[string]*aggregatedMetricValue{}
+
+	for _, value := range values {
+		key := strings.Join(value.labels, "|")
+
+		if existing, ok := mapping[key]; !ok {
+			mapping[key] = &aggregatedMetricValue{
+				labels: value.labels,
+				value:  value.value,
+			}
+		} else {
+			existing.value += value.value
+		}
+	}
+
+	for _, value := range mapping {
+		aggregated = append(aggregated, *value)
+	}
+
+	return aggregated
+}
+
 func mapValue(m *libbpfgo.BPFMap, key unsafe.Pointer) (float64, error) {
 	v, err := m.GetValue(key)
 	if err != nil {
@@ -503,6 +537,14 @@ func mapValue(m *libbpfgo.BPFMap, key unsafe.Pointer) (float64, error) {
 type metricValue struct {
 	// raw is a raw key value provided by kernel
 	raw []byte
+	// labels are decoded from the raw key
+	labels []string
+	// value is the kernel map value
+	value float64
+}
+
+// aggregatedMetricValue is a value after aggregation of equal label sets
+type aggregatedMetricValue struct {
 	// labels are decoded from the raw key
 	labels []string
 	// value is the kernel map value
