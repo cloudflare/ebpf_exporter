@@ -7,7 +7,7 @@ require (
 	github.com/elastic/go-perf v0.0.0-20191212140718-9c656876f595
 	github.com/iovisor/gobpf v0.2.0
 	github.com/prometheus/client_golang v1.14.0
-	github.com/prometheus/common v0.41.0
+	github.com/prometheus/common v0.42.0
 	golang.org/x/sys v0.6.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 v2.4.0
