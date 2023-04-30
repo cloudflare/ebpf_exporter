@@ -41,7 +41,7 @@ can use the bundled `Dockerfile` to have `libbpf` compiled in there.
 Note that there's a dependency between `libbpf` version you have installed
 and `libbpfgo`, which is Go's library to talk to `libbpf`
 
-Currently we target `libbpf` v1.0, which has a stable interface.
+Currently we target `libbpf` v1.1, which has a stable interface.
 
 We compile `ebpf_exporter` with `libbpf` statically compiled in,
 so there's only ever a chance of build time issues, never at run time.
