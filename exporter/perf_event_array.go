@@ -77,7 +77,7 @@ func NewPerfEventArraySink(decoders *decoder.Set, module *libbpfgo.Module, count
 		}
 	}(sink)
 
-	perfEventBuf.Start()
+	perfEventBuf.Poll(300)
 
 	return sink
 }
