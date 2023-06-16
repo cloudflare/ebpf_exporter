@@ -1,0 +1,9 @@
+metrics:
+  counters:
+    - name: udp_fail_queue_rcv_skbs_total
+      help: Total number of UDP SKBs that failed to be delivered due to full receive buffer
+      labels:
+        - name: local_port
+          size: 2
+          decoders:
+            - name: uint
