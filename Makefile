@@ -25,5 +25,8 @@ test:
 	go test -v ./...
 
 .PHONY: build
-build:
+build: generate
 	go build -o ebpf_exporter -v $(GO_LDFLAGS) ./cmd/ebpf_exporter
+
+generate:
+	go generate ./decoder
