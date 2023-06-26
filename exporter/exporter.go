@@ -94,6 +94,10 @@ func (e *Exporter) Attach() error {
 	if err != nil {
 		return fmt.Errorf("error registering libbpf handlers: %v", err)
 	}
+	err = registerXDPHandler()
+	if err != nil {
+		return fmt.Errorf("error registering xdp handlers: %v", err)
+	}
 
 	for _, cfg := range e.configs {
 		if _, ok := e.modules[cfg.Name]; ok {
