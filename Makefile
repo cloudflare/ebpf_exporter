@@ -25,8 +25,8 @@ test:
 	go test -v ./...
 
 .PHONY: build
-build: generate
+build:
 	go build -o ebpf_exporter -v $(GO_LDFLAGS) ./cmd/ebpf_exporter
 
-generate:
-	go generate ./decoder
+syscalls:
+	go run ./scripts/mksyscalls --strace.version v6.4
