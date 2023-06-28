@@ -37,6 +37,7 @@ func NewSet() *Set {
 			"dname":      &Dname{},
 			"uint":       &UInt{},
 			"inet_ip":    &InetIP{},
+			"syscall":    &Syscall{},
 		},
 	}
 }

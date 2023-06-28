@@ -1,0 +1,10 @@
+metrics:
+  counters:
+    - name: syscalls_total
+      help: Total number of executed syscalls by name
+      labels:
+        - name: syscall
+          size: 8
+          decoders:
+            - name: uint
+            - name: syscall
