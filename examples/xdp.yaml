@@ -1,87 +1,26 @@
 metrics:
   counters:
-    - name: xdp_tcp_map
-      help: Shows TCP packets
+    - name: xdp_incoming_packets_total
+      help: Incoming packets going through xdp by protocol and port
       labels:
-        - name: src_ip
-          size: 4
-          decoders:
-            - name: inet_ip
-        - name: dst_ip
-          size: 4
-          decoders:
-            - name: inet_ip
-        - name: src_port
-          size: 4
-          decoders:
-            - name: uint
-        - name: dst_port
-          size: 4
-          decoders:
-            - name: uint
-        - name: protocol
-          size: 4
+        - name: ip
+          size: 2
           decoders:
             - name: uint
             - name: static_map
               static_map:
-                6: tcp
-    - name: xdp_udp_map
-      help: Shows UDP packets
-      labels:
-        - name: src_ip
-          size: 4
-          decoders:
-            - name: inet_ip
-        - name: dst_ip
-          size: 4
-          decoders:
-            - name: inet_ip
-        - name: src_port
-          size: 4
-          decoders:
-            - name: uint
-        - name: dst_port
-          size: 4
-          decoders:
-            - name: uint
+                2048: ipv4
+                34525: ipv6
         - name: protocol
-          size: 4
-          decoders:
-            - name: uint
-            - name: static_map
-              static_map:
-                17: udp
-    - name: xdp_icmp_map
-      help: Shows ICMP packets
-      labels:
-        - name: src_ip
-          size: 4
-          decoders:
-            - name: inet_ip
-        - name: dst_ip
-          size: 4
-          decoders:
-            - name: inet_ip
-        - name: type
-          size: 4
-          decoders:
-            - name: uint
-        - name: code
-          size: 4
-          decoders:
-            - name: uint
-        - name: protocol
-          size: 4
+          size: 2
           decoders:
             - name: uint
             - name: static_map
               static_map:
                 1: icmp
-    - name: xdp_total_packets_map
-      help: Shows Total Packet Number
-      labels:
-        - name: ethernet_packet
-          size: 4
+                6: tcp
+                17: udp
+        - name: dst_port
+          size: 2
           decoders:
             - name: uint
