@@ -8,6 +8,8 @@ import (
 	"unsafe"
 )
 
+// These callbacks need to be in a separate file to avoid multiple definitions error
+
 //export attachXDPCallback
 func attachXDPCallback(prog unsafe.Pointer, cookie C.long, link *unsafe.Pointer) C.int {
 	program := (*C.struct_bpf_program)(prog)

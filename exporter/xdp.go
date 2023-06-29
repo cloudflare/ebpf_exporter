@@ -21,7 +21,13 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+var libbpfXDPHandlers []int
+
 func registerXDPHandler() error {
+	if libbpfXDPHandlers != nil {
+		return nil
+	}
+
 	name := C.CString("xdp/")
 	defer C.free(unsafe.Pointer(name))
 
@@ -34,7 +40,7 @@ func registerXDPHandler() error {
 		return fmt.Errorf("error registering prog handler: %s", unix.ErrnoName(syscall.Errno(handler)))
 	}
 
-	libbpf_prog_handlers = append(libbpf_prog_handlers, int(handler))
+	libbpfXDPHandlers = append(libbpfXDPHandlers, int(handler))
 
 	return nil
 }
@@ -45,20 +51,19 @@ func attachXDP(prog *C.struct_bpf_program) ([]*C.struct_bpf_link, error) {
 	devices := strings.Split(strings.TrimPrefix(section, "xdp/"), ",")
 	links := make([]*C.struct_bpf_link, len(devices))
 
-	cnt := 0
-	for _, deviceName := range devices {
-		iface, err := net.InterfaceByName(deviceName)
+	for i, device := range devices {
+		iface, err := net.InterfaceByName(device)
 		if err != nil {
-			fmt.Printf("failed to find device by name %s: %v\n", deviceName, err)
-			continue
+			return nil, fmt.Errorf("failed to find device %q for program %q: %v", device, name, err)
 		}
-		link, errno := C.bpf_program__attach_xdp(prog, C.int(iface.Index))
+
+		link, err := C.bpf_program__attach_xdp(prog, C.int(iface.Index))
 		if link == nil {
-			fmt.Printf("failed to attach xdp on device %s to program %s: %v\n", deviceName, name, errno)
-			continue
+			return nil, fmt.Errorf("failed to attach xdp on device %q for program %s: %v\n", device, name, err)
 		}
-		links[cnt] = link
-		cnt++
+
+		links[i] = link
 	}
+
 	return links, nil
 }
