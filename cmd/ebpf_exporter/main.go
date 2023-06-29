@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aquasecurity/libbpfgo"
 	"github.com/cloudflare/ebpf_exporter/v2/config"
 	"github.com/cloudflare/ebpf_exporter/v2/exporter"
 	"github.com/prometheus/client_golang/prometheus"
@@ -23,6 +24,15 @@ func main() {
 	kingpin.Version(version.Print("ebpf_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
+
+	libbpfgoCallbacks := libbpfgo.Callbacks{Log: libbpfLogCallback}
+	if !*debug {
+		libbpfgoCallbacks.LogFilters = append(libbpfgoCallbacks.LogFilters, func(libLevel int, msg string) bool {
+			return libLevel == libbpfgo.LibbpfDebugLevel
+		})
+	}
+
+	libbpfgo.SetLoggerCbs(libbpfgoCallbacks)
 
 	started := time.Now()
 
@@ -77,4 +87,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error listening on %s: %s", *listenAddress, err)
 	}
+}
+
+func libbpfLogCallback(level int, msg string) {
+	levelName := "unknown"
+	switch level {
+	case libbpfgo.LibbpfWarnLevel:
+		levelName = "warn"
+	case libbpfgo.LibbpfInfoLevel:
+		levelName = "info"
+	case libbpfgo.LibbpfDebugLevel:
+		levelName = "debug"
+	}
+
+	log.Printf("libbpf [%s]: %s", levelName, msg)
 }
