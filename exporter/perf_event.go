@@ -23,10 +23,10 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var libbpf_prog_handlers []int
+var libbpfPerfHandlers []int
 
 func registerHandlers() error {
-	if libbpf_prog_handlers != nil {
+	if libbpfPerfHandlers != nil {
 		return nil
 	}
 
@@ -42,7 +42,7 @@ func registerHandlers() error {
 		return fmt.Errorf("error registering prog handler: %s", unix.ErrnoName(syscall.Errno(handler)))
 	}
 
-	libbpf_prog_handlers = append(libbpf_prog_handlers, int(handler))
+	libbpfPerfHandlers = append(libbpfPerfHandlers, int(handler))
 
 	return nil
 }

@@ -1,0 +1,26 @@
+metrics:
+  counters:
+    - name: xdp_incoming_packets_total
+      help: Incoming packets going through xdp by protocol and port
+      labels:
+        - name: ip
+          size: 2
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                2048: ipv4
+                34525: ipv6
+        - name: protocol
+          size: 2
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                1: icmp
+                6: tcp
+                17: udp
+        - name: dst_port
+          size: 2
+          decoders:
+            - name: uint
