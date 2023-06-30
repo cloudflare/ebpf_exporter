@@ -73,7 +73,8 @@ To run with [`biolatency`](examples/biolatency.yaml) config:
 sudo ./ebpf_exporter --config.dir examples --config.names biolatency
 ```
 
-If you pass `--debug`, you can see raw maps at `/maps` endpoint.
+If you pass `--debug`, you can see raw maps at `/maps` endpoint
+and see debug output from `libbpf` itself.
 
 ### Docker image
 
