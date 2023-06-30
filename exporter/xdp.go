@@ -48,22 +48,17 @@ func registerXDPHandler() error {
 func attachXDP(prog *C.struct_bpf_program) ([]*C.struct_bpf_link, error) {
 	name := C.GoString(C.bpf_program__name(prog))
 	section := C.GoString(C.bpf_program__section_name(prog))
-	devices := strings.Split(strings.TrimPrefix(section, "xdp/"), ",")
-	links := make([]*C.struct_bpf_link, len(devices))
+	device := strings.TrimPrefix(section, "xdp/")
 
-	for i, device := range devices {
-		iface, err := net.InterfaceByName(device)
-		if err != nil {
-			return nil, fmt.Errorf("failed to find device %q for program %q: %v", device, name, err)
-		}
-
-		link, err := C.bpf_program__attach_xdp(prog, C.int(iface.Index))
-		if link == nil {
-			return nil, fmt.Errorf("failed to attach xdp on device %q for program %s: %v\n", device, name, err)
-		}
-
-		links[i] = link
+	iface, err := net.InterfaceByName(device)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find device %q for program %q: %v", device, name, err)
 	}
 
-	return links, nil
+	link, err := C.bpf_program__attach_xdp(prog, C.int(iface.Index))
+	if link == nil {
+		return nil, fmt.Errorf("failed to attach xdp on device %q for program %s: %v\n", device, name, err)
+	}
+
+	return []*C.struct_bpf_link{link}, nil
 }

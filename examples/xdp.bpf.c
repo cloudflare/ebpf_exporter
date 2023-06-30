@@ -45,8 +45,7 @@ parse_header(ipv6hdr)
 parse_header(tcphdr)
 parse_header(udphdr)
 
-SEC("xdp/lo")
-int xdp_trace(struct xdp_md *ctx) {
+static int xdp_trace(struct xdp_md *ctx) {
     void *data_end = (void *) (long) ctx->data_end;
     void *data = (void *) (long) ctx->data;
     struct packet_key_t key = {};
@@ -105,6 +104,11 @@ int xdp_trace(struct xdp_md *ctx) {
     increment_map(&xdp_incoming_packets_total, &key, 1);
 
     return XDP_PASS;
+}
+
+SEC("xdp/lo")
+int trace_lo(struct xdp_md *ctx) {
+    return xdp_trace(ctx);
 }
 
 char LICENSE[] SEC("license") = "GPL";
