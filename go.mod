@@ -6,7 +6,7 @@ require (
 	github.com/aquasecurity/libbpfgo v0.4.9-libbpf-1.2.0
 	github.com/elastic/go-perf v0.0.0-20191212140718-9c656876f595
 	github.com/iovisor/gobpf v0.2.0
-	github.com/prometheus/client_golang v1.15.1
+	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/common v0.44.0
 	golang.org/x/sys v0.9.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
@@ -22,6 +22,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
-	github.com/prometheus/procfs v0.9.0 // indirect
+	github.com/prometheus/procfs v0.10.1 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 )
