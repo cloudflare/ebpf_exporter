@@ -1,0 +1,9 @@
+metrics:
+  counters:
+    - name: tcp_listen_drops_total
+      help: Total number times an incoming connection had to be dropped from a listen queue
+      labels:
+        - name: local_port
+          size: 2
+          decoders:
+            - name: uint
