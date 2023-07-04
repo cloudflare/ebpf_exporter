@@ -1,3 +1,5 @@
+.DEFAULT_GOAL := build
+
 CC := clang
 
 ARCH := $(shell uname -m | sed -e 's/x86_64/x86/' -e 's/aarch64/arm64/')
