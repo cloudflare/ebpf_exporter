@@ -13,12 +13,18 @@ GO_LDFLAGS_VARS := -X $(BUILD_VAR_PREFIX).Version=$(BUILD_VERSION) \
 
 GO_LDFLAGS := -ldflags="-extldflags "-static" $(GO_LDFLAGS_VARS)"
 
+CLANG_FORMAT_FILES = ${wildcard examples/*.c examples/*.h benchmark/probes/*.c benchmark/probes/*.h}
+
 export CGO_LDFLAGS := -l bpf
 
 .PHONY: lint
 lint:
 	go mod verify
 	golangci-lint run ./...
+
+.PHONY: clang-format-check
+clang-format-check:
+	clang-format --dry-run --verbose -Werror $(CLANG_FORMAT_FILES)
 
 .PHONY: test
 test:
