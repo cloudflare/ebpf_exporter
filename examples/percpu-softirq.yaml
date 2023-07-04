@@ -1,0 +1,29 @@
+metrics:
+  counters:
+    - name: softirqs_total
+      help: Total number of softirq calls per cpu
+      labels:
+        - name: vec
+          size: 4
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                # https://elixir.bootlin.com/linux/v6.4/source/include/linux/interrupt.h#L548
+                0: HI_SOFTIRQ
+                1: TIMER_SOFTIRQ
+                2: NET_TX_SOFTIRQ
+                3: NET_RX_SOFTIRQ
+                4: BLOCK_SOFTIRQ
+                5: IRQ_POLL_SOFTIRQ
+                6: TASKLET_SOFTIRQ
+                7: SCHED_SOFTIRQ
+                8: HRTIMER_SOFTIRQ
+                9: RCU_SOFTIRQ
+        # If the last label is defined as a 2 byte uint decoded into "cpu",
+        # then "cpu" label is added automatically. Otherwise, the per-cpu
+        # counters are aggregated into one.
+        - name: cpu
+          size: 2
+          decoders:
+            - name: uint

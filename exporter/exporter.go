@@ -2,10 +2,12 @@ package exporter
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"unsafe"
@@ -19,6 +21,12 @@ import (
 
 // Namespace to use for all metrics
 const prometheusNamespace = "ebpf_exporter"
+
+var percpuMapTypes = map[libbpfgo.MapType]struct{}{
+	libbpfgo.MapTypePerCPUHash:    {},
+	libbpfgo.MapTypePerCPUArray:   {},
+	libbpfgo.MapTypeLRUPerCPUHash: {},
+}
 
 // Exporter is a ebpf_exporter instance implementing prometheus.Collector
 type Exporter struct {
@@ -361,47 +369,34 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 
 // mapValues returns values in the requested map to be used in metrics
 func (e *Exporter) mapValues(module *libbpfgo.Module, name string, labels []config.Label) ([]metricValue, error) {
-	values := []metricValue{}
-
 	m, err := module.GetMap(name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve map %q: %v", name, err)
 	}
 
-	keySize := uint(0)
-	for _, label := range labels {
-		keySize += label.Size
+	metricValues, err := readMapValues(m, labels)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve map %q: %v", name, err)
 	}
 
-	// If there are no labels, then just use key uint32(0)
-	if len(labels) == 0 {
-		key := []byte{0x0, 0x0, 0x0, 0x0}
+	_, percpu := percpuMapTypes[m.Type()]
 
-		value, err := mapValue(m, unsafe.Pointer(&key[0]))
-		if err != nil {
-			return nil, err
+	for i, mv := range metricValues {
+		raw := mv.raw
+
+		// If there are no labels, assume a single key of uint32(0)
+		if len(labels) == 0 && bytes.Equal(mv.raw, []byte{0x0, 0x0, 0x0, 0x0}) {
+			metricValues[i].labels = []string{}
+			continue
 		}
 
-		return []metricValue{
-			{
-				raw:    key,
-				labels: []string{},
-				value:  value,
-			},
-		}, nil
-	}
-
-	iter := m.Iterator()
-
-	for iter.Next() {
-		key := iter.Key()
-
-		mv := metricValue{
-			raw:    key,
-			labels: make([]string, len(labels)),
+		// If the metrics are percpu and cpu is the only label, ignore the first
+		// uint32(0), same as above for the non-percpu case of no labels at all
+		if percpu && len(labels) == 1 && labels[0].Name == "cpu" && bytes.Equal(mv.raw[:4], []byte{0x0, 0x0, 0x0, 0x0}) {
+			raw = raw[4:]
 		}
 
-		mv.labels, err = e.decoders.DecodeLabels(key, labels)
+		metricValues[i].labels, err = e.decoders.DecodeLabels(raw, labels)
 		if err != nil {
 			if err == decoder.ErrSkipLabelSet {
 				continue
@@ -409,16 +404,9 @@ func (e *Exporter) mapValues(module *libbpfgo.Module, name string, labels []conf
 
 			return nil, err
 		}
-
-		mv.value, err = mapValue(m, unsafe.Pointer(&key[0]))
-		if err != nil {
-			return nil, err
-		}
-
-		values = append(values, mv)
 	}
 
-	return values, nil
+	return metricValues, nil
 }
 
 func (e Exporter) exportMaps() (map[string]map[string][]metricValue, error) {
@@ -486,7 +474,7 @@ func (e *Exporter) MapsHandler(w http.ResponseWriter, r *http.Request) {
 
 			buf = append(buf, "```\n"...)
 			for _, row := range m {
-				buf = append(buf, fmt.Sprintf("%#v (labels: %v) -> %f\n", row.raw, row.labels, row.value)...)
+				buf = append(buf, fmt.Sprintf("%#v (labels: %v) -> %.0f\n", row.raw, row.labels, row.value)...)
 			}
 			buf = append(buf, "```\n\n"...)
 		}
@@ -527,14 +515,88 @@ func aggregateMapValues(values []metricValue) []aggregatedMetricValue {
 	return aggregated
 }
 
-func mapValue(m *libbpfgo.BPFMap, key unsafe.Pointer) (float64, error) {
-	v, err := m.GetValue(key)
+func readMapValues(m *libbpfgo.BPFMap, labels []config.Label) ([]metricValue, error) {
+	_, percpu := percpuMapTypes[m.Type()]
+
+	// if the last label is cpu, split the counters per cpu
+	addCPU := len(labels) > 0 && labels[len(labels)-1].Name == "cpu"
+
+	metricValues := []metricValue{}
+
+	iter := m.Iterator()
+
+	for iter.Next() {
+		key := iter.Key()
+
+		if percpu {
+			values, err := mapValuePerCPU(m, key)
+			if err != nil {
+				return nil, err
+			}
+
+			for cpu, value := range values {
+				mv := metricValue{
+					raw:   key,
+					value: value,
+				}
+
+				if addCPU {
+					// add CPU number as uint16 at the end
+					cpuBytes := []byte{0x0, 0x0}
+					util.GetHostByteOrder().PutUint16(cpuBytes, uint16(cpu))
+					mv.raw = append(mv.raw, cpuBytes...)
+				}
+
+				metricValues = append(metricValues, mv)
+			}
+		} else {
+			mv := metricValue{
+				raw: key,
+			}
+
+			value, err := mapValue(m, key)
+			if err != nil {
+				return nil, err
+			}
+
+			mv.value = value
+
+			metricValues = append(metricValues, mv)
+		}
+	}
+
+	return metricValues, nil
+}
+
+func mapValue(m *libbpfgo.BPFMap, key []byte) (float64, error) {
+	v, err := m.GetValue(unsafe.Pointer(&key[0]))
 	if err != nil {
 		return 0.0, err
 	}
 
-	// Assuming counter's value type is always u64
-	return float64(util.GetHostByteOrder().Uint64(v)), nil
+	return decodeValue(v), nil
+}
+
+func mapValuePerCPU(m *libbpfgo.BPFMap, key []byte) ([]float64, error) {
+	values := []float64{}
+
+	size := m.ValueSize()
+	value := make([]byte, size*runtime.NumCPU())
+	err := m.GetValueReadInto(unsafe.Pointer(&key[0]), &value)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < len(value); i += size {
+		values = append(values, decodeValue(value[i:i+size]))
+	}
+
+	return values, err
+}
+
+// Assuming counter's value type is always u64
+func decodeValue(value []byte) float64 {
+	return float64(util.GetHostByteOrder().Uint64(value))
 }
 
 // metricValue is a row in a kernel map
