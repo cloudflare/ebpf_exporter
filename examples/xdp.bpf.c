@@ -13,7 +13,7 @@ struct packet_key_t {
 };
 
 struct hdr_cursor {
-	void *pos;
+    void *pos;
 };
 
 struct {
@@ -26,26 +26,29 @@ struct {
 // Primitive header extraction macros. See xdp-tutorial repo for more robust parsers:
 // * https://github.com/xdp-project/xdp-tutorial/blob/master/common/parsing_helpers.h
 #define parse_args struct hdr_cursor *cursor, void *data_end, struct
-#define parse_header(type) static bool parse_##type(parse_args type **hdr) { \
-    size_t offset = sizeof(**hdr);                                           \
-                                                                             \
-    if (cursor->pos + offset > data_end) {                                   \
-        return false;                                                        \
-    }                                                                        \
-                                                                             \
-    *hdr = cursor->pos;                                                      \
-    cursor->pos += offset;                                                   \
-                                                                             \
-    return true;                                                             \
-}
+#define parse_header(type)                                                                                             \
+    static bool parse_##type(parse_args type **hdr)                                                                    \
+    {                                                                                                                  \
+        size_t offset = sizeof(**hdr);                                                                                 \
+                                                                                                                       \
+        if (cursor->pos + offset > data_end) {                                                                         \
+            return false;                                                                                              \
+        }                                                                                                              \
+                                                                                                                       \
+        *hdr = cursor->pos;                                                                                            \
+        cursor->pos += offset;                                                                                         \
+                                                                                                                       \
+        return true;                                                                                                   \
+    }
 
-parse_header(ethhdr)
-parse_header(iphdr)
-parse_header(ipv6hdr)
-parse_header(tcphdr)
-parse_header(udphdr)
+parse_header(ethhdr);
+parse_header(iphdr);
+parse_header(ipv6hdr);
+parse_header(tcphdr);
+parse_header(udphdr);
 
-static int xdp_trace(struct xdp_md *ctx) {
+static int xdp_trace(struct xdp_md *ctx)
+{
     void *data_end = (void *) (long) ctx->data_end;
     void *data = (void *) (long) ctx->data;
     struct packet_key_t key = {};
@@ -107,7 +110,8 @@ static int xdp_trace(struct xdp_md *ctx) {
 }
 
 SEC("xdp/lo")
-int trace_lo(struct xdp_md *ctx) {
+int trace_lo(struct xdp_md *ctx)
+{
     return xdp_trace(ctx);
 }
 

@@ -153,3 +153,15 @@ jobs:
 
       - name: Build example bpf probes
         run: make -j $(nproc) -C examples build
+
+  clang-format:
+    name: Run clang-format check
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install clang-format
+        run: sudo apt-get install -y clang-format make
+
+      - name: Run clang-format check
+        run: make clang-format-check

@@ -19,7 +19,7 @@ static int update_current()
         return 0;
     }
 
-    bpf_probe_read_kernel(&current_value, sizeof(current_value), (const void*) kaddr_bpf_jit_current);
+    bpf_probe_read_kernel(&current_value, sizeof(current_value), (const void *) kaddr_bpf_jit_current);
     bpf_map_update_elem(&bpf_jit_pages_currently_allocated, &zero_key, &current_value, BPF_ANY);
 
     return 0;

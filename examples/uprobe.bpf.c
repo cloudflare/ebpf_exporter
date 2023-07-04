@@ -10,7 +10,6 @@ struct {
     __type(value, u64);
 } libc_malloc_calls_total SEC(".maps");
 
-
 SEC("uprobe/libc.so.6:malloc")
 int do_count(struct pt_regs *ctx)
 {

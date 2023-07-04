@@ -10,7 +10,7 @@ struct {
 } timer_starts_total SEC(".maps");
 
 SEC("tracepoint/timer/timer_start")
-int do_count(struct trace_event_raw_timer_start* ctx)
+int do_count(struct trace_event_raw_timer_start *ctx)
 {
     u64 function = (u64) ctx->function;
 

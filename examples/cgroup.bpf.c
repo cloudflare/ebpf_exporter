@@ -10,7 +10,6 @@ struct {
     __type(value, u64);
 } cgroup_sched_migrations_total SEC(".maps");
 
-
 SEC("tracepoint/sched/sched_migrate_task")
 int do_count(struct pt_regs *ctx)
 {

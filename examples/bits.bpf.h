@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause) */
 /* From https://github.com/iovisor/bcc/blob/v0.25.0/libbpf-tools/bits.bpf.h*/
+/* clang-format off */
+
 #ifndef __BITS_BPF_H
 #define __BITS_BPF_H
 

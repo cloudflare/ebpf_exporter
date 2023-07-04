@@ -10,7 +10,6 @@ struct {
     __type(value, u64);
 } raw_timer_starts_total SEC(".maps");
 
-
 SEC("raw_tp/timer_start")
 int do_count(struct bpf_raw_tracepoint_args *ctx)
 {

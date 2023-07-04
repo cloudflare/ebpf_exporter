@@ -12,7 +12,6 @@ struct {
     __type(value, u64);
 } page_cache_ops_total SEC(".maps");
 
-
 SEC("kprobe/add_to_page_cache_lru")
 int add_to_page_cache_lru(struct pt_regs *ctx)
 {

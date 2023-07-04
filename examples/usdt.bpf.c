@@ -16,7 +16,6 @@ struct {
     __type(value, u64);
 } python_function_entries_total SEC(".maps");
 
-
 SEC("usdt/python3:python:function__entry")
 int BPF_USDT(do_count, void *arg0, void *arg1, void *arg2)
 {

@@ -1,0 +1,13 @@
+# Minimal format loosely matching the kernel style.
+Standard: Cpp03
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+SortIncludes: false
+SpaceAfterCStyleCast: true
+AllowShortFunctionsOnASingleLine: None
+Cpp11BracedListStyle: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
