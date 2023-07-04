@@ -11,7 +11,7 @@ on:
 jobs:
   build-ebpf-exporter-x86_64:
     name: Build ebpf_exporter (x86_64)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -38,7 +38,7 @@ jobs:
 
   build-ebpf-exporter-aarch64:
     name: Build ebpf_exporter (aarch64 emulated, be patient)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: dbhi/qus/action@main
         with:
@@ -70,7 +70,7 @@ jobs:
   test-ebpf-exporter-x86_64:
     name: Test ebpf_exporter (x86_64)
     needs: build-ebpf-exporter-x86_64
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/setup-go@v3
         with:
@@ -98,7 +98,7 @@ jobs:
   lint-ebpf-exporter-x86_64:
     name: Lint ebpf_exporter (x86_64)
     needs: build-ebpf-exporter-x86_64
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/setup-go@v3
         with:
@@ -130,7 +130,7 @@ jobs:
   build-examples-x86_64:
     name: Build examples (x86_64)
     needs: build-ebpf-exporter-x86_64
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
 
@@ -156,7 +156,7 @@ jobs:
 
   clang-format:
     name: Run clang-format check
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
 
