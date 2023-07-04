@@ -17,7 +17,7 @@ OBJ = ${patsubst %.bpf.c, %.bpf.o, $(SRC)}
 CLANG_BPF_SYS_INCLUDES = $(shell $(CC) -v -E - </dev/null 2>&1 \
 	| sed -n '/<...> search starts here:/,/End of search list./{ s| \(/.*\)|-idirafter \1|p }')
 
-$(OBJ): %.bpf.o: %.bpf.c
+$(OBJ): %.bpf.o: %.bpf.c ../include/$(ARCH)/vmlinux.h
 	$(CC) -mcpu=v3 -g -O2 -Wall -Werror -D__TARGET_ARCH_$(ARCH) $(CFLAGS) $(CLANG_BPF_SYS_INCLUDES) -I../include/$(ARCH) -c -target bpf $< -o $@
 
 .PHONY: clean
