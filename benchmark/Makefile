@@ -1,3 +1,5 @@
+.DEFAULT_GOAL := build
+
 .PHONY: clean
 clean:
 	$(MAKE) -C probes clean

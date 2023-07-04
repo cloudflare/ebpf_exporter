@@ -1,3 +1,5 @@
+.DEFAULT_GOAL := build
+
 BUILD_VAR_PREFIX := github.com/prometheus/common/version
 BUILD_VERSION := $(shell git describe --tags)
 BUILD_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
