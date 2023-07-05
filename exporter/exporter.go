@@ -112,7 +112,10 @@ func (e *Exporter) Attach() error {
 			return fmt.Errorf("multiple configs with name %q", cfg.Name)
 		}
 
-		module, err := libbpfgo.NewModuleFromFile(cfg.BPFPath)
+		module, err := libbpfgo.NewModuleFromFileArgs(libbpfgo.NewModuleArgs{
+			BPFObjPath:      cfg.BPFPath,
+			SkipMemlockBump: true, // Let libbpf itself decide whether it is needed
+		})
 		if err != nil {
 			return fmt.Errorf("error creating module from %q for config %q: %v", cfg.BPFPath, cfg.Name, err)
 		}

@@ -112,6 +112,45 @@ with your own config baked in.
 
 See [benchmark](benchmark) directory to get an idea of how low ebpf overhead is.
 
+## Required capabilities
+
+While you can run `ebpf_exporter` as `root`, it is not strictly necessary.
+Only the following two capabilities are necessary for normal operation:
+
+* `CAP_BPF`: required for privileged bpf operations and for reading memory
+* `CAP_PERFMON`: required to attach bpf programs to kprobes and tracepoints
+
+If you are using `systemd`, you can use the following configuration to run
+as on otherwise unprivileged dynamic user with the needed capabilities:
+
+```ini
+DynamicUser=true
+AmbientCapabilities=CAP_BPF CAP_PERFMON
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON
+```
+
+Prior to Linux v5.8 there was no dedicated `CAP_BPF` and `CAP_PERFMON`,
+but you can use `CAP_SYS_ADMIN` instead of your kernel is older.
+
+If you pass `--capabilities.keep=none` flag to `ebpf_expoter`, then it drops
+all capabilities after attaching the probes, leaving it fully unprivileged.
+
+The following additional capabilities might be needed:
+
+* `CAP_SYSLOG`: if you use `ksym` decoder to have access to `/proc/kallsyms`.
+  Note that you must keep this capability: `--capabilities.keep=cap_syslog`.
+  See: https://elixir.bootlin.com/linux/v6.4/source/kernel/kallsyms.c#L982
+* `CAP_IPC_LOCK`: if you use `perf_event_array` for reading from the kernel.
+  Note that you must keep it: `--capabilities.keep=cap_perfmon,cap_ipc_lock`.
+* `CAP_SYS_ADMIN`: if you want BTF information from modules.
+  See: https://github.com/libbpf/libbpf/blob/v1.2.0/src/libbpf.c#L8654-L8666
+  and https://elixir.bootlin.com/linux/v6.5-rc1/source/kernel/bpf/syscall.c#L3789
+* `CAP_NET_ADMIN`: if you use net admin related programs like xdp.
+  See: https://elixir.bootlin.com/linux/v6.4/source/kernel/bpf/syscall.c#L3787
+* `CAP_SYS_RESOURCE`: if you run an older kernel without memcg accounting for
+  bpf memory. Upstream Linux kernel added support for this in v5.11.
+  See: https://github.com/libbpf/libbpf/blob/v1.2.0/src/bpf.c#L98-L106
+
 ## Supported scenarios
 
 Currently the only supported way of getting data out of the kernel is via maps.

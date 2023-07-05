@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 func main() {
@@ -24,6 +25,7 @@ func main() {
 	debug := kingpin.Flag("debug", "Enable debug.").Bool()
 	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests (fd://0 for systemd activation).").Default(":9435").String()
 	metricsPath := kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+	capabilities := kingpin.Flag("capabilities.keep", "Comma separated list of capabilities to keep (cap_syslog, cap_bpf, etc.), 'all' or 'none'").Default("all").String()
 	kingpin.Version(version.Print("ebpf_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
@@ -52,6 +54,11 @@ func main() {
 	err = e.Attach()
 	if err != nil {
 		log.Fatalf("Error attaching exporter: %s", err)
+	}
+
+	err = ensureCapabilities(*capabilities)
+	if err != nil {
+		log.Fatalf("Error dropping capabilities: %s", err)
 	}
 
 	log.Printf("Started with %d programs found in the config in %dms", len(configs), time.Since(started).Milliseconds())
@@ -113,6 +120,49 @@ func listen(addr string) error {
 
 	return http.ListenAndServe(addr, nil)
 
+}
+
+func ensureCapabilities(keep string) error {
+	existing := cap.GetProc()
+	log.Printf("Started with capabilities: %q", existing)
+
+	if keep == "all" {
+		log.Printf("Retaining all existing capabilities")
+		return nil
+	}
+
+	ensure := cap.NewSet()
+
+	values := []cap.Value{}
+	if keep != "none" {
+		for _, name := range strings.Split(keep, ",") {
+			value, err := cap.FromName(name)
+			if err != nil {
+				return fmt.Errorf("error parsing capability %q: %v", name, err)
+			}
+
+			values = append(values, value)
+		}
+	}
+
+	err := ensure.SetFlag(cap.Permitted, true, values...)
+	if err != nil {
+		return fmt.Errorf("error setting permitted capabilities: %v", err)
+	}
+
+	err = ensure.SetFlag(cap.Effective, true, values...)
+	if err != nil {
+		return fmt.Errorf("error setting effective capabilities: %v", err)
+	}
+
+	err = ensure.SetProc()
+	if err != nil {
+		return fmt.Errorf("failed to drop capabilities: %q -> %q: %v", existing, ensure, err)
+	}
+
+	log.Printf("Dropped capabilities to %q", ensure)
+
+	return nil
 }
 
 func libbpfLogCallback(level int, msg string) {
