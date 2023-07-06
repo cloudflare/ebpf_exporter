@@ -9,7 +9,3 @@ metrics:
           decoders:
             - name: uint
             - name: cgroup
-        - name: global_oom
-          size: 1
-          decoders:
-            - name: uint
