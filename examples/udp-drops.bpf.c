@@ -2,7 +2,7 @@
 #include <bpf/bpf_tracing.h>
 #include "maps.bpf.h"
 
-#define UPPER_PORT_BOUND 9024
+#define UPPER_PORT_BOUND 32768
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
