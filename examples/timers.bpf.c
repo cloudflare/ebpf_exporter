@@ -1,5 +1,5 @@
 #include <vmlinux.h>
-#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
 #include "maps.bpf.h"
 
 struct {
@@ -9,13 +9,11 @@ struct {
     __type(value, u64);
 } timer_starts_total SEC(".maps");
 
-SEC("tracepoint/timer/timer_start")
-int do_count(struct trace_event_raw_timer_start *ctx)
+SEC("tp_btf/timer_start")
+int BPF_PROG(timer_start, struct timer_list *timer)
 {
-    u64 function = (u64) ctx->function;
-
+    u64 function = (u64) timer->function;
     increment_map(&timer_starts_total, &function, 1);
-
     return 0;
 }
 

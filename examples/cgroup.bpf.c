@@ -1,5 +1,5 @@
 #include <vmlinux.h>
-#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
 #include "bits.bpf.h"
 #include "maps.bpf.h"
 
@@ -10,13 +10,11 @@ struct {
     __type(value, u64);
 } cgroup_sched_migrations_total SEC(".maps");
 
-SEC("tracepoint/sched/sched_migrate_task")
-int do_count(struct pt_regs *ctx)
+SEC("tp_btf/sched_migrate_task")
+int BPF_PROG(sched_migrate_task)
 {
     u64 cgroup_id = bpf_get_current_cgroup_id();
-
     increment_map(&cgroup_sched_migrations_total, &cgroup_id, 1);
-
     return 0;
 }
 

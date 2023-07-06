@@ -1,5 +1,5 @@
 #include <vmlinux.h>
-#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
 #include "maps.bpf.h"
 
 #define UPPER_PORT_BOUND 9024
@@ -11,10 +11,10 @@ struct {
     __type(value, u64);
 } udp_fail_queue_rcv_skbs_total SEC(".maps");
 
-SEC("tracepoint/udp/udp_fail_queue_rcv_skb")
-int do_count(struct trace_event_raw_udp_fail_queue_rcv_skb *ctx)
+SEC("tp_btf/udp_fail_queue_rcv_skb")
+int BPF_PROG(udp_fail_queue_rcv_skb, int rc, struct sock *sk)
 {
-    u16 lport = ctx->lport;
+    u16 lport = sk->__sk_common.skc_num;
 
     // We are not interested in ephemeral ports for outbound connections.
     // There's a ton of them and they don't easily correlate with services.

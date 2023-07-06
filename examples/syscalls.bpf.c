@@ -1,5 +1,5 @@
 #include "vmlinux.h"
-#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
 #include "maps.bpf.h"
 
 char LICENSE[] SEC("license") = "GPL";
@@ -11,10 +11,9 @@ struct {
     __type(value, u64);
 } syscalls_total SEC(".maps");
 
-SEC("tracepoint/raw_syscalls/sys_enter")
-int sys_enter(struct trace_event_raw_sys_enter *ctx)
+SEC("tp_btf/sys_enter")
+int BPF_PROG(sys_enter, struct pt_regs *regs, long id)
 {
-    u64 syscall_id = (u64) ctx->id;
-    increment_map(&syscalls_total, &syscall_id, 1);
+    increment_map(&syscalls_total, &id, 1);
     return 0;
 }

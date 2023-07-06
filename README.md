@@ -90,7 +90,6 @@ To run it with the examples, you need to build them first (see above).
 Then you can run by running a privileged container and bind-mounting:
 
 * `$(pwd)/examples:/examples:ro` to allow access to examples
-* `/sys/kernel/debug:/sys/kernel/debug:ro` to allow finding tracepoints
 * `/sys/fs/cgroup:/sys/fs/cgroup:ro` to allow resolving cgroups
 
 You might have to bind-mount additional directories depending on your needs.
@@ -101,7 +100,6 @@ The actual command to run the docker container (from the repo directory):
 ```
 docker run --rm -it --privileged -p 9435:9435 \
   -v $(pwd)/examples:/examples \
-  -v /sys/kernel/debug:/sys/kernel/debug:ro \
   -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
   ebpf_exporter --config.dir examples --config.names timers
 ```
@@ -198,7 +196,7 @@ And corresponding C code that compiles into an ELF file with eBPF bytecode:
 
 ```C
 #include <vmlinux.h>
-#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
 #include "maps.bpf.h"
 
 struct {
@@ -208,13 +206,11 @@ struct {
     __type(value, u64);
 } timer_starts_total SEC(".maps");
 
-SEC("tracepoint/timer/timer_start")
-int do_count(struct trace_event_raw_timer_start* ctx)
+SEC("tp_btf/timer_start")
+int BPF_PROG(timer_start, struct timer_list *timer)
 {
-    u64 function = (u64) ctx->function;
-
+    u64 function = (u64) timer->function;
     increment_map(&timer_starts_total, &function, 1);
-
     return 0;
 }
 
