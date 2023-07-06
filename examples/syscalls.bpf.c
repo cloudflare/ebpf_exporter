@@ -2,8 +2,6 @@
 #include <bpf/bpf_tracing.h>
 #include "maps.bpf.h"
 
-char LICENSE[] SEC("license") = "GPL";
-
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, 1024);
@@ -17,3 +15,5 @@ int BPF_PROG(sys_enter, struct pt_regs *regs, long id)
     increment_map(&syscalls_total, &id, 1);
     return 0;
 }
+
+char LICENSE[] SEC("license") = "GPL";
