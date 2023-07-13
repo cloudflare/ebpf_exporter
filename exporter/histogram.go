@@ -60,7 +60,7 @@ func transformHistogramDynamic(buckets map[float64]uint64, histogram config.Hist
 
 	// Histograms coming from kernels may have missing entries,
 	// but we must provide consistent view for prometheus.
-	// This is why we build the list of possible buickets from
+	// This is why we build the list of possible buckets from
 	// configuration and backfill missing ones.
 	for i := float64(histogram.BucketMin); i <= float64(histogram.BucketMax); i++ {
 		// Prometheus expects cumulative buckets with bucket being
