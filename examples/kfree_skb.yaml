@@ -1,7 +1,7 @@
 metrics:
   counters:
     - name: kfree_skb_total
-      help: Timers number of calls to kfree_skb
+      help: Number of calls into skb:kfree_skb with a per-reason breakdown
       labels:
         - name: reason
           size: 2
