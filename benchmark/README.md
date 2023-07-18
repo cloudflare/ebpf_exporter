@@ -35,17 +35,31 @@ BenchmarkGetpidKprobeWithSimpleMap/getpid          4306387       277.1 ns/op
 BenchmarkGetpidKprobeWithComplexMap/getpid         3460576       346.3 ns/op
 ```
 
-| Case               | ns/op | overhead ns/op | overhead percent |
+Empty probe attached:
+
+| Case               | ns/op | Overhead ns/op | Overhead percent |
 |:-------------------|------:|---------------:|-----------------:|
 | no probe attached  |   117 |              0 |               0% |
 | tracepoint empty   |   132 |             15 |              13% |
-| tracepoint simple  |   152 |             35 |              30% |
-| tracepoint complex |   213 |             96 |              82% |
 | fentry empty       |   141 |             24 |              21% |
-| fentry simple      |   159 |             42 |              36% |
-| fentry complex     |   220 |            103 |              88% |
 | kprobe empty       |   254 |            137 |             117% |
+
+Probe with a simple map increment attached:
+
+| Case               | ns/op | Overhead ns/op | Overhead percent |
+|:-------------------|------:|---------------:|-----------------:|
+| no probe attached  |   117 |              0 |               0% |
+| tracepoint simple  |   152 |             35 |              30% |
+| fentry simple      |   159 |             42 |              36% |
 | kprobe simple      |   277 |            160 |             136% |
+
+Probe with a complex map increment attached:
+
+| Case               | ns/op | Overhead ns/op | Overhead percent |
+|:-------------------|------:|---------------:|-----------------:|
+| no probe attached  |   117 |              0 |               0% |
+| tracepoint complex |   213 |             96 |              82% |
+| fentry complex     |   220 |            103 |              88% |
 | kprobe complex     |   346 |            229 |             196% |
 
 Big slowdown in terms of % for complex case may sounds like terrible,
