@@ -3,6 +3,27 @@ metrics:
     - name: kfree_skb_total
       help: Number of calls into skb:kfree_skb with a per-reason breakdown
       labels:
+        - name: eth_proto
+          size: 2
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                2048: ipv4
+                34525: ipv6
+        - name: ip_proto
+          size: 2
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                1: icmp
+                6: tcp
+                17: udp
+        - name: port
+          size: 2
+          decoders:
+            - name: uint
         - name: reason
           size: 2
           decoders:
