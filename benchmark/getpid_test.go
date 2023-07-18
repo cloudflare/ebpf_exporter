@@ -10,32 +10,60 @@ import (
 	"github.com/cloudflare/ebpf_exporter/v2/util"
 )
 
+func init() {
+	libbpfgoCallbacks := libbpfgo.Callbacks{}
+	libbpfgoCallbacks.LogFilters = append(libbpfgoCallbacks.LogFilters, func(libLevel int, msg string) bool {
+		return libLevel == libbpfgo.LibbpfDebugLevel
+	})
+
+	libbpfgo.SetLoggerCbs(libbpfgoCallbacks)
+}
+
 func BenchmarkGetpidWithoutAnyProbes(b *testing.B) {
 	b.Run("getpid", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
 			os.Getpid()
 		}
 	})
+}
 
+func BenchmarkGetpidTracepointWithNoMap(b *testing.B) {
+	benchmarkWithProbe(b, "tracepoint", "probes/tracepoint-empty.bpf.o", false)
+}
+
+func BenchmarkGetpidTracepointWithSimpleMap(b *testing.B) {
+	benchmarkWithProbe(b, "tracepoint", "probes/tracepoint-simple.bpf.o", true)
+}
+
+func BenchmarkGetpidTracepointWithComplexMap(b *testing.B) {
+	benchmarkWithProbe(b, "tracepoint", "probes/tracepoint-complex.bpf.o", true)
+}
+
+func BenchmarkGetpidFentryWithNoMap(b *testing.B) {
+	benchmarkWithProbe(b, "fentry", "probes/fentry-empty.bpf.o", false)
 }
 
 func BenchmarkGetpidFentryWithSimpleMap(b *testing.B) {
-	benchmarkWithProbe(b, "fentry", "probes/fentry-simple.bpf.o")
+	benchmarkWithProbe(b, "fentry", "probes/fentry-simple.bpf.o", true)
 }
 
 func BenchmarkGetpidFentryWithComplexMap(b *testing.B) {
-	benchmarkWithProbe(b, "fentry", "probes/fentry-complex.bpf.o")
+	benchmarkWithProbe(b, "fentry", "probes/fentry-complex.bpf.o", true)
+}
+
+func BenchmarkGetpidKprobeWithNoMap(b *testing.B) {
+	benchmarkWithProbe(b, "kprobe", "probes/kprobe-empty.bpf.o", false)
 }
 
 func BenchmarkGetpidKprobeWithSimpleMap(b *testing.B) {
-	benchmarkWithProbe(b, "kprobe", "probes/kprobe-simple.bpf.o")
+	benchmarkWithProbe(b, "kprobe", "probes/kprobe-simple.bpf.o", true)
 }
 
 func BenchmarkGetpidKprobeWithComplexMap(b *testing.B) {
-	benchmarkWithProbe(b, "kprobe", "probes/kprobe-complex.bpf.o")
+	benchmarkWithProbe(b, "kprobe", "probes/kprobe-complex.bpf.o", true)
 }
 
-func benchmarkWithProbe(b *testing.B, kind string, file string) {
+func benchmarkWithProbe(b *testing.B, kind string, file string, checkMap bool) {
 	byteOrder := util.GetHostByteOrder()
 
 	m, link, err := setupGetpidProbe(kind, file)
@@ -57,6 +85,10 @@ func benchmarkWithProbe(b *testing.B, kind string, file string) {
 			os.Getpid()
 		}
 	})
+
+	if !checkMap {
+		return
+	}
 
 	counts, err := m.GetMap("counts")
 	if err != nil {

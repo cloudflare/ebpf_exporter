@@ -8,8 +8,9 @@ We're using `getpid()` as a simple syscall to provide a reference. To measure
 the overhead of eBPF probes we measure performance in the following cases:
 
 * No probes attached
-* Simple kprobe incrementing hash map with pid as a key
-* Complex kprobe incrementing hash map with a complex key:
+* Empty probe doing nothing at all
+* Simple probe incrementing hash map with pid as a key
+* Complex probe incrementing hash map with a complex key:
   * PID
   * Random number obtained as `time_in_ns % 1024`
   * Command name up to 32 chars
@@ -18,28 +19,48 @@ You can see exact code of probes in [`probes` directory](probes).
 
 ## Results
 
-The results below are from MacBook Air (M1, 2020) running Linux 6.1-rc1
-in QEMU with ftrace direct call patches applied to enable `fentry`:
-
-* https://patchwork.kernel.org/project/netdevbpf/cover/20220913162732.163631-1-xukuohai@huaweicloud.com/
-
-We see the following results:
+The results below are from MacBook Air (M1, 2020) running Linux 6.5-rc1
+in QEMU. We see the following results:
 
 ```
-BenchmarkGetpidWithoutAnyProbes/getpid         	10949119	       106.3 ns/op
-BenchmarkGetpidFentryWithSimpleMap/getpid      	 8035327	       149.7 ns/op
-BenchmarkGetpidFentryWithComplexMap/getpid     	 5566742	       214.9 ns/op
-BenchmarkGetpidKprobeWithSimpleMap/getpid      	 4605552	       260.6 ns/op
-BenchmarkGetpidKprobeWithComplexMap/getpid     	 3604656	       330.3 ns/op
+BenchmarkGetpidWithoutAnyProbes/getpid             9954225       117.3 ns/op
+BenchmarkGetpidTracepointWithNoMap/getpid          9098228       132.2 ns/op
+BenchmarkGetpidTracepointWithSimpleMap/getpid      7995439       152.2 ns/op
+BenchmarkGetpidTracepointWithComplexMap/getpid     5655841       212.8 ns/op
+BenchmarkGetpidFentryWithNoMap/getpid              8481037       141.0 ns/op
+BenchmarkGetpidFentryWithSimpleMap/getpid          7582813       159.1 ns/op
+BenchmarkGetpidFentryWithComplexMap/getpid         4579310       220.7 ns/op
+BenchmarkGetpidKprobeWithNoMap/getpid              4725835       253.8 ns/op
+BenchmarkGetpidKprobeWithSimpleMap/getpid          4306387       277.1 ns/op
+BenchmarkGetpidKprobeWithComplexMap/getpid         3460576       346.3 ns/op
 ```
 
-| Case            | ns/op | overhead ns/op | overhead percent |
-|:----------------|------:|---------------:|-----------------:|
-| no probe        |   106 |              0 |               0% |
-| fentry simple   |   150 |             44 |              42% |
-| fentry complex  |   215 |            109 |             103% |
-| kprobe simple   |   261 |            155 |             146% |
-| kprobe complex  |   330 |            224 |             211% |
+Empty probe attached:
+
+| Case               | ns/op | Overhead ns/op | Overhead percent |
+|:-------------------|------:|---------------:|-----------------:|
+| no probe attached  |   117 |              0 |               0% |
+| tracepoint empty   |   132 |             15 |              13% |
+| fentry empty       |   141 |             24 |              21% |
+| kprobe empty       |   254 |            137 |             117% |
+
+Probe with a simple map increment attached:
+
+| Case               | ns/op | Overhead ns/op | Overhead percent |
+|:-------------------|------:|---------------:|-----------------:|
+| no probe attached  |   117 |              0 |               0% |
+| tracepoint simple  |   152 |             35 |              30% |
+| fentry simple      |   159 |             42 |              36% |
+| kprobe simple      |   277 |            160 |             136% |
+
+Probe with a complex map increment attached:
+
+| Case               | ns/op | Overhead ns/op | Overhead percent |
+|:-------------------|------:|---------------:|-----------------:|
+| no probe attached  |   117 |              0 |               0% |
+| tracepoint complex |   213 |             96 |              82% |
+| fentry complex     |   220 |            103 |              88% |
+| kprobe complex     |   346 |            229 |             196% |
 
 Big slowdown in terms of % for complex case may sounds like terrible,
 but you have to remember that we're using a fast `getpid()` syscall.
@@ -48,6 +69,8 @@ The main number to look at above is overhead in nanoseconds, because that's
 what you're going to pay no matter how fast or frequent function you're
 probing is. 200-300ns overhead for the complex case of `getpid` is a lot, but
 for tracing operations like disk access it's nothing compared to baseline.
+
+Notice how tracepoints are faster than fentry and fentry is faster than kprobe.
 
 Keep in mind that these numbers are for a single logical CPU core.
 
