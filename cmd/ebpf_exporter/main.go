@@ -1,14 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/aquasecurity/libbpfgo"
 	"github.com/cloudflare/ebpf_exporter/v2/config"
 	"github.com/cloudflare/ebpf_exporter/v2/exporter"
+	"github.com/coreos/go-systemd/activation"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
@@ -19,7 +22,7 @@ func main() {
 	configDir := kingpin.Flag("config.dir", "Config dir path.").Required().ExistingDir()
 	configNames := kingpin.Flag("config.names", "Comma separated names of configs to load.").Required().String()
 	debug := kingpin.Flag("debug", "Enable debug.").Bool()
-	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(":9435").String()
+	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests (fd://0 for systemd activation).").Default(":9435").String()
 	metricsPath := kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	kingpin.Version(version.Print("ebpf_exporter"))
 	kingpin.HelpFlag.Short('h')
@@ -82,11 +85,34 @@ func main() {
 		http.HandleFunc("/maps", e.MapsHandler)
 	}
 
-	log.Printf("Listening on %s", *listenAddress)
-	err = http.ListenAndServe(*listenAddress, nil)
+	err = listen(*listenAddress)
 	if err != nil {
 		log.Fatalf("Error listening on %s: %s", *listenAddress, err)
 	}
+}
+
+func listen(addr string) error {
+	log.Printf("Listening on %s", addr)
+	if strings.HasPrefix(addr, "fd://") {
+		fd, err := strconv.Atoi(strings.TrimPrefix(addr, "fd://"))
+		if err != nil {
+			return fmt.Errorf("error extracting fd number from %q: %v", addr, err)
+		}
+
+		listeners, err := activation.Listeners()
+		if err != nil {
+			return fmt.Errorf("error getting activation listeners: %v", err)
+		}
+
+		if len(listeners) < fd+1 {
+			return fmt.Errorf("no listeners passed via activation")
+		}
+
+		return http.Serve(listeners[fd], nil)
+	}
+
+	return http.ListenAndServe(addr, nil)
+
 }
 
 func libbpfLogCallback(level int, msg string) {
