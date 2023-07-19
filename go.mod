@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/aquasecurity/libbpfgo v0.4.9-libbpf-1.2.0
+	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/elastic/go-perf v0.0.0-20191212140718-9c656876f595
 	github.com/iovisor/gobpf v0.2.0
 	github.com/prometheus/client_golang v1.16.0
