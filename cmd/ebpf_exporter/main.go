@@ -22,6 +22,7 @@ func main() {
 	configDir := kingpin.Flag("config.dir", "Config dir path.").Required().ExistingDir()
 	configNames := kingpin.Flag("config.names", "Comma separated names of configs to load.").Required().String()
 	debug := kingpin.Flag("debug", "Enable debug.").Bool()
+	noLogTime := kingpin.Flag("log.no-timestamps", "Disable timestamps in log.").Bool()
 	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests (fd://0 for systemd activation).").Default(":9435").String()
 	metricsPath := kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	kingpin.Version(version.Print("ebpf_exporter"))
@@ -33,6 +34,10 @@ func main() {
 		libbpfgoCallbacks.LogFilters = append(libbpfgoCallbacks.LogFilters, func(libLevel int, msg string) bool {
 			return libLevel == libbpfgo.LibbpfDebugLevel
 		})
+	}
+
+	if *noLogTime {
+		log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 	}
 
 	libbpfgo.SetLoggerCbs(libbpfgoCallbacks)
