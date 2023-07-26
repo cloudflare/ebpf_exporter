@@ -17,6 +17,10 @@ jobs:
         with:
           fetch-depth: 0 # Fetch with tags to have the build version attached
 
+      # This makes sure that 'git rev-parse --abbrev-ref HEAD' reports the right thing
+      - name: Checkout the named pushed ref
+        run: git checkout "${GITHUB_REF_NAME}"
+
       - name: Build libbpf and ebpf_exporter
         run: |
           docker buildx build --progress plain --tag ebpf_exporter:builder --target builder .
@@ -47,6 +51,10 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Fetch with tags to have the build version attached
+
+      # This makes sure that 'git rev-parse --abbrev-ref HEAD' reports the right thing
+      - name: Checkout the named pushed ref
+        run: git checkout "${GITHUB_REF_NAME}"
 
       - name: Build ebpf_exporter
         run: |
