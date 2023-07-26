@@ -54,6 +54,11 @@ To build a binary, clone the repo and run:
 make build
 ```
 
+The default `build` target makes a static binary, but you could also
+use `build-dynamic` if you'd like a dynamically linked binary. This could
+be useful if your build system does not have static archives for dependencies
+like `libbpf.a` and `libelf.a`. Static build is usually preferred.
+
 If you're having trouble building on the host, you can try building in Docker:
 
 ```

@@ -13,8 +13,6 @@ GO_LDFLAGS_VARS := -X $(BUILD_VAR_PREFIX).Version=$(BUILD_VERSION) \
 	-X $(BUILD_VAR_PREFIX).BuildUser=$(BUILD_USER) \
 	-X $(BUILD_VAR_PREFIX).BuildDate=$(BUILD_DATE)
 
-GO_LDFLAGS := -ldflags="-extldflags "-static" $(GO_LDFLAGS_VARS)"
-
 CLANG_FORMAT_FILES = ${wildcard examples/*.c examples/*.h benchmark/probes/*.c benchmark/probes/*.h}
 
 export CGO_LDFLAGS := -l bpf
@@ -33,8 +31,20 @@ test:
 	go test -v ./...
 
 .PHONY: build
-build:
-	go build -o ebpf_exporter -v $(GO_LDFLAGS) ./cmd/ebpf_exporter
+build: build-static
 
+.PHONY: build-static
+build-static:
+	$(MAKE) build-binary GO_LDFLAGS='-extldflags "-static"'
+
+.PHONY: build-dynamic
+build-dynamic:
+	$(MAKE) build-binary
+
+.PHONY: build-binary
+build-binary:
+	go build -o ebpf_exporter -v -ldflags="$(GO_LDFLAGS) $(GO_LDFLAGS_VARS)" ./cmd/ebpf_exporter
+
+.PHONY: syscalls
 syscalls:
 	go run ./scripts/mksyscalls --strace.version v6.4
