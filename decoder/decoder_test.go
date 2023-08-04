@@ -121,7 +121,10 @@ func TestDecodeLabels(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		s := NewSet()
+		s, err := NewSet()
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		out, err := s.DecodeLabels(c.in, c.labels)
 		if c.err {

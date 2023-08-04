@@ -25,10 +25,15 @@ type Set struct {
 }
 
 // NewSet creates a Set with all known decoders
-func NewSet() *Set {
+func NewSet() (*Set, error) {
+	cgroup, err := NewCgroupDecoder()
+	if err != nil {
+		return nil, fmt.Errorf("error creating cgroup decoder: %v", err)
+	}
+
 	return &Set{
 		decoders: map[string]Decoder{
-			"cgroup":       &CGroup{},
+			"cgroup":       cgroup,
 			"ksym":         &KSym{},
 			"majorminor":   &MajorMinor{},
 			"regexp":       &Regexp{},
@@ -43,7 +48,7 @@ func NewSet() *Set {
 			"pci_subclass": &PCISubClass{},
 			"syscall":      &Syscall{},
 		},
-	}
+	}, nil
 }
 
 // Decode transforms input byte field into a string according to configuration
