@@ -42,6 +42,10 @@ func main() {
 		log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 	}
 
+	if libbpfgo.MajorVersion() != 1 {
+		log.Fatalf("Error: running with libbpf v%d.%d, v1.x is expected", libbpfgo.MajorVersion(), libbpfgo.MinorVersion())
+	}
+
 	libbpfgo.SetLoggerCbs(libbpfgoCallbacks)
 
 	started := time.Now()
