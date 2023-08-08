@@ -1,0 +1,2 @@
+include/arm64/vmlinux.h linguist-generated
+include/x86/vmlinux.h   linguist-generated
