@@ -1,4 +1,4 @@
-FROM golang:1.20-bullseye as builder
+FROM golang:1.21-bookworm as builder
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libelf-dev
