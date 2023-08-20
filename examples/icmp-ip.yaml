@@ -1,0 +1,16 @@
+metrics:
+  counters:
+    - name: icmp4_received_packets_total
+      help: Number of icmp packets received over IPv4
+      labels:
+        - name: source_addr
+          size: 4
+          decoders:
+            - name: inet_ip
+    - name: icmp6_received_packets_total
+      help: Number of icmp packets received over IPv6
+      labels:
+        - name: source_addr
+          size: 16
+          decoders:
+            - name: inet_ip
