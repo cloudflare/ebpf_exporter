@@ -20,7 +20,8 @@ struct {
     __type(value, u64);
 } kfree_skb_total SEC(".maps");
 
-SEC("tp_btf/kfree_skb") int BPF_PROG(kfree_skb, struct sk_buff *skb, void *location, enum skb_drop_reason reason)
+SEC("tp_btf/kfree_skb")
+int BPF_PROG(kfree_skb, struct sk_buff *skb, void *location, enum skb_drop_reason reason)
 {
     struct kfree_skb_key_t key;
     struct ethhdr eth_hdr;
