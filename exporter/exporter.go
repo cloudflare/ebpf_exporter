@@ -137,6 +137,11 @@ func (e *Exporter) Attach() error {
 			return fmt.Errorf("failed to attach to config %q: %s", cfg.Name, err)
 		}
 
+		err = validateMaps(module, cfg)
+		if err != nil {
+			return fmt.Errorf("error validating maps for config %q: %v", cfg.Name, err)
+		}
+
 		e.attachedProgs[cfg.Name] = attachments
 		e.modules[cfg.Name] = module
 	}
@@ -486,6 +491,36 @@ func (e *Exporter) MapsHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err = w.Write(buf); err != nil {
 		log.Printf("Error returning map contents to client %q: %s", r.RemoteAddr, err)
 	}
+}
+
+func validateMaps(module *libbpfgo.Module, cfg config.Config) error {
+	maps := []string{}
+
+	for _, counter := range cfg.Metrics.Counters {
+		if counter.Name != "" {
+			maps = append(maps, counter.Name)
+		}
+	}
+
+	for _, histogram := range cfg.Metrics.Histograms {
+		if histogram.Name != "" {
+			maps = append(maps, histogram.Name)
+		}
+	}
+
+	for _, name := range maps {
+		m, err := module.GetMap(name)
+		if err != nil {
+			return fmt.Errorf("failed to get map %q: %v", name, err)
+		}
+
+		valueSize := m.ValueSize()
+		if valueSize != 8 {
+			return fmt.Errorf("value size for map %q is not expected 8 bytes (u64), it is %d bytes", name, valueSize)
+		}
+	}
+
+	return nil
 }
 
 // aggregateMapValues aggregates values so that the same set of labels is not repeated.
