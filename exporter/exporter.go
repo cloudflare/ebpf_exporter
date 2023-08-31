@@ -32,7 +32,7 @@ var percpuMapTypes = map[libbpfgo.MapType]struct{}{
 type Exporter struct {
 	configs                  []config.Config
 	modules                  map[string]*libbpfgo.Module
-	perfEventArrayCollectors []*PerfEventArraySink
+	perfEventArrayCollectors []*perfEventArraySink
 	kaddrs                   map[string]uint64
 	enabledConfigsDesc       *prometheus.Desc
 	programInfoDesc          *prometheus.Desc
@@ -132,10 +132,7 @@ func (e *Exporter) Attach() error {
 			return fmt.Errorf("error loading bpf object from %q for config %q: %v", cfg.BPFPath, cfg.Name, err)
 		}
 
-		attachments, err := attachModule(module, cfg)
-		if err != nil {
-			return fmt.Errorf("failed to attach to config %q: %s", cfg.Name, err)
-		}
+		attachments := attachModule(module, cfg)
 
 		err = validateMaps(module, cfg)
 		if err != nil {
@@ -159,13 +156,14 @@ func (e *Exporter) passKaddrs(module *libbpfgo.Module, cfg config.Config) error 
 	}
 
 	for _, kaddr := range cfg.Kaddrs {
-		if addr, ok := e.kaddrs[kaddr]; !ok {
+		addr, ok := e.kaddrs[kaddr]
+		if !ok {
 			return fmt.Errorf("error finding kaddr for %q", kaddr)
-		} else {
-			name := fmt.Sprintf("kaddr_%s", kaddr)
-			if err := module.InitGlobalVariable(name, uint64(addr)); err != nil {
-				return fmt.Errorf("error setting kaddr value for %q (const volatile %q) to 0x%x: %v", kaddr, name, addr, err)
-			}
+		}
+
+		name := fmt.Sprintf("kaddr_%s", kaddr)
+		if err := module.InitGlobalVariable(name, addr); err != nil {
+			return fmt.Errorf("error setting kaddr value for %q (const volatile %q) to 0x%x: %v", kaddr, name, addr, err)
 		}
 	}
 
@@ -227,7 +225,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 		for _, counter := range cfg.Metrics.Counters {
 			if counter.PerfEventArray {
-				perfSink := NewPerfEventArraySink(e.decoders, e.modules[cfg.Name], counter)
+				perfSink := newPerfEventArraySink(e.decoders, e.modules[cfg.Name], counter)
 				e.perfEventArrayCollectors = append(e.perfEventArrayCollectors, perfSink)
 			}
 

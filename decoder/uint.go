@@ -12,7 +12,7 @@ import (
 type UInt struct{}
 
 // Decode transforms unsigned integers into their string values
-func (u *UInt) Decode(in []byte, conf config.Decoder) ([]byte, error) {
+func (u *UInt) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	byteOrder := util.GetHostByteOrder()
 
 	result := uint64(0)

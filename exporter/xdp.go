@@ -57,7 +57,7 @@ func attachXDP(prog *C.struct_bpf_program) ([]*C.struct_bpf_link, error) {
 
 	link, err := C.bpf_program__attach_xdp(prog, C.int(iface.Index))
 	if link == nil {
-		return nil, fmt.Errorf("failed to attach xdp on device %q for program %s: %v\n", device, name, err)
+		return nil, fmt.Errorf("failed to attach xdp on device %q for program %s: %v", device, name, err)
 	}
 
 	return []*C.struct_bpf_link{link}, nil

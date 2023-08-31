@@ -8,7 +8,7 @@ import (
 type Dname struct{}
 
 // Decode transforms wire format into string
-func (d *Dname) Decode(in []byte, conf config.Decoder) ([]byte, error) {
+func (d *Dname) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	if len(in) == 0 {
 		return []byte("."), nil
 	}

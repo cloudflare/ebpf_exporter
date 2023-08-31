@@ -14,7 +14,7 @@ type KSym struct {
 }
 
 // Decode transforms kernel address to a function name
-func (k *KSym) Decode(in []byte, conf config.Decoder) ([]byte, error) {
+func (k *KSym) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	if k.cache == nil {
 		k.cache = map[string][]byte{}
 	}

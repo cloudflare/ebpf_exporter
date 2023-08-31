@@ -34,11 +34,12 @@ func main() {
 	syscalls := map[string]map[int]string{}
 
 	for name, path := range sources {
-		if mapping, err := download(*version, path); err != nil {
+		mapping, err := download(*version, path)
+		if err != nil {
 			log.Fatalf("Error downloading version %q of path %q: %v", *version, path, err)
-		} else {
-			syscalls[name] = mapping
 		}
+
+		syscalls[name] = mapping
 	}
 
 	architectures := []architecture{

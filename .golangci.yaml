@@ -1,0 +1,36 @@
+linters:
+  enable:
+    - dupl
+    - durationcheck
+    - exhaustive
+    - exportloopref
+    - forcetypeassert
+    - goimports
+    - gomoddirectives
+    - interfacebloat
+    - makezero
+    - mirror
+    - misspell
+    - musttag
+    - nestif
+    - nilnil
+    - nolintlint
+    - nosprintfhostport
+    - prealloc
+    - predeclared
+    - promlinter
+    - reassign
+    - revive
+    - tagalign
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - whitespace
+    # nilerr: https://github.com/gostaticanalysis/nilerr/issues/8
+    # wastedassign: https://github.com/sanposhiho/wastedassign/issues/39
+issues:
+  exclude-use-default: false
+  exclude:
+    - Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*print(f|ln)?|os\.(Un)?Setenv). is not checked
+    - should have a package comment

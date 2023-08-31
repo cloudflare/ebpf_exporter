@@ -15,7 +15,7 @@ func TestDecodeLabels(t *testing.T) {
 		err    bool
 	}{
 		{
-			in: append([]byte{0x8, 0x0, 0x0, 0x0}, zeroPaddedString("bananas", 32)...),
+			in: append([]byte{0x8, 0x0, 0x0, 0x0}, zeroPaddedString("potatoes", 16)...),
 			labels: []config.Label{
 				{
 					Name: "number",
@@ -116,7 +116,7 @@ func TestDecodeLabels(t *testing.T) {
 				},
 			},
 			out: []string{"8", "bananas"},
-			err: true, // this label should be skipped, only tomatos allowed
+			err: true, // this label should be skipped, only tomatoes allowed
 		},
 	}
 

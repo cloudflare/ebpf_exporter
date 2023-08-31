@@ -8,7 +8,7 @@ import (
 type String struct{}
 
 // Decode transforms byte slice from the kernel into string
-func (s *String) Decode(in []byte, conf config.Decoder) ([]byte, error) {
+func (s *String) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	return in[0:clen(in)], nil
 }
 
