@@ -28,45 +28,45 @@ func BenchmarkGetpidWithoutAnyProbes(b *testing.B) {
 }
 
 func BenchmarkGetpidTracepointWithNoMap(b *testing.B) {
-	benchmarkWithProbe(b, "tracepoint", "probes/tracepoint-empty.bpf.o", false)
+	benchmarkWithProbe(b, "probes/tracepoint-empty.bpf.o", false)
 }
 
 func BenchmarkGetpidTracepointWithSimpleMap(b *testing.B) {
-	benchmarkWithProbe(b, "tracepoint", "probes/tracepoint-simple.bpf.o", true)
+	benchmarkWithProbe(b, "probes/tracepoint-simple.bpf.o", true)
 }
 
 func BenchmarkGetpidTracepointWithComplexMap(b *testing.B) {
-	benchmarkWithProbe(b, "tracepoint", "probes/tracepoint-complex.bpf.o", true)
+	benchmarkWithProbe(b, "probes/tracepoint-complex.bpf.o", true)
 }
 
 func BenchmarkGetpidFentryWithNoMap(b *testing.B) {
-	benchmarkWithProbe(b, "fentry", "probes/fentry-empty.bpf.o", false)
+	benchmarkWithProbe(b, "probes/fentry-empty.bpf.o", false)
 }
 
 func BenchmarkGetpidFentryWithSimpleMap(b *testing.B) {
-	benchmarkWithProbe(b, "fentry", "probes/fentry-simple.bpf.o", true)
+	benchmarkWithProbe(b, "probes/fentry-simple.bpf.o", true)
 }
 
 func BenchmarkGetpidFentryWithComplexMap(b *testing.B) {
-	benchmarkWithProbe(b, "fentry", "probes/fentry-complex.bpf.o", true)
+	benchmarkWithProbe(b, "probes/fentry-complex.bpf.o", true)
 }
 
 func BenchmarkGetpidKprobeWithNoMap(b *testing.B) {
-	benchmarkWithProbe(b, "kprobe", "probes/kprobe-empty.bpf.o", false)
+	benchmarkWithProbe(b, "probes/kprobe-empty.bpf.o", false)
 }
 
 func BenchmarkGetpidKprobeWithSimpleMap(b *testing.B) {
-	benchmarkWithProbe(b, "kprobe", "probes/kprobe-simple.bpf.o", true)
+	benchmarkWithProbe(b, "probes/kprobe-simple.bpf.o", true)
 }
 
 func BenchmarkGetpidKprobeWithComplexMap(b *testing.B) {
-	benchmarkWithProbe(b, "kprobe", "probes/kprobe-complex.bpf.o", true)
+	benchmarkWithProbe(b, "probes/kprobe-complex.bpf.o", true)
 }
 
-func benchmarkWithProbe(b *testing.B, kind string, file string, checkMap bool) {
+func benchmarkWithProbe(b *testing.B, file string, checkMap bool) {
 	byteOrder := util.GetHostByteOrder()
 
-	m, link, err := setupGetpidProbe(kind, file)
+	m, link, err := setupGetpidProbe(file)
 	if err != nil {
 		b.Fatalf("Error setting up getpid probe: %v", err)
 	}
@@ -100,7 +100,7 @@ func benchmarkWithProbe(b *testing.B, kind string, file string, checkMap bool) {
 
 	iter := counts.Iterator()
 	for iter.Next() {
-		keys += 1
+		keys++
 		valueBytes, err := counts.GetValue(unsafe.Pointer(&iter.Key()[0]))
 		if err != nil {
 			b.Fatalf("Error reading key from bpf map: %v", err)
@@ -120,7 +120,7 @@ func benchmarkWithProbe(b *testing.B, kind string, file string, checkMap bool) {
 	b.Logf("keys = %d, value = %d", keys, value)
 }
 
-func setupGetpidProbe(kind string, name string) (*libbpfgo.Module, *libbpfgo.BPFLink, error) {
+func setupGetpidProbe(name string) (*libbpfgo.Module, *libbpfgo.BPFLink, error) {
 	module, err := libbpfgo.NewModuleFromFile(name)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating module from file %q: %v", name, err)

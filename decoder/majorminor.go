@@ -24,7 +24,7 @@ type MajorMinor struct {
 }
 
 // Decode transforms minormajor device id into device name like sda2
-func (m *MajorMinor) Decode(in []byte, conf config.Decoder) ([]byte, error) {
+func (m *MajorMinor) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	if m.cache == nil {
 		m.cache = map[uint64][]byte{}
 	}

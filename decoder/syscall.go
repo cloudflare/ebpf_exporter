@@ -7,8 +7,10 @@ import (
 	"github.com/cloudflare/ebpf_exporter/v2/config"
 )
 
+// Syscall is a decoder that decodes syscall numbers into their names
 type Syscall struct{}
 
+// Decode transforms a syscall number into a syscall name
 func (s *Syscall) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	number, err := strconv.Atoi(string(in))
 	if err != nil {
@@ -21,7 +23,7 @@ func (s *Syscall) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 func resolveSyscall(number uint64) string {
 	if name, ok := syscalls[number]; ok {
 		return name
-	} else {
-		return fmt.Sprintf("unknown_syscall:%d", number)
 	}
+
+	return fmt.Sprintf("unknown_syscall:%d", number)
 }

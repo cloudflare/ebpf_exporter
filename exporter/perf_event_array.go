@@ -10,19 +10,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type PerfEventArraySink struct {
+type perfEventArraySink struct {
 	counterConfig config.Counter
 	counterVec    *prometheus.CounterVec
 	dropCounter   prometheus.Counter
 }
 
-func NewPerfEventArraySink(decoders *decoder.Set, module *libbpfgo.Module, counterConfig config.Counter) *PerfEventArraySink {
+func newPerfEventArraySink(decoders *decoder.Set, module *libbpfgo.Module, counterConfig config.Counter) *perfEventArraySink {
 	var (
 		receiveCh = make(chan []byte)
 		lostCh    = make(chan uint64)
 	)
 
-	sink := &PerfEventArraySink{
+	sink := &perfEventArraySink{
 		counterConfig: counterConfig,
 		dropCounter:   createDropCounterForPerfMap(counterConfig),
 	}
@@ -34,7 +34,7 @@ func NewPerfEventArraySink(decoders *decoder.Set, module *libbpfgo.Module, count
 		log.Fatalf("Can't init PerfBuf: %s", err)
 	}
 
-	go func(sink *PerfEventArraySink, receiveCh <-chan []byte) {
+	go func(sink *perfEventArraySink, receiveCh <-chan []byte) {
 		for rawBytes := range receiveCh {
 			// https://github.com/cilium/ebpf/pull/94#discussion_r425823371
 			// https://lore.kernel.org/patchwork/patch/1244339/
@@ -57,13 +57,13 @@ func NewPerfEventArraySink(decoders *decoder.Set, module *libbpfgo.Module, count
 		}
 	}(sink, receiveCh)
 
-	go func(sink *PerfEventArraySink, lostCh <-chan uint64) {
+	go func(sink *perfEventArraySink, lostCh <-chan uint64) {
 		for droppedEvents := range lostCh {
 			sink.dropCounter.Add(float64(droppedEvents))
 		}
 	}(sink, lostCh)
 
-	go func(sink *PerfEventArraySink) {
+	go func(sink *perfEventArraySink) {
 		flushDuration := time.Hour
 		if sink.counterConfig.FlushInterval > 0 {
 			flushDuration = sink.counterConfig.FlushInterval
@@ -82,15 +82,15 @@ func NewPerfEventArraySink(decoders *decoder.Set, module *libbpfgo.Module, count
 	return sink
 }
 
-func (s *PerfEventArraySink) Collect(ch chan<- prometheus.Metric) {
+func (s *perfEventArraySink) Collect(ch chan<- prometheus.Metric) {
 	s.counterVec.Collect(ch)
 }
 
-func (s *PerfEventArraySink) Describe(ch chan<- *prometheus.Desc) {
+func (s *perfEventArraySink) Describe(ch chan<- *prometheus.Desc) {
 	s.counterVec.Describe(ch)
 }
 
-func (s *PerfEventArraySink) resetCounterVec() {
+func (s *perfEventArraySink) resetCounterVec() {
 	s.counterVec = createCounterVecForPerfMap(s.counterConfig, labelNamesFromCounterConfig(s.counterConfig))
 }
 

@@ -82,6 +82,7 @@ const (
 	HistogramBucketFixed HistogramBucketType = "fixed"
 )
 
+// ParseConfigs parses the named configs from the provided configs directory
 func ParseConfigs(dir string, names []string) ([]Config, error) {
 	configs := make([]Config, len(names))
 

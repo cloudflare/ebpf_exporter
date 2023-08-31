@@ -32,7 +32,7 @@ var percpuMapTypes = map[libbpfgo.MapType]struct{}{
 type Exporter struct {
 	configs                  []config.Config
 	modules                  map[string]*libbpfgo.Module
-	perfEventArrayCollectors []*PerfEventArraySink
+	perfEventArrayCollectors []*perfEventArraySink
 	kaddrs                   map[string]uint64
 	enabledConfigsDesc       *prometheus.Desc
 	programInfoDesc          *prometheus.Desc
@@ -154,14 +154,16 @@ func (e *Exporter) passKaddrs(module *libbpfgo.Module, cfg config.Config) error 
 	}
 
 	for _, kaddr := range cfg.Kaddrs {
-		if addr, ok := e.kaddrs[kaddr]; !ok {
+		addr, ok := e.kaddrs[kaddr]
+		if !ok {
 			return fmt.Errorf("error finding kaddr for %q", kaddr)
-		} else {
-			name := fmt.Sprintf("kaddr_%s", kaddr)
-			if err := module.InitGlobalVariable(name, uint64(addr)); err != nil {
-				return fmt.Errorf("error setting kaddr value for %q (const volatile %q) to 0x%x: %v", kaddr, name, addr, err)
-			}
 		}
+
+		name := fmt.Sprintf("kaddr_%s", kaddr)
+		if err := module.InitGlobalVariable(name, uint64(addr)); err != nil {
+			return fmt.Errorf("error setting kaddr value for %q (const volatile %q) to 0x%x: %v", kaddr, name, addr, err)
+		}
+
 	}
 
 	return nil
@@ -222,7 +224,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 		for _, counter := range cfg.Metrics.Counters {
 			if counter.PerfEventArray {
-				perfSink := NewPerfEventArraySink(e.decoders, e.modules[cfg.Name], counter)
+				perfSink := newPerfEventArraySink(e.decoders, e.modules[cfg.Name], counter)
 				e.perfEventArrayCollectors = append(e.perfEventArrayCollectors, perfSink)
 			}
 
