@@ -132,10 +132,7 @@ func (e *Exporter) Attach() error {
 			return fmt.Errorf("error loading bpf object from %q for config %q: %v", cfg.BPFPath, cfg.Name, err)
 		}
 
-		attachments, err := attachModule(module, cfg)
-		if err != nil {
-			return fmt.Errorf("failed to attach to config %q: %s", cfg.Name, err)
-		}
+		attachments := attachModule(module, cfg)
 
 		e.attachedProgs[cfg.Name] = attachments
 		e.modules[cfg.Name] = module
@@ -160,10 +157,9 @@ func (e *Exporter) passKaddrs(module *libbpfgo.Module, cfg config.Config) error 
 		}
 
 		name := fmt.Sprintf("kaddr_%s", kaddr)
-		if err := module.InitGlobalVariable(name, uint64(addr)); err != nil {
+		if err := module.InitGlobalVariable(name, addr); err != nil {
 			return fmt.Errorf("error setting kaddr value for %q (const volatile %q) to 0x%x: %v", kaddr, name, addr, err)
 		}
-
 	}
 
 	return nil

@@ -1,6 +1,34 @@
 linters:
   enable:
+    - dupl
+    - durationcheck
+    - exhaustive
+    - exportloopref
+    - forcetypeassert
+    - goimports
+    - gomoddirectives
+    - interfacebloat
+    - makezero
+    - mirror
+    - misspell
+    - musttag
+    - nestif
+    - nilnil
+    - nolintlint
+    - nosprintfhostport
+    - prealloc
+    - predeclared
+    - promlinter
+    - reassign
     - revive
+    - tagalign
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - whitespace
+    # nilerr: https://github.com/gostaticanalysis/nilerr/issues/8
+    # wastedassign: https://github.com/sanposhiho/wastedassign/issues/39
 issues:
   exclude-use-default: false
   exclude:

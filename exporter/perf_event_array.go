@@ -53,7 +53,6 @@ func newPerfEventArraySink(decoders *decoder.Set, module *libbpfgo.Module, count
 			}
 
 			sink.counterVec.WithLabelValues(labelValues...).Inc()
-
 		}
 	}(sink, receiveCh)
 

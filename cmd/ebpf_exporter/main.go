@@ -128,7 +128,6 @@ func listen(addr string) error {
 	}
 
 	return http.ListenAndServe(addr, nil)
-
 }
 
 func ensureCapabilities(keep string) error {

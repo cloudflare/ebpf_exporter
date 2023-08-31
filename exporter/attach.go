@@ -7,7 +7,7 @@ import (
 	"github.com/cloudflare/ebpf_exporter/v2/config"
 )
 
-func attachModule(module *libbpfgo.Module, cfg config.Config) (map[*libbpfgo.BPFProg]bool, error) {
+func attachModule(module *libbpfgo.Module, cfg config.Config) map[*libbpfgo.BPFProg]bool {
 	attached := map[*libbpfgo.BPFProg]bool{}
 
 	iter := module.Iterator()
@@ -26,5 +26,5 @@ func attachModule(module *libbpfgo.Module, cfg config.Config) (map[*libbpfgo.BPF
 		}
 	}
 
-	return attached, nil
+	return attached
 }
