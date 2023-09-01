@@ -1,46 +1,19 @@
 package decoder
 
 import (
-	"bytes"
 	"testing"
-
-	"github.com/cloudflare/ebpf_exporter/v2/config"
 )
 
 func TestPCIDeviceDecoderMissing(t *testing.T) {
-	if pci != nil {
-		t.Skip("PCI DB is available")
-	}
-
-	cases := [][]byte{
+	testPCIMissing(t, &PCIDevice{}, [][]byte{
 		[]byte("2156269568"), // 0x80861000
 		[]byte("268596191"),  // 0x100273df
 		[]byte("282994436"),  // 0x10de2704
-	}
-
-	for _, c := range cases {
-		d := &PCIDevice{}
-
-		out, err := d.Decode(c, config.Decoder{})
-		if err != nil {
-			t.Errorf("Error decoding %#v: %v", c, err)
-		}
-
-		if !bytes.Equal(out, []byte(missingPciIdsText)) {
-			t.Errorf("Expected %q, got %s", missingPciIdsText, out)
-		}
-	}
+	})
 }
 
 func TestPCIDeviceDecoderPresent(t *testing.T) {
-	if pci == nil {
-		t.Skip("PCI DB is not available")
-	}
-
-	cases := []struct {
-		in  []byte
-		out []byte
-	}{
+	testPCIPresent(t, &PCIDevice{}, []pciCase{
 		{
 			in:  []byte("2156269568"), // 0x80861000
 			out: []byte("82542 Gigabit Ethernet Controller (Fiber)"),
@@ -69,18 +42,5 @@ func TestPCIDeviceDecoderPresent(t *testing.T) {
 			in:  []byte("3735928559"), // 0xdeadbeef
 			out: []byte("unknown pci device: 0xdeadbeef"),
 		},
-	}
-
-	for _, c := range cases {
-		d := &PCIDevice{}
-
-		out, err := d.Decode(c.in, config.Decoder{})
-		if err != nil {
-			t.Errorf("Error decoding %#v: %v", c.in, err)
-		}
-
-		if !bytes.Equal(out, c.out) {
-			t.Errorf("Expected %q, got %q", c.out, out)
-		}
-	}
+	})
 }

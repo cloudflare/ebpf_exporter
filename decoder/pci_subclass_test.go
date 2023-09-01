@@ -1,46 +1,19 @@
 package decoder
 
 import (
-	"bytes"
 	"testing"
-
-	"github.com/cloudflare/ebpf_exporter/v2/config"
 )
 
 func TestPCISubClassDecoderMissing(t *testing.T) {
-	if pci != nil {
-		t.Skip("PCI DB is available")
-	}
-
-	cases := [][]byte{
+	testPCIMissing(t, &PCISubClass{}, [][]byte{
 		[]byte("5"),
 		[]byte("264"),
 		[]byte("512"),
-	}
-
-	for _, c := range cases {
-		d := &PCISubClass{}
-
-		out, err := d.Decode(c, config.Decoder{})
-		if err != nil {
-			t.Errorf("Error decoding %#v: %v", c, err)
-		}
-
-		if !bytes.Equal(out, []byte(missingPciIdsText)) {
-			t.Errorf("Expected %q, got %s", missingPciIdsText, out)
-		}
-	}
+	})
 }
 
 func TestPCISubClassDecoderPresent(t *testing.T) {
-	if pci == nil {
-		t.Skip("PCI DB is not available")
-	}
-
-	cases := []struct {
-		in  []byte
-		out []byte
-	}{
+	testPCIPresent(t, &PCISubClass{}, []pciCase{
 		{
 			in:  []byte("5"), // 0x0005
 			out: []byte("Image coprocessor"),
@@ -81,18 +54,5 @@ func TestPCISubClassDecoderPresent(t *testing.T) {
 			in:  []byte("3"), // 0x0003
 			out: []byte("unknown pci subclass: 0x03 (class 0x00)"),
 		},
-	}
-
-	for _, c := range cases {
-		d := &PCISubClass{}
-
-		out, err := d.Decode(c.in, config.Decoder{})
-		if err != nil {
-			t.Errorf("Error decoding %#v: %v", c.in, err)
-		}
-
-		if !bytes.Equal(out, c.out) {
-			t.Errorf("Expected %q, got %q", c.out, out)
-		}
-	}
+	})
 }
