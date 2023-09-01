@@ -89,6 +89,11 @@ jobs:
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
 
+      - name: Update pci.ids
+        run: |
+          curl -o /tmp/pci.ids https://raw.githubusercontent.com/pciutils/pciids/master/pci.ids
+          sudo mv /tmp/pci.ids /usr/share/misc/pci.ids
+
       - name: Build
         run: make build
 

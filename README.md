@@ -555,6 +555,28 @@ you need to wrap it with `KPROBE_REGS_IP_FIX()` from `regs-ip.bpf.h`.
 With major-minor decoder you can turn kernel's combined u32 view
 of major and minor device numbers into a device name in `/dev`.
 
+### `pci_vendor`
+
+With `pci_vendor` decoder you can transform PCI vendor IDs like 0x8086
+into human readable vendor names like `Intel Corporation`.
+
+### `pci_device`
+
+With `pci_vendor` decoder you can transform PCI vendor IDs like 0x80861000
+into human readable names like `82542 Gigabit Ethernet Controller (Fiber)`.
+
+Note that the you need to concatenate vendor and device id together for this.
+
+### `pci_class`
+
+With `pci_class` decoder you can transform PCI class ID (the lowest byte) into
+the class name like `Network controller`.
+
+### `pci_subclass`
+
+With `pci_subclass` decoder you can transform PCI subclass (two lowest bytes)
+into the subclass name like `Ethernet controller`.
+
 #### `regexp`
 
 Regexp decoder takes list of strings from `regexp` configuration key

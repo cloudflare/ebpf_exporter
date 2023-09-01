@@ -1,0 +1,25 @@
+metrics:
+  counters:
+    - name: pci_user_read_config_ops_total
+      help: The number of operations reading pci configs
+      labels:
+        - name: pci_vendor
+          size: 4
+          decoders:
+            - name: uint
+            - name: pci_vendor
+        - name: pci_device
+          size: 4
+          decoders:
+            - name: uint
+            - name: pci_device
+        - name: pci_class
+          size: 2
+          decoders:
+            - name: uint
+            - name: pci_class
+        - name: pci_subclass
+          size: 2
+          decoders:
+            - name: uint
+            - name: pci_subclass

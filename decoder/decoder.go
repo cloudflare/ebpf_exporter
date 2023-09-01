@@ -28,16 +28,20 @@ type Set struct {
 func NewSet() *Set {
 	return &Set{
 		decoders: map[string]Decoder{
-			"cgroup":     &CGroup{},
-			"ksym":       &KSym{},
-			"majorminor": &MajorMinor{},
-			"regexp":     &Regexp{},
-			"static_map": &StaticMap{},
-			"string":     &String{},
-			"dname":      &Dname{},
-			"uint":       &UInt{},
-			"inet_ip":    &InetIP{},
-			"syscall":    &Syscall{},
+			"cgroup":       &CGroup{},
+			"ksym":         &KSym{},
+			"majorminor":   &MajorMinor{},
+			"regexp":       &Regexp{},
+			"static_map":   &StaticMap{},
+			"string":       &String{},
+			"dname":        &Dname{},
+			"uint":         &UInt{},
+			"inet_ip":      &InetIP{},
+			"pci_vendor":   &PCIVendor{},
+			"pci_device":   &PCIDevice{},
+			"pci_class":    &PCIClass{},
+			"pci_subclass": &PCISubClass{},
+			"syscall":      &Syscall{},
 		},
 	}
 }
