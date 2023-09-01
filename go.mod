@@ -10,7 +10,7 @@ require (
 	github.com/jaypipes/pcidb v1.0.0
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/common v0.44.0
-	golang.org/x/sys v0.10.0
+	golang.org/x/sys v0.11.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 v2.4.0
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.69
