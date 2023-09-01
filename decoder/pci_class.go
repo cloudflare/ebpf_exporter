@@ -11,7 +11,7 @@ import (
 type PCIClass struct{}
 
 // Decode transforms PCI class id into a name
-func (d *PCIClass) Decode(in []byte, conf config.Decoder) ([]byte, error) {
+func (d *PCIClass) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	if pci == nil {
 		return []byte(missingPciIdsText), nil
 	}
@@ -25,7 +25,7 @@ func (d *PCIClass) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 
 	if device, ok := pci.Classes[key]; ok {
 		return []byte(device.Name), nil
-	} else {
-		return []byte(fmt.Sprintf("unknown pci class: 0x%s", key)), nil
 	}
+
+	return []byte(fmt.Sprintf("unknown pci class: 0x%s", key)), nil
 }

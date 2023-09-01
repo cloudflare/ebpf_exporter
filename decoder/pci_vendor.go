@@ -11,7 +11,7 @@ import (
 type PCIVendor struct{}
 
 // Decode transforms PCI vendor id into a name
-func (d *PCIVendor) Decode(in []byte, conf config.Decoder) ([]byte, error) {
+func (d *PCIVendor) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	if pci == nil {
 		return []byte(missingPciIdsText), nil
 	}
@@ -25,7 +25,7 @@ func (d *PCIVendor) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 
 	if vendor, ok := pci.Vendors[key]; ok {
 		return []byte(vendor.Name), nil
-	} else {
-		return []byte(fmt.Sprintf("unknown pci vendor: 0x%s", key)), nil
 	}
+
+	return []byte(fmt.Sprintf("unknown pci vendor: 0x%s", key)), nil
 }
