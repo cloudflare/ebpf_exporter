@@ -128,7 +128,9 @@ func (m *fanotifyMonitor) handleFanotify(_ *unix.FanotifyEventMetadata, buf []by
 
 	inode, err := inode(path)
 	if err != nil {
-		return fmt.Errorf("error resolving inode for %q: %v", path, err)
+		// Sometimes we can't get the inode in type and it shouldn't be a fatal error
+		log.Printf("error resolving inode for %q: %v", path, err)
+		return nil
 	}
 
 	m.mapping[inode] = path
