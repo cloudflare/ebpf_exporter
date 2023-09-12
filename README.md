@@ -36,12 +36,9 @@ We use libbpf rather than legacy bcc driven code, so it's more like libbpf-tools
 and you need to have it installed on your system. Alternatively, you
 can use the bundled `Dockerfile` to have `libbpf` compiled in there.
 
-* https://github.com/iovisor/bcc/blob/master/INSTALL.md
-
 Note that there's a dependency between `libbpf` version you have installed
-and `libbpfgo`, which is Go's library to talk to `libbpf`
-
-Currently we target `libbpf` v1.2, which has a stable interface.
+and `libbpfgo`, which is Go's library to talk to `libbpf`. Currently we target
+`libbpf` v1.2, which has a stable interface (older v1.x might work too).
 
 We compile `ebpf_exporter` with `libbpf` statically compiled in,
 so there's only ever a chance of build time issues, never at run time.
