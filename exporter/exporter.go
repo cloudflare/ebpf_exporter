@@ -81,6 +81,11 @@ func New(configs []config.Config) (*Exporter, error) {
 		nil,
 	)
 
+	decoders, err := decoder.NewSet()
+	if err != nil {
+		return nil, fmt.Errorf("error creating decoder set: %v", err)
+	}
+
 	return &Exporter{
 		configs:             configs,
 		modules:             map[string]*libbpfgo.Module{},
@@ -92,7 +97,7 @@ func New(configs []config.Config) (*Exporter, error) {
 		programRunCountDesc: programRunCountDesc,
 		attachedProgs:       map[string]map[*libbpfgo.BPFProg]bool{},
 		descs:               map[string]map[string]*prometheus.Desc{},
-		decoders:            decoder.NewSet(),
+		decoders:            decoders,
 	}, nil
 }
 

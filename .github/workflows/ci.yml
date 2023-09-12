@@ -100,6 +100,9 @@ jobs:
       - name: Test
         run: make test
 
+      - name: Test privileged
+        run: make test-privileged
+
   lint-ebpf-exporter-x86_64:
     name: Lint ebpf_exporter (x86_64)
     needs: build-ebpf-exporter-x86_64

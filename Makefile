@@ -37,6 +37,10 @@ clang-format-check:
 test:
 	go test -v ./...
 
+.PHONY: test-privileged
+test-privileged:
+	sudo go test -v ./cgroup
+
 .PHONY: build
 build: build-static
 
