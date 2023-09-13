@@ -110,10 +110,12 @@ func (m *fanotifyMonitor) handleFanotify(_ *unix.FanotifyEventMetadata, buf []by
 		return fmt.Errorf("error reading file_handle: %v", err)
 	}
 
-	dir, err := m.resolveDir(handle)
+	fd, err := unix.OpenByHandleAt(int(m.mount.Fd()), handle, 0)
 	if err != nil {
-		return fmt.Errorf("error reading fanotify event path: %v", err)
+		return fmt.Errorf("error opening event fd: %v", err)
 	}
+
+	defer syscall.Close(fd)
 
 	name, err := reader.ReadString('\x00')
 	if err != nil {
@@ -123,34 +125,22 @@ func (m *fanotifyMonitor) handleFanotify(_ *unix.FanotifyEventMetadata, buf []by
 	// Truncate \x00 at the end
 	name = name[:len(name)-1]
 
-	path := fmt.Sprintf("%s/%s", dir, name)
-
-	inode, err := inode(path)
+	stat := unix.Stat_t{}
+	err = unix.Fstatat(fd, name, &stat, 0)
 	if err != nil {
 		// Sometimes we can't get the inode in type and it shouldn't be a fatal error
-		log.Printf("error resolving inode for %q: %v", path, err)
+		log.Printf("error calling fstatat for %q: %v", name, err)
 		return nil
 	}
 
-	m.mapping[inode] = path
-
-	return nil
-}
-
-func (m *fanotifyMonitor) resolveDir(handle unix.FileHandle) (string, error) {
-	fd, err := unix.OpenByHandleAt(int(m.mount.Fd()), handle, 0)
-	if err != nil {
-		return "", fmt.Errorf("error opening event fd: %v", err)
-	}
-
-	defer syscall.Close(fd)
-
 	dir, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", fd))
 	if err != nil {
-		return "", fmt.Errorf("error resolving event fd symlink: %v", err)
+		return fmt.Errorf("error resolving event fd symlink: %v", err)
 	}
 
-	return dir, nil
+	m.mapping[int(stat.Ino)] = fmt.Sprintf("%s/%s", dir, name)
+
+	return nil
 }
 
 // Reading struct file_handle piece by piece:
