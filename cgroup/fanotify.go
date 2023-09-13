@@ -63,7 +63,7 @@ func newFanotifyMonitor(path string) (*fanotifyMonitor, error) {
 
 	go func() {
 		if err := m.readFanotifyLoop(); err != nil {
-			log.Fatalf("error running fanotify loop: %v", err)
+			log.Fatalf("Error running fanotify loop: %v", err)
 		}
 	}()
 
@@ -142,7 +142,7 @@ func (m *fanotifyMonitor) handleFanotify(_ *unix.FanotifyEventMetadata, buf []by
 	err = unix.Fstatat(fd, name, &stat, 0)
 	if err != nil {
 		// Sometimes we can't get the inode in type and it shouldn't be a fatal error
-		log.Printf("error calling fstatat for %q: %v", name, err)
+		log.Printf("Error calling fstatat for %q: %v", name, err)
 		return nil
 	}
 

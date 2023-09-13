@@ -28,7 +28,7 @@ func (m *walkerMonitor) Resolve(id int) string {
 
 	// Refresh mapping to see if we a new cgroup appeared since last time
 	if mapping, err := walk(m.path); err != nil {
-		log.Printf("error refreshing mapping: %v", err)
+		log.Printf("Error refreshing mapping: %v", err)
 	} else {
 		for id, name := range mapping {
 			m.mapping[id] = name
