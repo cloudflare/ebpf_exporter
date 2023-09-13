@@ -9,8 +9,8 @@ on:
   pull_request:
 
 jobs:
-  build-ebpf-exporter-x86_64:
-    name: Build ebpf_exporter (x86_64)
+  build-ebpf-exporter-docker-x86_64:
+    name: Build ebpf_exporter in Docker (x86_64)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
@@ -36,8 +36,8 @@ jobs:
           name: ebpf_exporter.x86_64
           path: ebpf_exporter.x86_64
 
-  build-ebpf-exporter-aarch64:
-    name: Build ebpf_exporter (aarch64 emulated, be patient)
+  build-ebpf-exporter-docker-aarch64:
+    name: Build ebpf_exporter in Docker (aarch64 emulated, be patient)
     runs-on: ubuntu-22.04
     steps:
       - uses: dbhi/qus/action@main
@@ -67,9 +67,71 @@ jobs:
           name: ebpf_exporter.aarch64
           path: ebpf_exporter.aarch64
 
+  build-ebpf-exporter-static-x86_64:
+    name: Build ebpf_exporter (x86_64, statically linked)
+    needs: build-ebpf-exporter-docker-x86_64
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ^1.21
+
+      - uses: actions/checkout@v3
+
+      - name: Download libbpf.tar.gz
+        uses: actions/download-artifact@v3
+        with:
+          name: libbpf.x86_64.tar.gz
+
+      - name: Install libbpf
+        run: sudo tar -C / -xvvf libbpf.x86_64.tar.gz
+
+      - name: Install libelf-dev
+        run: sudo apt-get install -y libelf-dev
+
+      - name: Build
+        run: make build
+
+      - name: Check static linkage
+        run: (ldd --verbose ./ebpf_exporter 2>&1 || true) | grep 'not a dynamic executable'
+
+      - name: Check that it runs
+        run: ./ebpf_exporter --version
+
+  build-ebpf-exporter-dynamic-x86_64:
+    name: Build ebpf_exporter (x86_64, dynamically linked)
+    needs: build-ebpf-exporter-docker-x86_64
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ^1.21
+
+      - uses: actions/checkout@v3
+
+      - name: Download libbpf.tar.gz
+        uses: actions/download-artifact@v3
+        with:
+          name: libbpf.x86_64.tar.gz
+
+      - name: Install libbpf
+        run: sudo tar -C / -xvvf libbpf.x86_64.tar.gz
+
+      - name: Install libelf-dev
+        run: sudo apt-get install -y libelf-dev
+
+      - name: Build
+        run: make build-dynamic
+
+      - name: Check dynamic linkage
+        run: ldd --verbose ./ebpf_exporter
+
+      - name: Check that it runs
+        run: ./ebpf_exporter --version
+
   test-ebpf-exporter-x86_64:
     name: Test ebpf_exporter (x86_64)
-    needs: build-ebpf-exporter-x86_64
+    needs: build-ebpf-exporter-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/setup-go@v3
@@ -94,9 +156,6 @@ jobs:
           curl -o /tmp/pci.ids https://raw.githubusercontent.com/pciutils/pciids/master/pci.ids
           sudo mv /tmp/pci.ids /usr/share/misc/pci.ids
 
-      - name: Build
-        run: make build
-
       - name: Test
         run: make test
 
@@ -105,7 +164,7 @@ jobs:
 
   lint-ebpf-exporter-x86_64:
     name: Lint ebpf_exporter (x86_64)
-    needs: build-ebpf-exporter-x86_64
+    needs: build-ebpf-exporter-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/setup-go@v3
@@ -137,7 +196,7 @@ jobs:
 
   build-examples-x86_64:
     name: Build examples (x86_64)
-    needs: build-ebpf-exporter-x86_64
+    needs: build-ebpf-exporter-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
