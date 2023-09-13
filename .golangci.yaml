@@ -21,6 +21,7 @@ linters:
     - promlinter
     - reassign
     - revive
+    - stylecheck
     - tagalign
     - unconvert
     - unparam
