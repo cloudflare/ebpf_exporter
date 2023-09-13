@@ -24,6 +24,12 @@ CLANG_FORMAT_FILES = ${wildcard examples/*.c examples/*.h benchmark/probes/*.c b
 
 export CGO_LDFLAGS := -l bpf
 
+GO_TEST_ARGS = -v
+# On aarch64 it's unavailable: FATAL: ThreadSanitizer: unsupported VMA range
+ifneq ($(shell uname -m),aarch64)
+GO_TEST_ARGS += -race
+endif
+
 .PHONY: lint
 lint:
 	go mod verify
@@ -35,11 +41,11 @@ clang-format-check:
 
 .PHONY: test
 test:
-	go test -v ./...
+	go test $(GO_TEST_ARGS) ./...
 
 .PHONY: test-privileged
 test-privileged:
-	sudo go test -v ./cgroup
+	sudo go test $(GO_TEST_ARGS) ./cgroup
 
 .PHONY: build
 build: build-static
