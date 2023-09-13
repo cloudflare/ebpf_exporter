@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sync"
 	"syscall"
 
 	"github.com/cloudflare/ebpf_exporter/v2/util"
@@ -20,6 +21,7 @@ type fanotifyMonitor struct {
 	fanotify  io.Reader
 	mount     *os.File
 	mapping   map[int]string
+	lock      sync.RWMutex
 	byteOrder binary.ByteOrder
 }
 
@@ -55,6 +57,7 @@ func newFanotifyMonitor(path string) (*fanotifyMonitor, error) {
 		fanotify:  fanotify,
 		mount:     mount,
 		mapping:   mapping,
+		lock:      sync.RWMutex{},
 		byteOrder: byteOrder,
 	}
 
@@ -148,7 +151,11 @@ func (m *fanotifyMonitor) handleFanotify(_ *unix.FanotifyEventMetadata, buf []by
 		return fmt.Errorf("error resolving event fd symlink: %v", err)
 	}
 
-	m.mapping[int(stat.Ino)] = fmt.Sprintf("%s/%s", dir, name)
+	path := fmt.Sprintf("%s/%s", dir, name)
+
+	m.lock.Lock()
+	m.mapping[int(stat.Ino)] = path
+	m.lock.Unlock()
 
 	return nil
 }
@@ -175,6 +182,8 @@ func (m *fanotifyMonitor) readFanotifyFileHandle(reader io.Reader) (unix.FileHan
 }
 
 func (m *fanotifyMonitor) Resolve(id int) string {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 	return m.mapping[id]
 }
 
