@@ -8,7 +8,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath"
 	"syscall"
 
 	"github.com/cloudflare/ebpf_exporter/v2/util"
@@ -144,7 +143,7 @@ func (m *fanotifyMonitor) resolveDir(handle unix.FileHandle) (string, error) {
 
 	defer syscall.Close(fd)
 
-	dir, err := filepath.EvalSymlinks(fmt.Sprintf("/proc/self/fd/%d", fd))
+	dir, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", fd))
 	if err != nil {
 		return "", fmt.Errorf("error resolving event fd symlink: %v", err)
 	}
