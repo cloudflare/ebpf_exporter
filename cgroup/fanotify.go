@@ -12,6 +12,7 @@ import (
 
 	"github.com/cloudflare/ebpf_exporter/v2/util"
 	"golang.org/x/sys/unix"
+	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
 type fanotifyMonitor struct {
@@ -31,6 +32,15 @@ func newFanotifyMonitor(path string) (*fanotifyMonitor, error) {
 	mount, err := os.OpenFile(path, syscall.O_DIRECTORY, 0)
 	if err != nil {
 		return nil, fmt.Errorf("error opening %q: %v", path, err)
+	}
+
+	dacAllowed, err := cap.GetProc().GetFlag(cap.Effective, cap.DAC_READ_SEARCH)
+	if err != nil {
+		return nil, err
+	}
+
+	if !dacAllowed {
+		return nil, fmt.Errorf("missing CAP_DAC_READ_SEARCH needed for open_by_handle_at in fanotify monitor")
 	}
 
 	mapping, err := walk(path)

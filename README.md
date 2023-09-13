@@ -152,6 +152,9 @@ The following additional capabilities might be needed:
 * `CAP_SYS_RESOURCE`: if you run an older kernel without memcg accounting for
   bpf memory. Upstream Linux kernel added support for this in v5.11.
   See: https://github.com/libbpf/libbpf/blob/v1.2.0/src/bpf.c#L98-L106
+* `CAP_DAC_READ_SEARCH`: if you want to use `fanotify` to monitor cgroup changes,
+  which is the preferred way, but only available since Linux v6.6.
+  See: https://github.com/torvalds/linux/commit/0ce7c12e88cf
 
 ## Supported scenarios
 
