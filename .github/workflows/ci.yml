@@ -370,3 +370,84 @@ jobs:
 
       - name: Run clang-format check
         run: make clang-format-check
+
+  publish-docker-image-x86_64:
+    if: github.event_name != 'pull_request'
+    name: Publish Docker images (x86_64)
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Fetch with tags to have the build version attached
+
+      - name: Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha
+
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  publish-docker-image-aarch64:
+    if: github.event_name != 'pull_request'
+    name: Publish Docker images (aarch64)
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Fetch with tags to have the build version attached
+
+      - name: Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha
+
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
