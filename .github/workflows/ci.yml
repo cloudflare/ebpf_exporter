@@ -40,9 +40,10 @@ jobs:
     name: Build ebpf_exporter in Docker (aarch64 emulated, be patient)
     runs-on: ubuntu-22.04
     steps:
-      - uses: dbhi/qus/action@main
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
         with:
-          targets: aarch64
+          platforms: arm64
 
       - uses: actions/checkout@v3
         with:
