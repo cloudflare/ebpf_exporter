@@ -9,6 +9,47 @@ on:
   pull_request:
 
 jobs:
+  build-libbpf-docker-x86_64:
+    name: Build libbpf in Docker (x86_64)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build libbpf
+        run: |
+          docker buildx build --progress plain --tag libbpf --target libbpf_builder .
+          id=$(docker create libbpf)
+          docker cp $id:/build/libbpf.tar.gz libbpf.x86_64.tar.gz
+
+      - name: Upload libbpf.tar.gz
+        uses: actions/upload-artifact@v3
+        with:
+          name: libbpf.x86_64.tar.gz
+          path: libbpf.x86_64.tar.gz
+
+  build-libbpf-docker-aarch64:
+    name: Build libbpf in Docker (aarch64, emulated)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - uses: actions/checkout@v3
+
+      - name: Build libbpf
+        run: |
+          docker buildx build --progress plain --tag libbpf --target libbpf_builder --platform linux/arm64 .
+          id=$(docker create libbpf)
+          docker cp $id:/build/libbpf.tar.gz libbpf.aarch64.tar.gz
+
+      - name: Upload libbpf.tar.gz
+        uses: actions/upload-artifact@v3
+        with:
+          name: libbpf.aarch64.tar.gz
+          path: libbpf.aarch64.tar.gz
+
   build-ebpf-exporter-docker-x86_64:
     name: Build ebpf_exporter in Docker (x86_64)
     runs-on: ubuntu-22.04
@@ -19,16 +60,9 @@ jobs:
 
       - name: Build libbpf and ebpf_exporter
         run: |
-          docker buildx build --progress plain --tag ebpf_exporter:builder --target builder .
-          id=$(docker create ebpf_exporter:builder)
-          docker cp $id:/build/ebpf_exporter/ebpf_exporter  ebpf_exporter.x86_64
-          docker cp $id:/build/libbpf.tar.gz                libbpf.x86_64.tar.gz
-
-      - name: Upload libbpf.tar.gz
-        uses: actions/upload-artifact@v3
-        with:
-          name: libbpf.x86_64.tar.gz
-          path: libbpf.x86_64.tar.gz
+          docker buildx build --progress plain --tag ebpf_exporter .
+          id=$(docker create ebpf_exporter)
+          docker cp $id:/ebpf_exporter ebpf_exporter.x86_64
 
       - name: Upload ebpf_exporter
         uses: actions/upload-artifact@v3
@@ -37,7 +71,7 @@ jobs:
           path: ebpf_exporter.x86_64
 
   build-ebpf-exporter-docker-aarch64:
-    name: Build ebpf_exporter in Docker (aarch64 emulated, be patient)
+    name: Build ebpf_exporter in Docker (aarch64, emulated)
     runs-on: ubuntu-22.04
     steps:
       - name: Set up QEMU
@@ -51,16 +85,9 @@ jobs:
 
       - name: Build ebpf_exporter
         run: |
-          docker buildx build --progress plain --tag ebpf_exporter:builder --target builder --platform linux/arm64 .
-          id=$(docker create ebpf_exporter:builder)
-          docker cp $id:/build/ebpf_exporter/ebpf_exporter  ebpf_exporter.aarch64
-          docker cp $id:/build/libbpf.tar.gz                libbpf.aarch64.tar.gz
-
-      - name: Upload libbpf.tar.gz
-        uses: actions/upload-artifact@v3
-        with:
-          name: libbpf.aarch64.tar.gz
-          path: libbpf.aarch64.tar.gz
+          docker buildx build --progress plain --tag ebpf_exporter --platform linux/arm64 .
+          id=$(docker create ebpf_exporter)
+          docker cp $id:/ebpf_exporter ebpf_exporter.aarch64
 
       - name: Upload ebpf_exporter
         uses: actions/upload-artifact@v3
@@ -70,7 +97,7 @@ jobs:
 
   build-ebpf-exporter-static-x86_64:
     name: Build ebpf_exporter (x86_64, statically linked)
-    needs: build-ebpf-exporter-docker-x86_64
+    needs: build-libbpf-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/setup-go@v3
@@ -101,7 +128,7 @@ jobs:
 
   build-ebpf-exporter-dynamic-x86_64:
     name: Build ebpf_exporter (x86_64, dynamically linked)
-    needs: build-ebpf-exporter-docker-x86_64
+    needs: build-libbpf-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/setup-go@v3
@@ -132,7 +159,7 @@ jobs:
 
   test-ebpf-exporter-x86_64:
     name: Test ebpf_exporter (x86_64)
-    needs: build-ebpf-exporter-docker-x86_64
+    needs: build-libbpf-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/setup-go@v3
@@ -165,7 +192,7 @@ jobs:
 
   lint-ebpf-exporter-x86_64:
     name: Lint ebpf_exporter (x86_64)
-    needs: build-ebpf-exporter-docker-x86_64
+    needs: build-libbpf-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/setup-go@v3
@@ -197,7 +224,7 @@ jobs:
 
   build-examples-x86_64:
     name: Build examples (x86_64)
-    needs: build-ebpf-exporter-docker-x86_64
+    needs: build-libbpf-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3

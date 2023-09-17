@@ -59,7 +59,7 @@ like `libbpf.a` and `libelf.a`. Static build is usually preferred.
 If you're having trouble building on the host, you can try building in Docker:
 
 ```
-docker build -t ebpf_exporter .
+docker build --tag ebpf_exporter --target ebpf_exporter .
 docker cp $(docker create ebpf_exporter):/ebpf_exporter ./
 ```
 
@@ -72,7 +72,7 @@ make -C examples clean build
 To run with [`biolatency`](examples/biolatency.yaml) config:
 
 ```
-sudo ./ebpf_exporter --config.dir examples --config.names biolatency
+sudo ./ebpf_exporter --config.dir=examples --config.names=biolatency
 ```
 
 If you pass `--debug`, you can see raw maps at `/maps` endpoint
@@ -82,16 +82,16 @@ and see debug output from `libbpf` itself.
 
 A docker image can be built from this repo. It is not yet published.
 
-To build the image, run the following:
+To build the image with just the exporter binary, run the following:
 
 ```
-docker build --tag ebpf_exporter .
+docker build --tag ebpf_exporter --target ebpf_exporter .
 ```
 
 To run it with the examples, you need to build them first (see above).
 Then you can run by running a privileged container and bind-mounting:
 
-* `$(pwd)/examples:/examples:ro` to allow access to examples
+* `$(pwd)/examples:/examples:ro` to allow access to examples on the host
 * `/sys/fs/cgroup:/sys/fs/cgroup:ro` to allow resolving cgroups
 
 You might have to bind-mount additional directories depending on your needs.
@@ -103,12 +103,26 @@ The actual command to run the docker container (from the repo directory):
 docker run --rm -it --privileged -p 9435:9435 \
   -v $(pwd)/examples:/examples \
   -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
-  ebpf_exporter --config.dir examples --config.names timers
+  ebpf_exporter --config.dir=examples --config.names=timers
 ```
 
 For production use you would either bind-mount your own config and compiled
 bpf programs corresponding to it, or build your own image based on ours
 with your own config baked in.
+
+For development use when you don't want or have any dev tools on the host,
+you can build the docker image with examples bundled:
+
+```
+docker build --tag ebpf_exporter --target ebpf_exporter_with_examples .
+```
+
+Some examples then can run without any bind mounts:
+
+```
+docker run --rm -it --privileged -p 9435:9435 \
+  ebpf_exporter --config.dir=examples --config.names=timers
+```
 
 ## Benchmarking overhead
 
