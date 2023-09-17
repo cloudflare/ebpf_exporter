@@ -2,7 +2,7 @@
 FROM debian:bookworm as libbpf_builder
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git ca-certificates build-essential libelf-dev
+    apt-get install -y --no-install-recommends git ca-certificates gcc make libelf-dev
 
 RUN mkdir /build && \
     git clone --branch v1.2.0 --depth 1 https://github.com/libbpf/libbpf.git /build/libbpf && \
