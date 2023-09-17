@@ -20,7 +20,7 @@ RUN mkdir /build && \
 FROM golang:1.21-bookworm as ebpf_exporter_builder
 
 RUN apt-get update && \
-    apt-get install -y libelf-dev
+    apt-get install -y libelf-dev pci.ids
 
 COPY --from=libbpf_builder /build/libbpf.tar.gz /build/libbpf.tar.gz
 
@@ -51,6 +51,7 @@ RUN make -j $(nproc) -C /build/ebpf_exporter/examples
 FROM gcr.io/distroless/static-debian11 as ebpf_exporter
 
 COPY --from=ebpf_exporter_builder /build/ebpf_exporter/ebpf_exporter /ebpf_exporter
+COPY --from=ebpf_exporter_builder /usr/share/misc/pci.ids /usr/share/misc/pci.ids
 
 ENTRYPOINT ["/ebpf_exporter"]
 
@@ -59,6 +60,7 @@ ENTRYPOINT ["/ebpf_exporter"]
 FROM gcr.io/distroless/static-debian11 as ebpf_exporter_with_examples
 
 COPY --from=ebpf_exporter_builder /build/ebpf_exporter/ebpf_exporter /ebpf_exporter
+COPY --from=ebpf_exporter_builder /usr/share/misc/pci.ids /usr/share/misc/pci.ids
 COPY --from=examples_builder /build/ebpf_exporter/examples /examples
 
 ENTRYPOINT ["/ebpf_exporter"]
