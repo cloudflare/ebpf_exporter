@@ -3,7 +3,7 @@
 #include <bpf/bpf_tracing.h>
 
 #if defined(__TARGET_ARCH_x86)
-#define FENTRY_SEC() SEC("fentry/__x64_sys_getpid")
+#define FENTRY_SEC() SEC("fentry/__do_sys_getpid")
 #elif defined(__TARGET_ARCH_arm64)
 #define FENTRY_SEC() SEC("fentry/__arm64_sys_getpid")
 #else
@@ -11,7 +11,7 @@
 #endif
 
 #if defined(__TARGET_ARCH_x86)
-#define KPROBE_SEC() SEC("kprobe/__x64_sys_getpid")
+#define KPROBE_SEC() SEC("kprobe/__do_sys_getpid")
 #elif defined(__TARGET_ARCH_arm64)
 #define KPROBE_SEC() SEC("kprobe/__arm64_sys_getpid")
 #else
