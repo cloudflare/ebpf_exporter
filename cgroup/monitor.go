@@ -17,7 +17,8 @@ type Monitor struct {
 func NewMonitor(path string) (*Monitor, error) {
 	fm, err := newFanotifyMonitor(path)
 	if err != nil {
-		log.Printf("Error attaching fanotify, using on-demand resolution instead: %v", err)
+		log.Printf("Using on-demand resolution for cgroups (fanotify not available)")
+
 		wm, err := newWalkerMonitor(path)
 		if err != nil {
 			return nil, err
