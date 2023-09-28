@@ -1,0 +1,12 @@
+metrics:
+  histograms:
+    - name: tcp_syn_backlog
+      help: TCP SYN backlog size
+      bucket_type: exp2zero
+      bucket_min: 0
+      bucket_max: 17
+      labels:
+        - name: bucket
+          size: 8
+          decoders:
+            - name: uint

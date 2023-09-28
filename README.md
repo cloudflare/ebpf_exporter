@@ -409,9 +409,9 @@ the missing data.
 
 That's why for histogram configuration we have the following keys:
 
-* `bucket_type`: can be either `exp2`, `linear`, or `fixed`
-* `bucket_min`: minimum bucket key (`exp2` and `linear` only)
-* `bucket_max`: maximum bucket key (`exp2` and `linear` only)
+* `bucket_type`: can be either `exp2`, `exp2zero`, `linear`, or `fixed`
+* `bucket_min`: minimum bucket key (`exp2`, `exp2zero` and `linear` only)
+* `bucket_max`: maximum bucket key (`exp2`, `exp2zero` and `linear` only)
 * `bucket_keys`: maximum bucket key (`fixed` only)
 * `bucket_multiplier`: multiplier for bucket keys (default is `1`)
 
@@ -432,6 +432,20 @@ for i = bucket_min; i < bucket_max; i++ {
 Here `map` is the map from the kernel and `result` is what goes to prometheus.
 
 We take cumulative `count`, because this is what prometheus expects.
+
+##### `exp2zero` histograms
+
+These are the same as `exp2` histograms, except:
+
+* The first key is for the value `0`
+* All other keys are `1` larger than they should be
+
+This is useful if your actual observed value can be zero, as regular `exp2`
+histograms cannot express this due the the fact that `log2(0)` is invalid,
+and in fact BPF treats `log2(0)` as `0`, and `exp2(0)` is 1, not 0.
+
+See [`tcp-syn-backlog-exp2zero.bpf.c`](examples/tcp-syn-backlog-exp2zero.bpf.c)
+for an example of a config that makes use of this.
 
 ##### `linear` histograms
 
