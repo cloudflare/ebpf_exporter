@@ -76,6 +76,8 @@ type HistogramBucketType string
 const (
 	// HistogramBucketExp2 means histograms with power-of-two keys
 	HistogramBucketExp2 HistogramBucketType = "exp2"
+	// HistogramBucketExp2WithZero means histograms with power-of-two keys where the first key is for zero
+	HistogramBucketExp2WithZero HistogramBucketType = "exp2zero"
 	// HistogramBucketLinear means histogram with linear keys
 	HistogramBucketLinear HistogramBucketType = "linear"
 	// HistogramBucketFixed means histogram with fixed user-defined keys

@@ -25,6 +25,14 @@ func histogramKeyerMaker(histogram config.Histogram) (histogramKeyer, error) {
 		return func(bucket float64) float64 {
 			return math.Exp2(bucket) * multiplier
 		}, nil
+	case config.HistogramBucketExp2WithZero:
+		return func(bucket float64) float64 {
+			if bucket == 0 {
+				return 0
+			}
+
+			return math.Exp2(bucket-1) * multiplier
+		}, nil
 	case config.HistogramBucketLinear:
 		return func(bucket float64) float64 {
 			return bucket * multiplier
