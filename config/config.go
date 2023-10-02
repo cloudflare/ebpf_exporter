@@ -40,6 +40,7 @@ type Counter struct {
 	PerfEventArray bool          `yaml:"perf_event_array"`
 	FlushInterval  time.Duration `yaml:"flush_interval"`
 	Labels         []Label       `yaml:"labels"`
+	Values         []Value       `yaml:"values"`
 }
 
 // Histogram is a metric defining prometheus histogram
@@ -68,6 +69,12 @@ type Decoder struct {
 	StaticMap    map[string]string `yaml:"static_map"`
 	Regexps      []string          `yaml:"regexps"`
 	AllowUnknown bool              `yaml:"allow_unknown"`
+}
+
+// Value describes a metric in when it's split across multiple u64
+type Value struct {
+	Name string `yaml:"name"`
+	Help string `yaml:"help"`
 }
 
 // HistogramBucketType is an enum to define how to interpret histogram

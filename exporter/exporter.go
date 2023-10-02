@@ -234,7 +234,13 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 				e.perfEventArrayCollectors = append(e.perfEventArrayCollectors, perfSink)
 			}
 
-			addDescs(cfg.Name, counter.Name, counter.Help, counter.Labels)
+			if counter.Values != nil {
+				for _, value := range counter.Values {
+					addDescs(cfg.Name, value.Name, value.Help, counter.Labels)
+				}
+			} else {
+				addDescs(cfg.Name, counter.Name, counter.Help, counter.Labels)
+			}
 		}
 
 		for _, histogram := range cfg.Metrics.Histograms {
@@ -303,10 +309,14 @@ func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 
 			aggregatedMapValues := aggregateMapValues(mapValues)
 
-			desc := e.descs[cfg.Name][counter.Name]
-
 			for _, metricValue := range aggregatedMapValues {
-				ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, metricValue.value, metricValue.labels...)
+				if counter.Values != nil {
+					for i, value := range counter.Values {
+						ch <- prometheus.MustNewConstMetric(e.descs[cfg.Name][value.Name], prometheus.CounterValue, metricValue.value[i], metricValue.labels...)
+					}
+				} else {
+					ch <- prometheus.MustNewConstMetric(e.descs[cfg.Name][counter.Name], prometheus.CounterValue, metricValue.value[0], metricValue.labels...)
+				}
 			}
 		}
 	}
@@ -356,7 +366,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 					break
 				}
 
-				histograms[key].buckets[float64(leUint)] = uint64(metricValue.value)
+				histograms[key].buckets[float64(leUint)] = uint64(metricValue.value[0])
 			}
 
 			if skip {
@@ -497,29 +507,33 @@ func (e *Exporter) MapsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func validateMaps(module *libbpfgo.Module, cfg config.Config) error {
-	maps := []string{}
+	sizes := map[string]int{}
 
 	for _, counter := range cfg.Metrics.Counters {
 		if counter.Name != "" {
-			maps = append(maps, counter.Name)
+			if counter.Values != nil {
+				sizes[counter.Name] = len(counter.Values) * 8
+			} else {
+				sizes[counter.Name] = 8
+			}
 		}
 	}
 
 	for _, histogram := range cfg.Metrics.Histograms {
 		if histogram.Name != "" {
-			maps = append(maps, histogram.Name)
+			sizes[histogram.Name] = 8
 		}
 	}
 
-	for _, name := range maps {
+	for name, expected := range sizes {
 		m, err := module.GetMap(name)
 		if err != nil {
 			return fmt.Errorf("failed to get map %q: %v", name, err)
 		}
 
 		valueSize := m.ValueSize()
-		if valueSize != 8 {
-			return fmt.Errorf("value size for map %q is not expected 8 bytes (u64), it is %d bytes", name, valueSize)
+		if valueSize != expected {
+			return fmt.Errorf("value size for map %q is not expected %d bytes (8 bytes per u64 value), it is %d bytes", name, expected, valueSize)
 		}
 	}
 
@@ -545,7 +559,9 @@ func aggregateMapValues(values []metricValue) []aggregatedMetricValue {
 				value:  value.value,
 			}
 		} else {
-			existing.value += value.value
+			for i := range existing.value {
+				existing.value[i] += value.value[i]
+			}
 		}
 	}
 
@@ -609,17 +625,17 @@ func readMapValues(m *libbpfgo.BPFMap, labels []config.Label) ([]metricValue, er
 	return metricValues, nil
 }
 
-func mapValue(m *libbpfgo.BPFMap, key []byte) (float64, error) {
+func mapValue(m *libbpfgo.BPFMap, key []byte) ([]float64, error) {
 	v, err := m.GetValue(unsafe.Pointer(&key[0]))
 	if err != nil {
-		return 0.0, err
+		return []float64{0.0}, err
 	}
 
 	return decodeValue(v), nil
 }
 
-func mapValuePerCPU(m *libbpfgo.BPFMap, key []byte) ([]float64, error) {
-	values := []float64{}
+func mapValuePerCPU(m *libbpfgo.BPFMap, key []byte) ([][]float64, error) {
+	values := [][]float64{}
 
 	size := m.ValueSize()
 	value := make([]byte, size*runtime.NumCPU())
@@ -636,8 +652,14 @@ func mapValuePerCPU(m *libbpfgo.BPFMap, key []byte) ([]float64, error) {
 }
 
 // Assuming counter's value type is always u64
-func decodeValue(value []byte) float64 {
-	return float64(util.GetHostByteOrder().Uint64(value))
+func decodeValue(value []byte) []float64 {
+	values := make([]float64, len(value)/8)
+
+	for i := range values {
+		values[i] = float64(util.GetHostByteOrder().Uint64(value[i*8:]))
+	}
+
+	return values
 }
 
 // metricValue is a row in a kernel map
@@ -647,7 +669,7 @@ type metricValue struct {
 	// labels are decoded from the raw key
 	labels []string
 	// value is the kernel map value
-	value float64
+	value []float64
 }
 
 // aggregatedMetricValue is a value after aggregation of equal label sets
@@ -655,5 +677,5 @@ type aggregatedMetricValue struct {
 	// labels are decoded from the raw key
 	labels []string
 	// value is the kernel map value
-	value float64
+	value []float64
 }
