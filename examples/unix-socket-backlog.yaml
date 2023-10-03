@@ -1,0 +1,19 @@
+metrics:
+  histograms:
+    - name: unix_socket_backlog
+      help: Unix socket backlog size
+      bucket_type: exp2zero
+      bucket_min: 0
+      bucket_max: 17
+      labels:
+        - name: addr
+          size: 8
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: /var/run/docker/metrics.sock
+        - name: bucket
+          size: 8
+          decoders:
+            - name: uint
