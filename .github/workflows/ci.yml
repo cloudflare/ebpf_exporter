@@ -51,7 +51,7 @@ jobs:
           path: libbpf.aarch64.tar.gz
 
   build-ebpf-exporter-docker-x86_64:
-    name: Build ebpf_exporter in Docker (x86_64)
+    name: Build ebpf_exporter in Docker (x86_64, built-in libbpf)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
@@ -71,7 +71,7 @@ jobs:
           path: ebpf_exporter.x86_64
 
   build-ebpf-exporter-docker-aarch64:
-    name: Build ebpf_exporter in Docker (aarch64, emulated)
+    name: Build ebpf_exporter in Docker (aarch64, emulated, built-in libbpf)
     runs-on: ubuntu-22.04
     steps:
       - name: Set up QEMU
@@ -95,8 +95,8 @@ jobs:
           name: ebpf_exporter.aarch64
           path: ebpf_exporter.aarch64
 
-  build-ebpf-exporter-static-x86_64:
-    name: Build ebpf_exporter (x86_64, statically linked)
+  build-ebpf-exporter-static-x86_64-system-libbpf:
+    name: Build ebpf_exporter (x86_64, statically linked, system libbpf)
     needs: build-libbpf-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
@@ -118,7 +118,7 @@ jobs:
         run: sudo apt-get install -y libelf-dev
 
       - name: Build
-        run: make build
+        run: make -j $(nproc) build BUILD_LIBBPF=0
 
       - name: Check static linkage
         run: (ldd --verbose ./ebpf_exporter 2>&1 || true) | grep 'not a dynamic executable'
@@ -126,8 +126,30 @@ jobs:
       - name: Check that it runs
         run: ./ebpf_exporter --version
 
-  build-ebpf-exporter-dynamic-x86_64:
-    name: Build ebpf_exporter (x86_64, dynamically linked)
+  build-ebpf-exporter-static-x86_64-built-in-libbpf:
+    name: Build ebpf_exporter (x86_64, statically linked, built-in libbpf)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ^1.21
+
+      - uses: actions/checkout@v3
+
+      - name: Install libelf-dev
+        run: sudo apt-get install -y libelf-dev
+
+      - name: Build
+        run: make -j $(nproc) build
+
+      - name: Check static linkage
+        run: (ldd --verbose ./ebpf_exporter 2>&1 || true) | grep 'not a dynamic executable'
+
+      - name: Check that it runs
+        run: ./ebpf_exporter --version
+
+  build-ebpf-exporter-dynamic-x86_64-system-libbpf:
+    name: Build ebpf_exporter (x86_64, dynamically linked, system libbpf)
     needs: build-libbpf-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
@@ -149,7 +171,7 @@ jobs:
         run: sudo apt-get install -y libelf-dev
 
       - name: Build
-        run: make build-dynamic
+        run: make -j $(nproc) build-dynamic BUILD_LIBBPF=0
 
       - name: Check dynamic linkage
         run: ldd --verbose ./ebpf_exporter
@@ -157,8 +179,30 @@ jobs:
       - name: Check that it runs
         run: ./ebpf_exporter --version
 
-  test-ebpf-exporter-x86_64:
-    name: Test ebpf_exporter (x86_64)
+  build-ebpf-exporter-dynamic-x86_64-built-in-libbpf:
+    name: Build ebpf_exporter (x86_64, dynamically linked, built-in libbpf)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ^1.21
+
+      - uses: actions/checkout@v3
+
+      - name: Install libelf-dev
+        run: sudo apt-get install -y libelf-dev
+
+      - name: Build
+        run: make -j $(nproc) build-dynamic
+
+      - name: Check dynamic linkage
+        run: ldd --verbose ./ebpf_exporter
+
+      - name: Check that it runs
+        run: LD_LIBRARY_PATH=libbpf/dest/usr/lib ./ebpf_exporter --version
+
+  test-ebpf-exporter-x86_64-system-libbpf:
+    name: Test ebpf_exporter (x86_64, system libbpf)
     needs: build-libbpf-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
@@ -185,13 +229,37 @@ jobs:
           sudo mv /tmp/pci.ids /usr/share/misc/pci.ids
 
       - name: Test
-        run: make test
+        run: make -j $(nproc) test BUILD_LIBBPF=0
 
       - name: Test privileged
-        run: make test-privileged
+        run: make -j $(nproc) test-privileged BUILD_LIBBPF=0
 
-  lint-ebpf-exporter-x86_64:
-    name: Lint ebpf_exporter (x86_64)
+  test-ebpf-exporter-x86_64-built-in-libbpf:
+    name: Test ebpf_exporter (x86_64, built-in libbpf)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ^1.21
+
+      - uses: actions/checkout@v3
+
+      - name: Install libelf-dev
+        run: sudo apt-get install -y libelf-dev
+
+      - name: Update pci.ids
+        run: |
+          curl -o /tmp/pci.ids https://raw.githubusercontent.com/pciutils/pciids/master/pci.ids
+          sudo mv /tmp/pci.ids /usr/share/misc/pci.ids
+
+      - name: Test
+        run: make -j $(nproc) test
+
+      - name: Test privileged
+        run: make -j $(nproc) test-privileged
+
+  lint-ebpf-exporter-x86_64-system-libbpf:
+    name: Lint ebpf_exporter (x86_64, system libbpf)
     needs: build-libbpf-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
@@ -219,11 +287,35 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: v1.54.2
-        env:
-          CGO_LDFLAGS: "-l bpf"
 
-  build-examples-x86_64:
-    name: Build examples (x86_64)
+  lint-ebpf-exporter-x86_64-built-in-libbpf:
+    name: Lint ebpf_exporter (x86_64, built-in libbpf)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ^1.21
+
+      - uses: actions/checkout@v3
+
+      - name: Install libelf-dev
+        run: sudo apt-get install -y libelf-dev
+
+      - name: Build libbpf
+        run: make -j $(nproc) libbpf.a
+
+      - name: Check vendored dependencies
+        run: go mod verify
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.54.2
+        env:
+          CGO_CFLAGS: "-I${{ github.workspace }}/libbpf/dest/usr/include"
+
+  build-examples-x86_64-system-libbpf:
+    name: Build examples (x86_64, system libbpf)
     needs: build-libbpf-docker-x86_64
     runs-on: ubuntu-22.04
     steps:
@@ -236,6 +328,24 @@ jobs:
 
       - name: Install libbpf
         run: sudo tar -C / -xvvf libbpf.x86_64.tar.gz
+
+      - name: Install libelf-dev
+        run: sudo apt-get install -y libelf-dev
+
+      - name: Install clang
+        run: sudo apt-get install -y clang
+
+      - name: Build benchmark bpf probes
+        run: make -j $(nproc) -C benchmark build BUILD_LIBBPF=0
+
+      - name: Build example bpf probes
+        run: make -j $(nproc) -C examples build BUILD_LIBBPF=0
+
+  build-examples-x86_64-built-in-libbpf:
+    name: Build examples (x86_64, built-in libbpf)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
 
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev

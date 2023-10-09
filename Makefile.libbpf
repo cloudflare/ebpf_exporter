@@ -1,0 +1,25 @@
+LIBBPF_TOP := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+
+LIBBPF_VERSION := 1.2.2
+LIBBPF_BRANCH := v$(LIBBPF_VERSION)
+LIBBPF_PATH := $(LIBBPF_TOP)/libbpf/dest/usr/lib/libbpf.so.$(LIBBPF_VERSION)
+
+ifneq ($(BUILD_LIBBPF),0)
+LIBBPF_DEPS := $(LIBBPF_PATH)
+LIBBPF_CFLAGS := -I$(LIBBPF_TOP)/libbpf/dest/usr/include
+LIBBPF_LDFLAGS := -L$(LIBBPF_TOP)/libbpf/dest/usr/lib
+export CGO_LDFLAGS := $(CGO_LDFLAGS) $(LIBBPF_LDFLAGS)
+export CGO_CFLAGS := $(LIBBPF_CFLAGS)
+endif
+
+.PHONY: clean-libbpf
+clean-libbpf:
+	rm -rf $(LIBBPF_TOP)/libbpf
+
+.PHONY: libbpf.a
+libbpf.a: $(LIBBPF_PATH)
+
+$(LIBBPF_PATH):
+	$(MAKE) clean-libbpf
+	git clone --branch v$(LIBBPF_VERSION) --depth 1 https://github.com/libbpf/libbpf.git $(LIBBPF_TOP)/libbpf
+	$(MAKE) -C $(LIBBPF_TOP)/libbpf/src LIBSUBDIR=lib DESTDIR=../dest install install_uapi_headers
