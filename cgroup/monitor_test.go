@@ -8,6 +8,7 @@ import (
 )
 
 const preExistingFile = "i-was-here"
+const sleepDuration = time.Millisecond * 5
 
 func TestMonitor(t *testing.T) {
 	cases := []struct {
@@ -94,7 +95,7 @@ func testMonitor(t *testing.T, m monitor, path, preExistingPath string) {
 		}
 
 		// Sleep for a short time to let fanotify to process
-		time.Sleep(time.Millisecond)
+		time.Sleep(sleepDuration)
 
 		id, err := inode(dir)
 		if err != nil {
@@ -118,7 +119,7 @@ func testMonitor(t *testing.T, m monitor, path, preExistingPath string) {
 	}
 
 	// Sleep for a short time to let fanotify to process
-	time.Sleep(time.Millisecond)
+	time.Sleep(sleepDuration)
 
 	// Continue checking burst addition
 	for i := 20; i < 40; i++ {
@@ -164,7 +165,7 @@ func testMonitor(t *testing.T, m monitor, path, preExistingPath string) {
 	}
 
 	// Sleep for a short time to let fanotify to process
-	time.Sleep(time.Millisecond)
+	time.Sleep(sleepDuration)
 
 	resolvedAfter := m.Resolve(idAfter)
 	if resolvedAfter != overwritePath {
