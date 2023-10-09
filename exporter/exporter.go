@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"unsafe"
@@ -620,10 +619,9 @@ func mapValue(m *libbpfgo.BPFMap, key []byte) (float64, error) {
 
 func mapValuePerCPU(m *libbpfgo.BPFMap, key []byte) ([]float64, error) {
 	values := []float64{}
-
 	size := m.ValueSize()
-	value := make([]byte, size*runtime.NumCPU())
-	err := m.GetValueReadInto(unsafe.Pointer(&key[0]), &value)
+
+	value, err := m.GetValue(unsafe.Pointer(&key[0]))
 	if err != nil {
 		return nil, err
 	}
