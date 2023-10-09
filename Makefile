@@ -24,6 +24,8 @@ CLANG_FORMAT_FILES = ${wildcard examples/*.c examples/*.h benchmark/probes/*.c b
 
 export CGO_LDFLAGS := -l bpf
 
+include Makefile.libbpf
+
 GO_TEST_ARGS = -v
 # On aarch64 it's unavailable: FATAL: ThreadSanitizer: unsupported VMA range
 ifneq ($(shell uname -m),aarch64)
@@ -40,8 +42,8 @@ clang-format-check:
 	clang-format --dry-run --verbose -Werror $(CLANG_FORMAT_FILES)
 
 .PHONY: test
-test:
-	go test $(GO_TEST_ARGS) ./...
+test: $(LIBBPF_DEPS)
+	go test -ldflags='-extldflags "-static"' $(GO_TEST_ARGS) ./...
 
 .PHONY: test-privileged
 test-privileged:
@@ -59,7 +61,7 @@ build-dynamic:
 	$(MAKE) build-binary
 
 .PHONY: build-binary
-build-binary:
+build-binary: $(LIBBPF_DEPS)
 	go build -o ebpf_exporter -v -ldflags="$(GO_LDFLAGS) $(GO_LDFLAGS_VARS)" ./cmd/ebpf_exporter
 
 .PHONY: syscalls

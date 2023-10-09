@@ -30,19 +30,6 @@ We use libbpf rather than legacy bcc driven code, so it's more like libbpf-tools
 
 ## Building and running
 
-### Note on libbpf
-
-`ebpf_exporter` depends on `libbpf` to load eBPF code into the kernel,
-and you need to have it installed on your system. Alternatively, you
-can use the bundled `Dockerfile` to have `libbpf` compiled in there.
-
-Note that there's a dependency between `libbpf` version you have installed
-and `libbpfgo`, which is Go's library to talk to `libbpf`. Currently we target
-`libbpf` v1.2, which has a stable interface (older v1.x might work too).
-
-We compile `ebpf_exporter` with `libbpf` statically compiled in,
-so there's only ever a chance of build time issues, never at run time.
-
 ### Actual building
 
 To build a binary, clone the repo and run:
@@ -52,9 +39,9 @@ make build
 ```
 
 The default `build` target makes a static binary, but you could also
-use `build-dynamic` if you'd like a dynamically linked binary. This could
-be useful if your build system does not have static archives for dependencies
-like `libbpf.a` and `libelf.a`. Static build is usually preferred.
+use the `build-dynamic` target if you'd like a dynamically linked binary.
+In either case `libbpf` is built from source, but you could override this
+behavior with `BUILD_LIBBPF=0`, if you want to use your system `libbpf`.
 
 If you're having trouble building on the host, you can try building in Docker:
 
