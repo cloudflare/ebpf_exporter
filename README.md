@@ -67,7 +67,10 @@ and see debug output from `libbpf` itself.
 
 ### Docker image
 
-A docker image can be built from this repo. It is not yet published.
+A docker image can be built from this repo. A prebuilt image with examples
+included is also available for download from GitHub Container Registry:
+
+* https://github.com/cloudflare/ebpf_exporter/pkgs/container/ebpf_exporter
 
 To build the image with just the exporter binary, run the following:
 
@@ -109,6 +112,13 @@ Some examples then can run without any bind mounts:
 ```
 docker run --rm -it --privileged -p 9435:9435 \
   ebpf_exporter --config.dir=examples --config.names=timers
+```
+
+Or with the publicly available prebuilt image:
+
+```
+docker run --rm -it --privileged -p 9435:9435 \
+  ghcr.io/cloudflare/ebpf_exporter --config.dir=examples --config.names=timers
 ```
 
 ## Benchmarking overhead
