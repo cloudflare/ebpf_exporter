@@ -372,7 +372,6 @@ jobs:
         run: make clang-format-check
 
   publish-docker-image-x86_64:
-    if: github.event_name != 'pull_request'
     name: Publish Docker images (x86_64)
     runs-on: ubuntu-22.04
     permissions:
@@ -405,12 +404,11 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
   publish-docker-image-aarch64:
-    if: github.event_name != 'pull_request'
     name: Publish Docker images (aarch64)
     runs-on: ubuntu-22.04
     permissions:
@@ -448,6 +446,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
