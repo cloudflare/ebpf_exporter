@@ -29,6 +29,14 @@ func TestUIntDecoder(t *testing.T) {
 			in:  []byte{0x8, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
 			out: []byte(strconv.Itoa(int(8))),
 		},
+		{
+			in:  []byte{0x0, 0xb6, 0xc2, 0x5b, 0x85, 0xff, 0xff, 0xff},
+			out: []byte("18446743546968061440"),
+		},
+		{
+			in:  []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+			out: []byte("18446744073709551615"),
+		},
 	}
 
 	for _, c := range cases {
@@ -40,7 +48,7 @@ func TestUIntDecoder(t *testing.T) {
 		}
 
 		if !bytes.Equal(out, c.out) {
-			t.Errorf("Expected %#v, got %#v", c.out, out)
+			t.Errorf("Expected %s, got %s", string(c.out), string(out))
 		}
 	}
 }
