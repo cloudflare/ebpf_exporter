@@ -401,6 +401,12 @@ jobs:
             type=ref,event=tag
             type=ref,event=pr
             type=sha
+          labels: |
+            org.opencontainers.image.title=ebpf_exporter
+            org.opencontainers.image.description=ebpf_exporter is a prometheus exporter for custom ebpf metrics (commit {{sha}})
+            org.opencontainers.image.url=https://github.com/cloudflare/ebpf_exporter
+            org.opencontainers.image.vendor=Cloudflare
+            org.opencontainers.image.revision={{sha}}
 
       - name: Docker Login
         uses: docker/login-action@v3
