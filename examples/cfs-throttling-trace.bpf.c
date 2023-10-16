@@ -1,0 +1,87 @@
+#include <vmlinux.h>
+#include <bpf/bpf_tracing.h>
+#include <bpf/bpf_core_read.h>
+#include "tracing.bpf.h"
+
+// Skipping 3 frames off the top as they are just bpf trampoline
+#define SKIP_FRAMES (3 & BPF_F_SKIP_FIELD_MASK)
+
+#define MAX_STACK_DEPTH 20
+
+struct cfs_throttle_span_t {
+    struct span_base_t span_base;
+    u64 kstack[MAX_STACK_DEPTH];
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 256 * 1024);
+} cfs_throttle_spans SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 1024 * 10);
+    __type(key, u32);
+    __type(value, struct span_parent_t);
+} traced_cgroups SEC(".maps");
+
+SEC("uprobe/./tracing/demos/cfs-throttling/demo:cfs_set_parent_span")
+int sock_set_parent_span(struct pt_regs *ctx)
+{
+    u32 cgroup = bpf_get_current_cgroup_id();
+    u64 trace_id_hi = PT_REGS_PARM1(ctx);
+    u64 trace_id_lo = PT_REGS_PARM2(ctx);
+    u64 span_id = PT_REGS_PARM3(ctx);
+    struct span_parent_t parent = { .trace_id_hi = trace_id_hi, .trace_id_lo = trace_id_lo, .span_id = span_id };
+
+    bpf_map_update_elem(&traced_cgroups, &cgroup, &parent, BPF_ANY);
+
+    return 0;
+}
+
+SEC("uprobe/./tracing/demos/cfs-throttling/demo:cfs_clear_parent_span")
+int sched_clear_parent_span(struct pt_regs *ctx)
+{
+    u32 cgroup = bpf_get_current_cgroup_id();
+
+    bpf_map_delete_elem(&traced_cgroups, &cgroup);
+
+    return 0;
+}
+
+SEC("tp_btf/cgroup_release")
+int BPF_PROG(cgroup_release, struct cgroup *cgrp)
+{
+    u32 cgroup = cgrp->kn->id;
+
+    bpf_map_delete_elem(&traced_cgroups, &cgroup);
+
+    return 0;
+}
+
+SEC("fentry/unthrottle_cfs_rq")
+int BPF_PROG(unthrottle_cfs_rq, struct cfs_rq *cfs_rq)
+{
+    u32 cgroup = cfs_rq->tg->css.cgroup->kn->id;
+    u64 throttled_ns = cfs_rq->rq->clock - cfs_rq->throttled_clock;
+    struct span_parent_t *parent = bpf_map_lookup_elem(&traced_cgroups, &cgroup);
+
+    if (!cfs_rq->throttled_clock) {
+        return 0;
+    }
+
+    if (!parent) {
+        return 0;
+    }
+
+    submit_span(&cfs_throttle_spans, struct cfs_throttle_span_t, parent, {
+        span->span_base.span_monotonic_timestamp_ns -= throttled_ns;
+        span->span_base.span_duration_ns = throttled_ns;
+
+        bpf_get_stack(ctx, &span->kstack, sizeof(span->kstack), SKIP_FRAMES);
+    });
+
+    return 0;
+}
+
+char LICENSE[] SEC("license") = "GPL";

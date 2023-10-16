@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Name    string   `yaml:"name"`
 	Metrics Metrics  `yaml:"metrics"`
+	Tracing Tracing  `yaml:"tracing"`
 	Kaddrs  []string `yaml:"kaddrs"`
 	BPFPath string
 }
@@ -42,6 +43,19 @@ type Histogram struct {
 	BucketMax        int                 `yaml:"bucket_max"`
 	BucketKeys       []float64           `yaml:"bucket_keys"`
 	Labels           []Label             `yaml:"labels"`
+}
+
+// Tracing is a collection of spans attached to a program
+type Tracing struct {
+	Spans []Span `yaml:"spans"`
+}
+
+// Span describes how a span is decoded from the kernel
+type Span struct {
+	RingBuf string  `yaml:"ringbuf"`
+	Name    string  `yaml:"name"`
+	Service string  `yaml:"service"`
+	Labels  []Label `yaml:"labels"`
 }
 
 // Label defines how to decode an element from eBPF map key
@@ -107,8 +121,8 @@ func ParseConfigs(dir string, names []string) ([]Config, error) {
 }
 
 func validateConfig(cfg *Config) error {
-	if cfg.Metrics.Counters == nil && cfg.Metrics.Histograms == nil {
-		return fmt.Errorf("metrics are not defined for config %q", cfg.Name)
+	if cfg.Metrics.Counters == nil && cfg.Metrics.Histograms == nil && cfg.Tracing.Spans == nil {
+		return fmt.Errorf("neither metrics nor tracing are defined for config %q", cfg.Name)
 	}
 
 	for _, counter := range cfg.Metrics.Counters {

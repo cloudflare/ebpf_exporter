@@ -1,6 +1,14 @@
 # ebpf_exporter
 
-Prometheus exporter for custom eBPF metrics.
+Prometheus exporter for custom eBPF metrics and OpenTelemetry traces.
+
+* Metrics:
+
+![metrics](./examples/biolatency.png)
+
+* [Traces](./tracing):
+
+![tracing](./tracing/demos/exec/trace.png)
 
 Motivation of this exporter is to allow you to write eBPF code and export
 metrics that are not otherwise accessible from the Linux kernel.
@@ -19,6 +27,9 @@ An easy way of thinking about this exporter is bcc tools as prometheus metrics:
 We use libbpf rather than legacy bcc driven code, so it's more like libbpf-tools:
 
 * https://github.com/iovisor/bcc/tree/master/libbpf-tools
+
+Producing [OpenTelemetry](https://opentelemetry.io/) compatible traces is also
+supported, see [Tracing docs](./tracing/) for more information on that.
 
 ## Reading material
 
@@ -377,7 +388,7 @@ ebpf_exporter_bio_latency_seconds_count{device="nvme1n1",operation="write"} 1
 
 You can nicely plot this with Grafana:
 
-![Histogram](examples/bio.write.latency.png)
+![Histogram](./examples/biolatency.png)
 
 ## Configuration concepts
 
@@ -584,6 +595,10 @@ could be used after `string` decode, like the following example:
     - name: string
     - name: dname
 ```
+
+### `hex`
+
+Hex decoder turns bytes into their hex representation.
 
 #### `inet_ip`
 

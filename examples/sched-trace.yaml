@@ -1,0 +1,123 @@
+tracing:
+  spans:
+    - name: sched_wakeup
+      ringbuf: sched_wakeup_spans
+      service: sched
+      labels:
+        - name: trace_id
+          size: 16
+          decoders:
+            - name: hex
+        - name: parent_span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_monotonic_timestamp_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: span_duration_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: tgid
+          size: 4
+          decoders:
+            - name: uint
+        - name: pid
+          size: 4
+          decoders:
+            - name: uint
+    - name: sched_migrate
+      ringbuf: sched_migrate_spans
+      service: sched
+      labels:
+        - name: trace_id
+          size: 16
+          decoders:
+            - name: hex
+        - name: parent_span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_monotonic_timestamp_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: span_duration_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: tgid
+          size: 4
+          decoders:
+            - name: uint
+        - name: pid
+          size: 4
+          decoders:
+            - name: uint
+        - name: cpu.orig
+          size: 4
+          decoders:
+            - name: uint
+        - name: cpu.dest
+          size: 4
+          decoders:
+            - name: uint
+    - name: sched_switch
+      ringbuf: sched_switch_spans
+      service: sched
+      labels:
+        - name: trace_id
+          size: 16
+          decoders:
+            - name: hex
+        - name: parent_span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_monotonic_timestamp_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: span_duration_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: tgid
+          size: 4
+          decoders:
+            - name: uint
+        - name: pid
+          size: 4
+          decoders:
+            - name: uint
+        - name: state
+          size: 4
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: "probably_running"
+                1: "interruptible_sleep"
+                2: "uninterruptible_sleep"
+        - name: preempt
+          size: 1
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: "false"
+                1: "true"

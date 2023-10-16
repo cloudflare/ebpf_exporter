@@ -30,7 +30,7 @@ CLANG_FORMAT_FILES = ${wildcard examples/*.c examples/*.h benchmark/probes/*.c b
 CONFIGS_TO_IGNORE_IN_CHECK := cachestat kfree_skb llcstat pci unix-socket-backlog
 CONFIGS_TO_CHECK := $(filter-out $(CONFIGS_TO_IGNORE_IN_CHECK), ${patsubst examples/%.yaml, %, ${wildcard examples/*.yaml}})
 
-export CGO_LDFLAGS := -l bpf
+CGO_LDFLAGS := -l bpf
 
 include Makefile.libbpf
 
@@ -55,7 +55,7 @@ clang-format-check:
 
 .PHONY: test
 test: $(LIBBPF_DEPS)
-	go test -ldflags='-extldflags "-static"' $(GO_TEST_ARGS) ./...
+	CGO_LDFLAGS="$(CGO_LDFLAGS)" CGO_CFLAGS="$(CGO_CFLAGS)" go test -ldflags='-extldflags "-static"' $(GO_TEST_ARGS) ./...
 
 .PHONY: test-privileged
 test-privileged:
@@ -78,8 +78,23 @@ build-dynamic:
 
 .PHONY: build-binary
 build-binary: $(LIBBPF_DEPS)
-	go build -o ebpf_exporter -v -ldflags="$(GO_LDFLAGS) $(GO_LDFLAGS_VARS)" ./cmd/ebpf_exporter
+	CGO_LDFLAGS="$(CGO_LDFLAGS)" CGO_CFLAGS="$(CGO_CFLAGS)" go build -o ebpf_exporter -v -ldflags="$(GO_LDFLAGS) $(GO_LDFLAGS_VARS)" ./cmd/ebpf_exporter
+
+.PHONY: examples
+examples:
+	$(MAKE) -C examples
+
+.PHONY: tracing-demos
+tracing-demos:
+	$(MAKE) -C tracing/demos
 
 .PHONY: syscalls
 syscalls:
 	go run ./scripts/mksyscalls --strace.version v6.4
+
+.PHONY: clean
+clean:
+	rm -rf ebpf_exporter libbpf
+	$(MAKE) -C tracing/demos clean
+	$(MAKE) -C examples clean
+	$(MAKE) -C benchmark clean
