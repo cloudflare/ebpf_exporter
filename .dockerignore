@@ -1,0 +1,3 @@
+/ebpf_exporter
+/libbpf
+/examples/*.bpf.o
