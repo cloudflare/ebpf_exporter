@@ -1,0 +1,95 @@
+metrics:
+  histograms:
+    - name: softirq_entry_latency_seconds
+      help: Latency histogram for how long it takes from softirq raise to entry
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 21
+      bucket_multiplier: 0.000001 # nano to seconds
+      labels:
+        - name: kind
+          size: 8
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: HI_SOFTIRQ
+                1: TIMER_SOFTIRQ
+                2: NET_TX_SOFTIRQ
+                3: NET_RX_SOFTIRQ
+                4: BLOCK_SOFTIRQ
+                5: IRQ_POLL_SOFTIRQ
+                6: TASKLET_SOFTIRQ
+                7: SCHED_SOFTIRQ
+                8: HRTIMER_SOFTIRQ
+                9: RCU_SOFTIRQ
+        - name: bucket
+          size: 8
+          decoders:
+            - name: uint
+    - name: softirq_service_latency_seconds
+      help: Latency histogram for how long it takes from softirq entry to exit
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 21
+      bucket_multiplier: 0.000001 # nano to seconds
+      labels:
+        - name: kind
+          size: 8
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: HI_SOFTIRQ
+                1: TIMER_SOFTIRQ
+                2: NET_TX_SOFTIRQ
+                3: NET_RX_SOFTIRQ
+                4: BLOCK_SOFTIRQ
+                5: IRQ_POLL_SOFTIRQ
+                6: TASKLET_SOFTIRQ
+                7: SCHED_SOFTIRQ
+                8: HRTIMER_SOFTIRQ
+                9: RCU_SOFTIRQ
+        - name: bucket
+          size: 8
+          decoders:
+            - name: uint
+  counters:
+    - name: softirq_raised_total
+      help: Total number of times softirq were raised
+      labels:
+        - name: kind
+          size: 4
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: HI_SOFTIRQ
+                1: TIMER_SOFTIRQ
+                2: NET_TX_SOFTIRQ
+                3: NET_RX_SOFTIRQ
+                4: BLOCK_SOFTIRQ
+                5: IRQ_POLL_SOFTIRQ
+                6: TASKLET_SOFTIRQ
+                7: SCHED_SOFTIRQ
+                8: HRTIMER_SOFTIRQ
+                9: RCU_SOFTIRQ
+    - name: softirq_serviced_total
+      help: Total number of times softirq were serviced
+      labels:
+        - name: kind
+          size: 4
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: HI_SOFTIRQ
+                1: TIMER_SOFTIRQ
+                2: NET_TX_SOFTIRQ
+                3: NET_RX_SOFTIRQ
+                4: BLOCK_SOFTIRQ
+                5: IRQ_POLL_SOFTIRQ
+                6: TASKLET_SOFTIRQ
+                7: SCHED_SOFTIRQ
+                8: HRTIMER_SOFTIRQ
+                9: RCU_SOFTIRQ
