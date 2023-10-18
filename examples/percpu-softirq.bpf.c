@@ -12,7 +12,7 @@ struct {
 SEC("tp_btf/softirq_entry")
 int BPF_PROG(softirq_entry, unsigned int vec_nr)
 {
-    increment_map(&softirqs_total, &vec_nr, 1);
+    increment_map_nosync(&softirqs_total, &vec_nr, 1);
     return 0;
 }
 
