@@ -21,6 +21,18 @@ static int increment_map(void *map, void *key, u64 increment)
         return 0;                                                                                                      \
     }
 
+#define _increment_histogram(map, key, increment, max_bucket)                                                          \
+    if (key.bucket > max_bucket) {                                                                                     \
+        key.bucket = max_bucket;                                                                                       \
+    }                                                                                                                  \
+                                                                                                                       \
+    increment_map(map, &key, 1);                                                                                       \
+                                                                                                                       \
+    if (increment > 0) {                                                                                               \
+        key.bucket = max_bucket + 1;                                                                                   \
+        increment_map(map, &key, increment);                                                                           \
+    }
+
 #define increment_exp2_histogram(map, key, increment, max_bucket)                                                      \
     key.bucket = log2l(increment);                                                                                     \
                                                                                                                        \
@@ -28,7 +40,13 @@ static int increment_map(void *map, void *key, u64 increment)
         key.bucket = max_bucket;                                                                                       \
     }                                                                                                                  \
                                                                                                                        \
-    increment_map(map, &key, 1);                                                                                       \
+    _increment_histogram(map, key, increment, max_bucket);
+
+#define increment_exp2zero_histogram(map, key, increment, max_bucket)                                                  \
+    if (increment == 0) {                                                                                              \
+        key.bucket = 0;                                                                                                \
+    } else {                                                                                                           \
+        key.bucket = log2l(increment) + 1;                                                                             \
+    }                                                                                                                  \
                                                                                                                        \
-    key.bucket = max_bucket + 1;                                                                                       \
-    increment_map(map, &key, increment);
+    _increment_histogram(map, key, increment, max_bucket);

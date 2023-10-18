@@ -40,23 +40,7 @@ static int do_count(enum unix_addr addr, u64 backlog)
 
     key.addr = addr;
 
-    if (backlog == 0) {
-        key.bucket = 0;
-    } else {
-        key.bucket = log2l(backlog) + 1;
-    }
-
-    if (key.bucket > MAX_BUCKET_SLOT) {
-        key.bucket = MAX_BUCKET_SLOT;
-    }
-
-    increment_map(&unix_socket_backlog, &key, 1);
-
-    // No use incrementing by zero
-    if (backlog > 0) {
-        key.bucket = MAX_BUCKET_SLOT + 1;
-        increment_map(&unix_socket_backlog, &key, backlog);
-    }
+    increment_exp2zero_histogram(&unix_socket_backlog, key, backlog, MAX_BUCKET_SLOT);
 
     return 0;
 }
