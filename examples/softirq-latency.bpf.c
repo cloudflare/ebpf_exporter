@@ -98,7 +98,7 @@ int BPF_PROG(softirq_entry, unsigned int vec_nr)
 
     key.kind = vec_nr;
 
-    increment_exp2_histogram(&softirq_entry_latency_seconds, key, delta_us, MAX_LATENCY_SLOT);
+    increment_exp2_histogram_nosync(&softirq_entry_latency_seconds, key, delta_us, MAX_LATENCY_SLOT);
 
     // Allow raise timestamp to be set again
     *raise_ts_ptr = 0;
@@ -128,7 +128,7 @@ int BPF_PROG(softirq_exit, unsigned int vec_nr)
 
     key.kind = vec_nr;
 
-    increment_exp2_histogram(&softirq_service_latency_seconds, key, delta_us, MAX_LATENCY_SLOT);
+    increment_exp2_histogram_nosync(&softirq_service_latency_seconds, key, delta_us, MAX_LATENCY_SLOT);
 
     // Reset entry ts to prevent skipped entries to be counted at exit
     *entry_ts_ptr = 0;
