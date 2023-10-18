@@ -3,7 +3,7 @@
 #include "maps.bpf.h"
 
 struct {
-    __uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __uint(max_entries, NR_SOFTIRQS);
     __type(key, u32);
     __type(value, u64);
