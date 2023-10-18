@@ -18,7 +18,7 @@
 struct disk_latency_key_t {
     u32 dev;
     u8 op;
-    u64 slot;
+    u64 bucket;
 };
 
 extern int LINUX_KERNEL_VERSION __kconfig;
@@ -105,38 +105,25 @@ int block_rq_issue(struct bpf_raw_tracepoint_args *ctx)
 SEC("raw_tp/block_rq_complete")
 int block_rq_complete(struct bpf_raw_tracepoint_args *ctx)
 {
-    u64 *tsp, flags, delta_us, latency_slot;
+    u64 *tsp, flags, delta_us, ts = bpf_ktime_get_ns();
     struct gendisk *disk;
     struct request *rq = (struct request *) ctx->args[0];
-    struct disk_latency_key_t latency_key = {};
+    struct disk_latency_key_t key = {};
 
     tsp = bpf_map_lookup_elem(&start, &rq);
     if (!tsp) {
         return 0;
     }
 
-    // Delta in microseconds
-    delta_us = (bpf_ktime_get_ns() - *tsp) / 1000;
-
-    // Latency histogram key
-    latency_slot = log2l(delta_us);
-
-    // Cap latency bucket at max value
-    if (latency_slot > MAX_LATENCY_SLOT) {
-        latency_slot = MAX_LATENCY_SLOT;
-    }
+    delta_us = (ts - *tsp) / 1000;
 
     disk = get_disk(rq);
     flags = BPF_CORE_READ(rq, cmd_flags);
 
-    latency_key.slot = latency_slot;
-    latency_key.dev = disk ? MKDEV(BPF_CORE_READ(disk, major), BPF_CORE_READ(disk, first_minor)) : 0;
-    latency_key.op = flags & REQ_OP_MASK;
+    key.dev = disk ? MKDEV(BPF_CORE_READ(disk, major), BPF_CORE_READ(disk, first_minor)) : 0;
+    key.op = flags & REQ_OP_MASK;
 
-    increment_map(&bio_latency_seconds, &latency_key, 1);
-
-    latency_key.slot = MAX_LATENCY_SLOT + 1;
-    increment_map(&bio_latency_seconds, &latency_key, delta_us);
+    increment_exp2_histogram(&bio_latency_seconds, key, delta_us, MAX_LATENCY_SLOT);
 
     bpf_map_delete_elem(&start, &rq);
 

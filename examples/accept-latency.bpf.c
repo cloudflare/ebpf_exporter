@@ -13,7 +13,7 @@
 
 struct socket_latency_key_t {
     u16 port;
-    u64 slot;
+    u64 bucket;
 };
 
 struct {
@@ -41,32 +41,21 @@ int BPF_KPROBE(kprobe__inet_csk_reqsk_queue_hash_add, struct sock *sk, struct re
 SEC("kprobe/inet_csk_accept")
 int BPF_KPROBE(kprobe__inet_csk_accept, struct sock *sk)
 {
-    u64 *tsp, delta_us, latency_slot;
+    u64 *tsp, delta_us, ts = bpf_ktime_get_ns();
     struct inet_connection_sock *icsk = (struct inet_connection_sock *) sk;
     struct request_sock *req = BPF_CORE_READ(icsk, icsk_accept_queue).rskq_accept_head;
-    struct socket_latency_key_t latency_key = {};
+    struct socket_latency_key_t key = {};
 
     tsp = bpf_map_lookup_elem(&start, &req);
     if (!tsp) {
         return 0;
     }
 
-    delta_us = (bpf_ktime_get_ns() - *tsp) / 1000;
+    delta_us = (ts - *tsp) / 1000;
 
-    // Latency histogram key
-    latency_slot = log2l(delta_us);
+    key.port = BPF_CORE_READ(sk, __sk_common).skc_num;
 
-    // Cap latency bucket at max value
-    if (latency_slot > MAX_LATENCY_SLOT) {
-        latency_slot = MAX_LATENCY_SLOT;
-    }
-
-    latency_key.port = BPF_CORE_READ(sk, __sk_common).skc_num;
-    latency_key.slot = latency_slot;
-    increment_map(&accept_latency_seconds, &latency_key, 1);
-
-    latency_key.slot = MAX_LATENCY_SLOT + 1;
-    increment_map(&accept_latency_seconds, &latency_key, delta_us);
+    increment_exp2_histogram(&accept_latency_seconds, key, delta_us, MAX_LATENCY_SLOT);
 
     bpf_map_delete_elem(&start, &req);
 
