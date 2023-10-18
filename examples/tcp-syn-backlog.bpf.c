@@ -18,8 +18,8 @@ static int do_count(u64 backlog)
 {
     u64 bucket = backlog / BUCKET_MULTIPLIER;
 
+    // The _sum key cannot be accurately represented, so we skip it
     increment_map(&tcp_syn_backlog, &bucket, 1);
-    increment_map(&tcp_syn_backlog, &bucket, backlog);
 
     return 0;
 }
@@ -27,13 +27,13 @@ static int do_count(u64 backlog)
 SEC("kprobe/tcp_v4_syn_recv_sock")
 int BPF_KPROBE(kprobe__tcp_v4_syn_recv_sock, struct sock *sk)
 {
-    return do_count(BPF_CORE_READ(sk, sk_ack_backlog) / 50);
+    return do_count(BPF_CORE_READ(sk, sk_ack_backlog));
 }
 
 SEC("kprobe/tcp_v6_syn_recv_sock")
 int BPF_KPROBE(kprobe__tcp_v6_syn_recv_sock, struct sock *sk)
 {
-    return do_count(BPF_CORE_READ(sk, sk_ack_backlog) / 50);
+    return do_count(BPF_CORE_READ(sk, sk_ack_backlog));
 }
 
 char LICENSE[] SEC("license") = "GPL";
