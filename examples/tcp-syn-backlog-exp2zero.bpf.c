@@ -8,35 +8,22 @@
 // 17 buckets, max range is 32k..64k
 #define MAX_BUCKET_SLOT 17
 
+struct key_t {
+    u64 bucket;
+};
+
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, MAX_BUCKET_SLOT + 2);
-    __type(key, u64);
+    __type(key, struct key_t);
     __type(value, u64);
 } tcp_syn_backlog SEC(".maps");
 
 static int do_count(u64 backlog)
 {
-    u64 bucket;
+    struct key_t key = {};
 
-    // Histogram key for exp2zero
-    if (backlog == 0) {
-        bucket = 0;
-    } else {
-        bucket = log2l(backlog) + 1;
-    }
-
-    if (bucket > MAX_BUCKET_SLOT) {
-        bucket = MAX_BUCKET_SLOT;
-    }
-
-    increment_map(&tcp_syn_backlog, &bucket, 1);
-
-    // No use incrementing by zero
-    if (backlog > 0) {
-        bucket = MAX_BUCKET_SLOT + 1;
-        increment_map(&tcp_syn_backlog, &bucket, backlog);
-    }
+    increment_exp2zero_histogram(&tcp_syn_backlog, key, backlog, MAX_BUCKET_SLOT);
 
     return 0;
 }
