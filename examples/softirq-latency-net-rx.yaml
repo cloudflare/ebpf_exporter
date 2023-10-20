@@ -1,0 +1,29 @@
+metrics:
+  histograms:
+    - name: softirq_entry_latency_seconds
+      help: Latency histogram for how long it takes from NET_RX softirq raise to entry
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 21
+      bucket_multiplier: 0.000001 # nano to seconds
+      labels:
+        - name: bucket
+          size: 4
+          decoders:
+            - name: uint
+    - name: softirq_service_latency_seconds
+      help: Latency histogram for how long it takes from NET_RX softirq entry to exit
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 21
+      bucket_multiplier: 0.000001 # nano to seconds
+      labels:
+        - name: bucket
+          size: 4
+          decoders:
+            - name: uint
+  counters:
+    - name: softirq_raised_total
+      help: Total number of times NET_RX softirq were raised
+    - name: softirq_serviced_total
+      help: Total number of times NET_RX softirq were serviced
