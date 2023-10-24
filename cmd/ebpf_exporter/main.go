@@ -27,6 +27,7 @@ func main() {
 	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests (fd://0 for systemd activation).").Default(":9435").String()
 	metricsPath := kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	capabilities := kingpin.Flag("capabilities.keep", "Comma separated list of capabilities to keep (cap_syslog, cap_bpf, etc.), 'all' or 'none'").Default("all").String()
+	btfPath := kingpin.Flag("btf.path", "Optional BTF file path.").Default("").String()
 	kingpin.Version(version.Print("ebpf_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
@@ -55,7 +56,7 @@ func main() {
 		log.Fatalf("Error parsing configs: %v", err)
 	}
 
-	e, err := exporter.New(configs)
+	e, err := exporter.New(configs, *btfPath)
 	if err != nil {
 		log.Fatalf("Error creating exporter: %s", err)
 	}

@@ -3,6 +3,7 @@ package exporter
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -41,10 +42,11 @@ type Exporter struct {
 	attachedProgs            map[string]map[*libbpfgo.BPFProg]bool
 	descs                    map[string]map[string]*prometheus.Desc
 	decoders                 *decoder.Set
+	btfPath                  string
 }
 
 // New creates a new exporter with the provided config
-func New(configs []config.Config) (*Exporter, error) {
+func New(configs []config.Config, btfPath string) (*Exporter, error) {
 	enabledConfigsDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(prometheusNamespace, "", "enabled_configs"),
 		"The set of enabled configs",
@@ -97,6 +99,7 @@ func New(configs []config.Config) (*Exporter, error) {
 		attachedProgs:       map[string]map[*libbpfgo.BPFProg]bool{},
 		descs:               map[string]map[string]*prometheus.Desc{},
 		decoders:            decoders,
+		btfPath:             btfPath,
 	}, nil
 }
 
@@ -116,10 +119,22 @@ func (e *Exporter) Attach() error {
 			return fmt.Errorf("multiple configs with name %q", cfg.Name)
 		}
 
-		module, err := libbpfgo.NewModuleFromFileArgs(libbpfgo.NewModuleArgs{
+		args := libbpfgo.NewModuleArgs{
 			BPFObjPath:      cfg.BPFPath,
 			SkipMemlockBump: true, // Let libbpf itself decide whether it is needed
-		})
+		}
+
+		if e.btfPath != "" {
+			if _, err := os.Stat(e.btfPath); err == nil {
+				args.BTFObjPath = e.btfPath
+			} else if errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("could not find BTF file %q", e.btfPath)
+			} else {
+				return fmt.Errorf("failed to retrieve file info for %q: %v", e.btfPath, err)
+			}
+		}
+
+		module, err := libbpfgo.NewModuleFromFileArgs(args)
 		if err != nil {
 			return fmt.Errorf("error creating module from %q for config %q: %v", cfg.BPFPath, cfg.Name, err)
 		}
