@@ -1,0 +1,18 @@
+metrics:
+  histograms:
+    - name: cfs_throttling_seconds
+      help: Latency histogram for CFS throttling
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 20
+      bucket_multiplier: 0.000001 # microseconds to seconds
+      labels:
+        - name: cgroup
+          size: 4
+          decoders:
+            - name: uint
+            - name: cgroup
+        - name: bucket
+          size: 4
+          decoders:
+            - name: uint
