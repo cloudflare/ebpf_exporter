@@ -1,8 +1,6 @@
 #include <vmlinux.h>
-#include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
-#include "bits.bpf.h"
 #include "maps.bpf.h"
 
 // 27 buckets for latency, max range is 33.6s .. 67.1s

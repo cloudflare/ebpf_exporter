@@ -1,3 +1,5 @@
+#include "bits.bpf.h"
+
 #define lookup_or_zero_init_key(map, key, into)                                                                        \
     u64 zero = 0;                                                                                                      \
                                                                                                                        \

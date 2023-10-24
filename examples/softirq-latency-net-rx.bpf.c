@@ -1,6 +1,5 @@
 #include <vmlinux.h>
 #include <bpf/bpf_tracing.h>
-#include "bits.bpf.h"
 #include "maps.bpf.h"
 
 // Loosely based on https://github.com/xdp-project/xdp-project/blob/master/areas/latency/softirq_net_latency.bt

@@ -1,7 +1,5 @@
 #include <vmlinux.h>
-#include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
-#include "bits.bpf.h"
 #include "maps.bpf.h"
 
 // 17 buckets for backlog sizes, max range is 64k..128k
