@@ -1,6 +1,5 @@
 #include <vmlinux.h>
 #include <bpf/bpf_tracing.h>
-#include "bits.bpf.h"
 #include "maps.bpf.h"
 
 // 21 buckets for latency, max range is 0.5s .. 1.0s

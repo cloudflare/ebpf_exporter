@@ -1,6 +1,5 @@
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
-#include "bits.bpf.h"
 #include "maps.bpf.h"
 
 struct {
