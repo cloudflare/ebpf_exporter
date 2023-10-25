@@ -371,6 +371,21 @@ jobs:
       - name: Run clang-format check
         run: make clang-format-check
 
+  jsonschema:
+    name: Run jsonschema checks
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install jsonschema dependencies
+        run: sudo apt-get install -y python3-jsonschema make
+
+      - name: Install yq
+        run: sudo curl -Lo /usr/bin/yq https://github.com/mikefarah/yq/releases/download/v4.35.2/yq_linux_amd64 && sudo chmod +x /usr/bin/yq
+
+      - name: Run jsonschema check
+        run: make jsonschema
+
   publish-docker-images:
     name: Publish Docker images (x86_64, aarch64)
     runs-on: ubuntu-22.04

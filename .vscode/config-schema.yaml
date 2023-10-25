@@ -1,0 +1,105 @@
+title: ebpf_exporter config schema
+$schema: https://json-schema.org/draft/2020-12/schema
+type: object
+additionalProperties: false
+properties:
+  metrics:
+    type: object
+    additionalProperties: false
+    anyOf:
+      - required:
+          - counters
+      - required:
+          - histograms
+    properties:
+      counters:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - name
+            - help
+          properties:
+            name:
+              type: string
+            help:
+              type: string
+            perf_event_array:
+              type: boolean
+            flush_interval:
+              type: string
+            labels:
+              $ref: "#/definitions/labels"
+      histograms:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - name
+            - help
+            - bucket_type
+            - bucket_min
+            - bucket_max
+            - labels
+          properties:
+            name:
+              type: string
+            help:
+              type: string
+            bucket_type:
+              enum:
+                - exp2
+                - exp2zero
+                - linear
+                - fixed
+            bucket_multiplier:
+              type: number
+            bucket_min:
+              type: number
+            bucket_max:
+              type: number
+            bucket_keys:
+              type: array
+              items:
+                type: number
+            labels:
+              $ref: "#/definitions/labels"
+  kaddrs:
+    type: array
+    items:
+      type: string
+definitions:
+  labels:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - size
+        - decoders
+      properties:
+        name:
+          type: string
+        size:
+          type: number
+        decoders:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - name
+            properties:
+              name:
+                type: string
+              static_map:
+                type: object
+              allow_unknown:
+                type: boolean
+              regexps:
+                type: array
+                items:
+                  type: string
