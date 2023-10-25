@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/cloudflare/ebpf_exporter/v2/config"
+	"github.com/cloudflare/ebpf_exporter/v2/kallsyms"
 )
 
 // ErrSkipLabelSet instructs exporter to skip label set
@@ -31,22 +32,28 @@ func NewSet() (*Set, error) {
 		return nil, fmt.Errorf("error creating cgroup decoder: %v", err)
 	}
 
+	ksym, err := kallsyms.NewDecoder("/proc/kallsyms")
+	if err != nil {
+		return nil, fmt.Errorf("error creating ksym decoder: %v", err)
+	}
+
 	return &Set{
 		decoders: map[string]Decoder{
 			"cgroup":       cgroup,
-			"ksym":         &KSym{},
+			"dname":        &Dname{},
+			"inet_ip":      &InetIP{},
+			"kstack":       &KStack{ksym},
+			"ksym":         &KSym{ksym},
 			"majorminor":   &MajorMinor{},
+			"pci_class":    &PCIClass{},
+			"pci_device":   &PCIDevice{},
+			"pci_subclass": &PCISubClass{},
+			"pci_vendor":   &PCIVendor{},
 			"regexp":       &Regexp{},
 			"static_map":   &StaticMap{},
 			"string":       &String{},
-			"dname":        &Dname{},
-			"uint":         &UInt{},
-			"inet_ip":      &InetIP{},
-			"pci_vendor":   &PCIVendor{},
-			"pci_device":   &PCIDevice{},
-			"pci_class":    &PCIClass{},
-			"pci_subclass": &PCISubClass{},
 			"syscall":      &Syscall{},
+			"uint":         &UInt{},
 		},
 	}, nil
 }

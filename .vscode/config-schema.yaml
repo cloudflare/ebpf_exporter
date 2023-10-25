@@ -94,7 +94,22 @@ definitions:
               - name
             properties:
               name:
-                type: string
+                enum:
+                  - cgroup
+                  - dname
+                  - inet_ip
+                  - kstack
+                  - ksym
+                  - majorminor
+                  - pci_class
+                  - pci_device
+                  - pci_subclass
+                  - pci_vendor
+                  - regexp
+                  - static_map
+                  - string
+                  - syscall
+                  - uint
               static_map:
                 type: object
               allow_unknown:

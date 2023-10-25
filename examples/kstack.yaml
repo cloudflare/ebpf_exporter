@@ -1,0 +1,9 @@
+metrics:
+  counters:
+    - name: mark_page_accessed_total
+      help: Total number of calls to mark_page_accessed by kstack
+      labels:
+        - name: kstack
+          size: 160
+          decoders:
+            - name: kstack
