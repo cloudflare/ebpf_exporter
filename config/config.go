@@ -11,20 +11,10 @@ import (
 
 // Config describes how to configure and extract metrics
 type Config struct {
-	Name       string      `yaml:"name"`
-	Metrics    Metrics     `yaml:"metrics"`
-	PerfEvents []PerfEvent `yaml:"perf_events"`
-	Kaddrs     []string    `yaml:"kaddrs"`
-	BPFPath    string
-}
-
-// PerfEvent describes perf_event to attach to
-type PerfEvent struct {
-	Type            uint64 `yaml:"type"`
-	Name            uint64 `yaml:"name"`
-	Target          string `yaml:"target"`
-	SamplePeriod    uint64 `yaml:"sample_period"`
-	SampleFrequency uint64 `yaml:"sample_frequency"`
+	Name    string   `yaml:"name"`
+	Metrics Metrics  `yaml:"metrics"`
+	Kaddrs  []string `yaml:"kaddrs"`
+	BPFPath string
 }
 
 // Metrics is a collection of metrics attached to a program
