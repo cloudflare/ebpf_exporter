@@ -37,6 +37,10 @@ lint:
 	go mod verify
 	golangci-lint run ./...
 
+.PHONY: jsonschema
+jsonschema:
+	./scripts/jsonschema.sh
+
 .PHONY: clang-format-check
 clang-format-check:
 	clang-format --dry-run --verbose -Werror $(CLANG_FORMAT_FILES)

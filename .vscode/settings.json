@@ -1,0 +1,7 @@
+{
+    "yaml.schemas": {
+        ".vscode/config-schema.yaml": [
+            "examples/*.yaml"
+        ]
+    }
+}
