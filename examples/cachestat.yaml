@@ -2,7 +2,6 @@ metrics:
   counters:
     - name: page_cache_ops_total
       help: Page cache operation counters by type
-      table: counts
       labels:
         - name: op
           size: 8
