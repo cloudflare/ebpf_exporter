@@ -1,0 +1,96 @@
+ffffffeb19a11288 t el1h_64_irq
+ffffffeb19a112f0 t el1h_64_fiq
+ffffffeb19a11358 t el1h_64_error
+ffffffeb19a113c0 t el0t_64_sync
+ffffffeb19a11560 t el0t_64_irq
+ffffffeb19a11700 t el0t_64_fiq
+ffffffeb19a118a0 t el0t_64_error
+--
+ffffffeb19a28888 T __arm_smccc_hvc
+ffffffeb19a288c8 T arm_smccc_1_2_hvc
+ffffffeb19a28930 T arm_smccc_1_2_smc
+ffffffeb19a289a8 t invoke_syscall.constprop.0
+ffffffeb19a28ab0 T do_el0_svc
+ffffffeb19a28b90 t update_mitigation_state
+ffffffeb19a28bf0 t spectre_v2_get_cpu_fw_mitigation_state
+ffffffeb19a28c90 t spectre_v4_get_cpu_fw_mitigation_state
+--
+ffffffeb19a8a320 t mmdrop_async_fn
+ffffffeb19a8a358 t mm_release
+ffffffeb19a8a480 t __pidfd_prepare
+ffffffeb19a8a5c0 t __mmput
+ffffffeb19a8a780 T mmput
+ffffffeb19a8a818 t mmput_async_fn
+ffffffeb19a8a850 t mm_init
+ffffffeb19a8ab38 T nr_processes
+--
+ffffffeb19cadee8 T end_page_writeback
+ffffffeb19cadf30 T wait_on_page_writeback
+ffffffeb19cadf78 T wait_for_stable_page
+ffffffeb19cadfc0 T mark_page_accessed
+ffffffeb19cae008 T set_page_writeback
+ffffffeb19cae050 T set_page_dirty
+ffffffeb19cae098 T clear_page_dirty_for_io
+--
+ffffffeb19cf5af8 T vm_normal_page
+ffffffeb19cf5bb8 T vm_normal_folio
+ffffffeb19cf5c00 T vm_normal_page_pmd
+ffffffeb19cf5cf8 T unmap_page_range
+ffffffeb19cf65b0 T unmap_vmas
+ffffffeb19cf6760 T zap_page_range_single
+ffffffeb19cf6950 T zap_vma_ptes
+ffffffeb19cf69b8 T unmap_mapping_pages
+--
+ffffffeb19d04868 T __arm64_sys_munmap
+ffffffeb19d048b0 T do_munmap
+ffffffeb19d04948 T do_vma_munmap
+ffffffeb19d04998 T exit_mmap
+ffffffeb19d04d58 T insert_vm_struct
+ffffffeb19d04e68 t __install_special_mapping
+ffffffeb19d04fb0 T copy_vma
+--
+ffffffeb19d8eaa0 T finalize_exec
+ffffffeb19d8eb50 t alloc_bprm
+ffffffeb19d8ee68 t percpu_up_read.constprop.0
+ffffffeb19d8ef00 t bprm_execve
+ffffffeb19d8f5c8 t do_execveat_common
+ffffffeb19d8f7f8 T __arm64_sys_execve
+ffffffeb19d8f860 T __arm64_sys_execveat
+ffffffeb19d8f8d8 T path_noexec
+ffffffeb19d8f910 T __set_task_comm
+ffffffeb19d8fa10 T kernel_execve
+ffffffeb19d8fbe8 T set_dumpable
+ffffffeb19d8fc60 T begin_new_exec
+ffffffeb19d90830 T pipe_lock
+ffffffeb19d90870 T pipe_unlock
+ffffffeb19d908b0 T generic_pipe_buf_get
+--
+ffffffeb19e058c8 t load_elf_phdrs
+ffffffeb19e059c0 t padzero
+ffffffeb19e05a60 t elf_core_dump
+ffffffeb19e06870 t load_elf_binary
+ffffffeb19e07d58 T posix_acl_init
+ffffffeb19e07d78 T posix_acl_equiv_mode
+ffffffeb19e07e68 t posix_acl_create_masq
+--
+ffffffeb1a34d148 t el0_interrupt
+ffffffeb1a34d228 t __el0_irq_handler_common
+ffffffeb1a34d258 t __el0_fiq_handler_common
+ffffffeb1a34d288 t el0_svc
+ffffffeb1a34d3f0 T asm_exit_to_user_mode
+ffffffeb1a34d430 T el1t_64_sync_handler
+ffffffeb1a34d450 T el1t_64_irq_handler
+--
+ffffffeb1a34d5b0 T el1h_64_irq_handler
+ffffffeb1a34d5e0 T el1h_64_fiq_handler
+ffffffeb1a34d610 T el1h_64_error_handler
+ffffffeb1a34d660 T el0t_64_sync_handler
+ffffffeb1a34d798 T el0t_64_irq_handler
+ffffffeb1a34d7c0 T el0t_64_fiq_handler
+ffffffeb1a34d7e8 T el0t_64_error_handler
+--
+ffffffc08071046c t bpf_prog_ab4bc4523b7fe6b4	[bpf]
+ffffffc0806499a8 t bpf_prog_ee0e253c78993a24_sd_devices	[bpf]
+ffffffc0801cedf4 t bpf_prog_9a4f2895a09f572a_mark_page_accessed	[bpf]
+ffffffc08012d000 t bpf_trampoline_6442507883	[bpf]
+ffffffc080b89000 t kprobe_insn_page	[__builtin__kprobes]
