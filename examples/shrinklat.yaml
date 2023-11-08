@@ -8,6 +8,6 @@ metrics:
       bucket_multiplier: 0.000001 # microseconds to seconds
       labels:
         - name: bucket
-          size: 8
+          size: 4
           decoders:
             - name: uint
