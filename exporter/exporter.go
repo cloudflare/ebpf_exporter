@@ -499,7 +499,7 @@ func validateMaps(module *libbpfgo.Module, cfg config.Config) error {
 	maps := []string{}
 
 	for _, counter := range cfg.Metrics.Counters {
-		if counter.Name != "" {
+		if counter.Name != "" && !counter.PerfEventArray {
 			maps = append(maps, counter.Name)
 		}
 	}
