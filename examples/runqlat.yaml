@@ -1,0 +1,21 @@
+metrics:
+  histograms:
+    - name: runqlat
+      help: Block IO latency histogram
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 26
+      bucket_multiplier: 0.000001 # microseconds to seconds
+      labels:
+        - name: comm
+          size: 16
+          decoders:
+            - name: string
+        - name: bucket
+          size: 8
+          decoders:
+            - name: uint
+        - name: delta
+          size: 8
+          decoders:
+            - name: uint            

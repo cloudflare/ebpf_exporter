@@ -1,0 +1,50 @@
+metrics:
+  counters:
+    # Technically this is a gauge, but ebpf_exporter only knows counters
+    - name: tcplife
+      help: Current number of pages allocated for bpf jit
+      labels:
+        - name: saddr
+          size: 16
+          decoders:
+            - name: inet_ip
+        - name: daddr
+          size: 16
+          decoders:
+            - name: inet_ip
+        - name: ts_us
+          size: 8
+          decoders:
+            - name: uint
+        - name: dur_secs
+          size: 8
+          decoders:
+            - name: uint
+        - name: rx_bytes
+          size: 8
+          decoders:
+            - name: uint
+        - name: tx_bytes
+          size: 8
+          decoders:
+            - name: uint
+        - name: pid
+          size: 4
+          decoders:
+            - name: uint
+        - name: sport
+          size: 2
+          decoders:
+            - name: uint
+        - name: dport
+          size: 2
+          decoders:
+            - name: uint
+        - name: family
+          size: 2
+          decoders:
+            - name: uint
+        - name: comm
+          size: 22
+          decoders:
+            - name: string
