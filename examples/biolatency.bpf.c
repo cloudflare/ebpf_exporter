@@ -79,7 +79,7 @@ int block_rq_insert(struct bpf_raw_tracepoint_args *ctx)
      * from TP_PROTO(struct request_queue *q, struct request *rq)
      * to TP_PROTO(struct request *rq)
      */
-    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 10, 137)) {
+    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 10, 178)) {
         return trace_rq_start((void *) ctx->args[1]);
     } else {
         return trace_rq_start((void *) ctx->args[0]);
@@ -94,7 +94,7 @@ int block_rq_issue(struct bpf_raw_tracepoint_args *ctx)
      * from TP_PROTO(struct request_queue *q, struct request *rq)
      * to TP_PROTO(struct request *rq)
      */
-    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 10, 137)) {
+    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 10, 178)) {
         return trace_rq_start((void *) ctx->args[1]);
     } else {
         return trace_rq_start((void *) ctx->args[0]);
