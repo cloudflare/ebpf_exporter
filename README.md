@@ -167,6 +167,15 @@ The following additional capabilities might be needed:
   which is the preferred way, but only available since Linux v6.6.
   See: https://github.com/torvalds/linux/commit/0ce7c12e88cf
 
+## External BTF Support
+
+Execution of eBPF programs requires kernel data types normally available
+in `/sys/kernel/btf/vmlinux`, which is created during kernel build process.
+However, on some older kernel configurations, this file might not be available.
+If that's the case, an external BTF file can be supplied with `--btf.path`.
+An archive of BTFs for all some older distros and kernel versions can be
+found [here](https://github.com/aquasecurity/btfhub-archive).
+
 ## Supported scenarios
 
 Currently the only supported way of getting data out of the kernel is via maps.
