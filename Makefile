@@ -51,7 +51,7 @@ jsonschema:
 
 .PHONY: clang-format-check
 clang-format-check:
-	clang-format --dry-run --verbose -Werror $(CLANG_FORMAT_FILES)
+	./scripts/clang-format-check.sh $(CLANG_FORMAT_FILES)
 
 .PHONY: test
 test: $(LIBBPF_DEPS)
