@@ -58,17 +58,31 @@ jobs:
         with:
           fetch-depth: 0 # Fetch with tags to have the build version attached
 
-      - name: Build libbpf and ebpf_exporter
+      - name: Build libbpf and ebpf_exporter and examples
         run: |
           docker buildx build --progress plain --tag ebpf_exporter .
-          id=$(docker create ebpf_exporter)
-          docker cp $id:/ebpf_exporter ebpf_exporter.x86_64
+          docker create --name ebpf_exporter ebpf_exporter
+
+      - name: Extract ebpf_exporter.x86_64
+        run: |
+          docker cp ebpf_exporter:/ebpf_exporter ebpf_exporter.x86_64
 
       - name: Upload ebpf_exporter
         uses: actions/upload-artifact@v3
         with:
           name: ebpf_exporter.x86_64
           path: ebpf_exporter.x86_64
+
+      - name: Extract examples.x86_64.tar.gz
+        run: |
+          docker cp ebpf_exporter:/examples ./
+          tar -cvzf examples.x86_64.tar.gz -T <(find examples | grep -E "\.(yaml|bpf.o)$")
+
+      - name: Upload examples.x86_64.tar.gz
+        uses: actions/upload-artifact@v3
+        with:
+          name: examples.x86_64.tar.gz
+          path: examples.x86_64.tar.gz
 
   build-ebpf-exporter-docker-aarch64:
     name: Build ebpf_exporter in Docker (aarch64, emulated, built-in libbpf)
@@ -83,17 +97,31 @@ jobs:
         with:
           fetch-depth: 0 # Fetch with tags to have the build version attached
 
-      - name: Build ebpf_exporter
+      - name: Build libbpf and ebpf_exporter and examples
         run: |
           docker buildx build --progress plain --tag ebpf_exporter --platform linux/arm64 .
-          id=$(docker create ebpf_exporter)
-          docker cp $id:/ebpf_exporter ebpf_exporter.aarch64
+          docker create --name ebpf_exporter ebpf_exporter
+
+      - name: Extract ebpf_exporter.aarch64
+        run: |
+          docker cp ebpf_exporter:/ebpf_exporter ebpf_exporter.aarch64
 
       - name: Upload ebpf_exporter
         uses: actions/upload-artifact@v3
         with:
           name: ebpf_exporter.aarch64
           path: ebpf_exporter.aarch64
+
+      - name: Extract examples.aarch64.tar.gz
+        run: |
+          docker cp ebpf_exporter:/examples ./
+          tar -cvzf examples.aarch64.tar.gz -T <(find examples | grep -E "\.(yaml|bpf.o)$")
+
+      - name: Upload examples.aarch64.tar.gz
+        uses: actions/upload-artifact@v3
+        with:
+          name: examples.aarch64.tar.gz
+          path: examples.aarch64.tar.gz
 
   build-ebpf-exporter-static-x86_64-system-libbpf:
     name: Build ebpf_exporter (x86_64, statically linked, system libbpf)
@@ -359,21 +387,11 @@ jobs:
       - name: Build example bpf probes
         run: make -j $(nproc) -C examples build
 
-      - name: Save built examples into examples.x86_64.tar.gz
-        run: tar -cvzf examples.x86_64.tar.gz -T <(find examples | grep -E "\.(yaml|bpf.o)$")
-
-      - name: Upload examples.x86_64.tar.gz
-        uses: actions/upload-artifact@v3
-        with:
-          name: examples.x86_64.tar.gz
-          path: examples.x86_64.tar.gz
-
   check-configs-x86_64:
     name: Check examples
     runs-on: ubuntu-22.04
     needs:
       - build-ebpf-exporter-docker-x86_64
-      - build-examples-x86_64-built-in-libbpf
     steps:
       - uses: actions/checkout@v3
 
