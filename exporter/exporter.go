@@ -167,6 +167,23 @@ func (e *Exporter) Attach() error {
 	return nil
 }
 
+// MissedAttachments returns the list of module:prog names that failed to attach
+func (e *Exporter) MissedAttachments() []string {
+	missed := []string{}
+
+	for name, progs := range e.attachedProgs {
+		for prog, attached := range progs {
+			if attached {
+				continue
+			}
+
+			missed = append(missed, fmt.Sprintf("%s:%s", name, prog.Name()))
+		}
+	}
+
+	return missed
+}
+
 func (e *Exporter) passKaddrs(module *libbpfgo.Module, cfg config.Config) error {
 	if len(e.kaddrs) == 0 {
 		if err := e.populateKaddrs(); err != nil {
