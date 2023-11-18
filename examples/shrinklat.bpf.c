@@ -19,7 +19,7 @@ struct {
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
     __uint(max_entries, MAX_LATENCY_SLOT + 1);
-    __type(key, struct key_t);
+    __type(key, u32); // struct key_t in reality, but btf gets confused and logs a warning
     __type(value, u64);
 } shrink_node_latency_seconds SEC(".maps");
 
