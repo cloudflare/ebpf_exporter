@@ -22,10 +22,12 @@ GO_LDFLAGS_VARS := -X $(BUILD_VAR_PREFIX).Version=$(BUILD_VERSION) \
 
 CLANG_FORMAT_FILES = ${wildcard examples/*.c examples/*.h benchmark/probes/*.c benchmark/probes/*.h}
 
+# * cachestat fails to attach in newer kernels (see code)
 # * kfree_skb doesn't load in ci, possibly due to older verifier
+# * llcstat requires real hardware to attach perf events, which is not present in ci
 # * pci doesn't load in ci, possibly due to older verifier
 # * unix-socket-backlog requires a newer kernel than we have in ci
-CONFIGS_TO_IGNORE_IN_CHECK := kfree_skb pci unix-socket-backlog
+CONFIGS_TO_IGNORE_IN_CHECK := cachestat kfree_skb llcstat pci unix-socket-backlog
 CONFIGS_TO_CHECK := $(filter-out $(CONFIGS_TO_IGNORE_IN_CHECK), ${patsubst examples/%.yaml, %, ${wildcard examples/*.yaml}})
 
 export CGO_LDFLAGS := -l bpf
@@ -61,7 +63,7 @@ test-privileged:
 
 .PHONY: config-check
 config-check:
-	sudo ./ebpf_exporter --config.check --config.dir=examples --config.names=$(shell echo $(CONFIGS_TO_CHECK) | tr ' ' ',')
+	sudo ./ebpf_exporter --capabilities.keep=none --config.check --config.strict --config.dir=examples --config.names=$(shell echo $(CONFIGS_TO_CHECK) | tr ' ' ',')
 
 .PHONY: build
 build: build-static

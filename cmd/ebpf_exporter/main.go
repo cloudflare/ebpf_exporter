@@ -23,6 +23,7 @@ func main() {
 	configDir := kingpin.Flag("config.dir", "Config dir path.").Required().ExistingDir()
 	configNames := kingpin.Flag("config.names", "Comma separated names of configs to load.").Required().String()
 	configCheck := kingpin.Flag("config.check", "Check whether configs attach and exit.").Bool()
+	configStrict := kingpin.Flag("config.strict", "Make sure every probe registered.").Bool()
 	debug := kingpin.Flag("debug", "Enable debug.").Bool()
 	noLogTime := kingpin.Flag("log.no-timestamps", "Disable timestamps in log.").Bool()
 	listenAddress := kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests (fd://0 for systemd activation).").Default(":9435").String()
@@ -73,6 +74,13 @@ func main() {
 	}
 
 	log.Printf("Started with %d programs found in the config in %dms", len(configs), time.Since(started).Milliseconds())
+
+	if *configStrict {
+		missed := e.MissedAttachments()
+		if len(missed) > 0 {
+			log.Fatalf("Missed attachments (module:prog): %v", strings.Join(missed, ", "))
+		}
+	}
 
 	if *configCheck {
 		log.Printf("Config check successful, exiting")
