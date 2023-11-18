@@ -26,6 +26,7 @@ jobs:
         with:
           name: libbpf.x86_64.tar.gz
           path: libbpf.x86_64.tar.gz
+          if-no-files-found: error
 
   build-libbpf-docker-aarch64:
     name: Build libbpf in Docker (aarch64, emulated)
@@ -49,6 +50,7 @@ jobs:
         with:
           name: libbpf.aarch64.tar.gz
           path: libbpf.aarch64.tar.gz
+          if-no-files-found: error
 
   build-ebpf-exporter-docker-x86_64:
     name: Build ebpf_exporter in Docker (x86_64, built-in libbpf)
@@ -58,20 +60,21 @@ jobs:
         with:
           fetch-depth: 0 # Fetch with tags to have the build version attached
 
-      - name: Build libbpf and ebpf_exporter and examples
+      - name: Build ebpf_exporter and examples
         run: |
           docker buildx build --progress plain --tag ebpf_exporter .
           docker create --name ebpf_exporter ebpf_exporter
 
       - name: Extract ebpf_exporter.x86_64
         run: |
-          docker cp ebpf_exporter:/ebpf_exporter ebpf_exporter.x86_64
+          docker cp ebpf_exporter:/ebpf_exporter ebpf_exporter
 
       - name: Upload ebpf_exporter
         uses: actions/upload-artifact@v3
         with:
           name: ebpf_exporter.x86_64
-          path: ebpf_exporter.x86_64
+          path: ebpf_exporter
+          if-no-files-found: error
 
       - name: Extract examples.x86_64.tar.gz
         run: |
@@ -83,6 +86,18 @@ jobs:
         with:
           name: examples.x86_64.tar.gz
           path: examples.x86_64.tar.gz
+          if-no-files-found: error
+
+      - name: Extract ebpf_exporter_with_examples.x86_64.tar.gz
+        run: |
+          tar -cvzf ebpf_exporter_with_examples.x86_64.tar.gz --transform "s,\(.*\),ebpf_exporter-$(git describe --tags)/\1," -T <(echo ebpf_exporter; find examples | grep -E "\.(yaml|bpf.o)$" | sort)
+
+      - name: Upload ebpf_exporter_with_examples.x86_64.tar.gz
+        uses: actions/upload-artifact@v3
+        with:
+          name: ebpf_exporter_with_examples.x86_64.tar.gz
+          path: ebpf_exporter_with_examples.x86_64.tar.gz
+          if-no-files-found: error
 
   build-ebpf-exporter-docker-aarch64:
     name: Build ebpf_exporter in Docker (aarch64, emulated, built-in libbpf)
@@ -97,20 +112,21 @@ jobs:
         with:
           fetch-depth: 0 # Fetch with tags to have the build version attached
 
-      - name: Build libbpf and ebpf_exporter and examples
+      - name: Build ebpf_exporter and examples
         run: |
           docker buildx build --progress plain --tag ebpf_exporter --platform linux/arm64 .
           docker create --name ebpf_exporter ebpf_exporter
 
       - name: Extract ebpf_exporter.aarch64
         run: |
-          docker cp ebpf_exporter:/ebpf_exporter ebpf_exporter.aarch64
+          docker cp ebpf_exporter:/ebpf_exporter ebpf_exporter
 
       - name: Upload ebpf_exporter
         uses: actions/upload-artifact@v3
         with:
           name: ebpf_exporter.aarch64
-          path: ebpf_exporter.aarch64
+          path: ebpf_exporter
+          if-no-files-found: error
 
       - name: Extract examples.aarch64.tar.gz
         run: |
@@ -122,6 +138,18 @@ jobs:
         with:
           name: examples.aarch64.tar.gz
           path: examples.aarch64.tar.gz
+          if-no-files-found: error
+
+      - name: Extract ebpf_exporter_with_examples.aarch64.tar.gz
+        run: |
+          tar -cvzf ebpf_exporter_with_examples.aarch64.tar.gz --transform "s,\(.*\),ebpf_exporter-$(git describe --tags)/\1," -T <(echo ebpf_exporter; find examples | grep -E "\.(yaml|bpf.o)$" | sort)
+
+      - name: Upload ebpf_exporter_with_examples.aarch64.tar.gz
+        uses: actions/upload-artifact@v3
+        with:
+          name: ebpf_exporter_with_examples.aarch64.tar.gz
+          path: ebpf_exporter_with_examples.aarch64.tar.gz
+          if-no-files-found: error
 
   build-ebpf-exporter-static-x86_64-system-libbpf:
     name: Build ebpf_exporter (x86_64, statically linked, system libbpf)
@@ -395,21 +423,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Download examples.x86_64.tar.gz
+      - name: Download ebpf_exporter_with_examples.x86_64.tar.gz
         uses: actions/download-artifact@v3
         with:
-          name: examples.x86_64.tar.gz
+          name: ebpf_exporter_with_examples.x86_64.tar.gz
 
-      - name: Extract examples.x86_64.tar.gz
-        run: tar -xzvf examples.x86_64.tar.gz
-
-      - name: Download ebpf_exporter.x86_64
-        uses: actions/download-artifact@v3
-        with:
-          name: ebpf_exporter.x86_64
-
-      - name: Put ebpf_exporter.x86_64 into place
-        run: mv ebpf_exporter.x86_64 ebpf_exporter && chmod +x ebpf_exporter
+      - name: Extract ebpf_exporter_with_examples.x86_64.tar.gz
+        run: tar --strip-components 1 -xzvf ebpf_exporter_with_examples.x86_64.tar.gz
 
       - name: Run configuration check
         run: make config-check
