@@ -101,7 +101,7 @@ func (s *Set) DecodeLabels(in []byte, labels []config.Label) ([]string, error) {
 	}
 
 	if totalSize != uint(len(in)) {
-		return nil, fmt.Errorf("error decoding labels: total size of key %#v is %d bytes, but wehave labels to decode %d", in, len(in), totalSize)
+		return nil, fmt.Errorf("error decoding labels: total size of key %#v is %d bytes, but we have labels to decode %d", in, len(in), totalSize)
 	}
 
 	for i, label := range labels {
