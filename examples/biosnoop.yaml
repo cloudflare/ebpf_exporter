@@ -1,0 +1,42 @@
+metrics:
+  counters:
+    - name: biosnoop_events
+      help: Trace block I/O
+      perf_event_array: true
+      labels:
+        - name: comm
+          size: 16
+          decoders:
+            - name: string
+        - name: delta
+          size: 8
+          decoders:
+            - name: uint
+        - name: qdelta
+          size: 8
+          decoders:
+            - name: uint
+        - name: ts
+          size: 8
+          decoders:
+            - name: uint
+        - name: sector
+          size: 8
+          decoders:
+            - name: uint
+        - name: len
+          size: 4
+          decoders:
+            - name: uint
+        - name: pid
+          size: 4
+          decoders:
+            - name: uint
+        - name: cmd_flags
+          size: 4
+          decoders:
+            - name: uint
+        - name: dev
+          size: 4
+          decoders:
+            - name: uint

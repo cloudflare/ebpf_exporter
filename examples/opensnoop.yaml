@@ -1,0 +1,42 @@
+metrics:
+  counters:
+    - name: open_events
+      help: Trace open syscalls
+      perf_event_array: true
+      labels:
+        # - name: ts
+        #   size: 8
+        #   decoders:
+        #     - name: uint
+        - name: pid
+          size: 4
+          decoders:
+            - name: uint
+        - name: uid
+          size: 4
+          decoders:
+            - name: uint
+        - name: ret
+          size: 4
+          decoders:
+            - name: uint
+        - name: flags
+          size: 4
+          decoders:
+            - name: uint
+        # - name: caller0
+        #   size: 8
+        #   decoders:
+        #     - name: uint
+        # - name: caller1
+        #   size: 8
+        #   decoders:
+        #     - name: uint
+        - name: comm
+          size: 16
+          decoders:
+            - name: string
+        - name: fname
+          size: 255
+          decoders:
+            - name: string

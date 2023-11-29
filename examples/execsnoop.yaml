@@ -1,0 +1,38 @@
+metrics:
+  counters:
+    - name: exec_events
+      help: Trace all exec() syscalls
+      perf_event_array: true
+      labels:
+        - name: pid
+          size: 4
+          decoders:
+            - name: uint
+        - name: ppid
+          size: 4
+          decoders:
+            - name: uint
+        - name: uid
+          size: 4
+          decoders:
+            - name: uint
+        - name: retval
+          size: 4
+          decoders:
+            - name: uint
+        - name: args_count
+          size: 4
+          decoders:
+            - name: uint
+        - name: args_size
+          size: 4
+          decoders:
+            - name: uint
+        - name: comm
+          size: 16
+          decoders:
+            - name: string
+        - name: args
+          size: 896
+          decoders:
+            - name: string

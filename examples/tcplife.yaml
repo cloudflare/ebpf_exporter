@@ -1,8 +1,8 @@
 metrics:
-  counters:
-    # Technically this is a gauge, but ebpf_exporter only knows counters
-    - name: tcplife
-      help: Current number of pages allocated for bpf jit
+  counters: 
+    - name: tcplife_events
+      help: Trace the lifespan of TCP sessions and summarize
+      perf_event_array: true
       labels:
         - name: saddr
           size: 16
@@ -16,15 +16,15 @@ metrics:
           size: 8
           decoders:
             - name: uint
-        - name: dur_secs
+        - name: span_us
           size: 8
           decoders:
             - name: uint
-        - name: rx_bytes
+        - name: rx_b
           size: 8
           decoders:
             - name: uint
-        - name: tx_bytes
+        - name: tx_b
           size: 8
           decoders:
             - name: uint
@@ -45,6 +45,6 @@ metrics:
           decoders:
             - name: uint
         - name: comm
-          size: 22
+          size: 16
           decoders:
             - name: string
