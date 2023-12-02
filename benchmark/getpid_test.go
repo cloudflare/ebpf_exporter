@@ -19,51 +19,81 @@ func init() {
 	libbpfgo.SetLoggerCbs(libbpfgoCallbacks)
 }
 
+func getpid() {
+	os.Getpid()
+}
+
 func BenchmarkGetpidWithoutAnyProbes(b *testing.B) {
 	b.Run("getpid", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
-			os.Getpid()
+			getpid()
 		}
 	})
 }
 
 func BenchmarkGetpidTracepointWithNoMap(b *testing.B) {
-	benchmarkWithProbe(b, "probes/tracepoint-empty.bpf.o", false)
+	benchmarkWithProbe(b, "probes/tracepoint-empty.bpf.o", "getpid", getpid, false)
 }
 
 func BenchmarkGetpidTracepointWithSimpleMap(b *testing.B) {
-	benchmarkWithProbe(b, "probes/tracepoint-simple.bpf.o", true)
+	benchmarkWithProbe(b, "probes/tracepoint-simple.bpf.o", "getpid", getpid, true)
 }
 
 func BenchmarkGetpidTracepointWithComplexMap(b *testing.B) {
-	benchmarkWithProbe(b, "probes/tracepoint-complex.bpf.o", true)
+	benchmarkWithProbe(b, "probes/tracepoint-complex.bpf.o", "getpid", getpid, true)
 }
 
 func BenchmarkGetpidFentryWithNoMap(b *testing.B) {
-	benchmarkWithProbe(b, "probes/fentry-empty.bpf.o", false)
+	benchmarkWithProbe(b, "probes/fentry-empty.bpf.o", "getpid", getpid, false)
 }
 
 func BenchmarkGetpidFentryWithSimpleMap(b *testing.B) {
-	benchmarkWithProbe(b, "probes/fentry-simple.bpf.o", true)
+	benchmarkWithProbe(b, "probes/fentry-simple.bpf.o", "getpid", getpid, true)
 }
 
 func BenchmarkGetpidFentryWithComplexMap(b *testing.B) {
-	benchmarkWithProbe(b, "probes/fentry-complex.bpf.o", true)
+	benchmarkWithProbe(b, "probes/fentry-complex.bpf.o", "getpid", getpid, true)
 }
 
 func BenchmarkGetpidKprobeWithNoMap(b *testing.B) {
-	benchmarkWithProbe(b, "probes/kprobe-empty.bpf.o", false)
+	benchmarkWithProbe(b, "probes/kprobe-empty.bpf.o", "getpid", getpid, false)
 }
 
 func BenchmarkGetpidKprobeWithSimpleMap(b *testing.B) {
-	benchmarkWithProbe(b, "probes/kprobe-simple.bpf.o", true)
+	benchmarkWithProbe(b, "probes/kprobe-simple.bpf.o", "getpid", getpid, true)
 }
 
 func BenchmarkGetpidKprobeWithComplexMap(b *testing.B) {
-	benchmarkWithProbe(b, "probes/kprobe-complex.bpf.o", true)
+	benchmarkWithProbe(b, "probes/kprobe-complex.bpf.o", "getpid", getpid, true)
 }
 
-func benchmarkWithProbe(b *testing.B, file string, checkMap bool) {
+func BenchmarkUprobeTargetWithoutAnyProbes(b *testing.B) {
+	b.Run("go", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			uprobeGo()
+		}
+	})
+
+	b.Run("cgo", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			uprobeCgo()
+		}
+	})
+}
+
+func BenchmarkUprobeWithNoMap(b *testing.B) {
+	benchmarkWithProbe(b, "probes/uprobe-empty.bpf.o", "cgo", uprobeCgo, false)
+}
+
+func BenchmarkUprobeWithSimpleMap(b *testing.B) {
+	benchmarkWithProbe(b, "probes/uprobe-simple.bpf.o", "cgo", uprobeCgo, true)
+}
+
+func BenchmarkUprobeWithComplexMap(b *testing.B) {
+	benchmarkWithProbe(b, "probes/uprobe-complex.bpf.o", "cgo", uprobeCgo, true)
+}
+
+func benchmarkWithProbe(b *testing.B, file string, target string, fn func(), checkMap bool) {
 	byteOrder := util.GetHostByteOrder()
 
 	m, link, err := setupGetpidProbe(file)
@@ -80,9 +110,9 @@ func benchmarkWithProbe(b *testing.B, file string, checkMap bool) {
 
 	defer m.Close()
 
-	b.Run("getpid", func(b *testing.B) {
+	b.Run(target, func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
-			os.Getpid()
+			fn()
 		}
 	})
 

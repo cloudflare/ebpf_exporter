@@ -109,6 +109,21 @@ These measurements already include some overhead from `funclatency` itself.
 
 You can see frequency of calls in the output as well.
 
+## Uprobes
+
+A similar test can be run for uprobes (Linux v6.7-rc3 on the same hardware):
+
+```
+BenchmarkUprobeTargetWithoutAnyProbes/go            1000000000           0.32 ns/op
+BenchmarkUprobeTargetWithoutAnyProbes/cgo             44980404          26.65 ns/op
+BenchmarkUprobeWithNoMap/cgo                            696796        1695.00 ns/op
+BenchmarkUprobeWithSimpleMap/cgo                        681529        1717.00 ns/op
+BenchmarkUprobeWithComplexMap/cgo                       676365        1833.00 ns/op
+```
+
+Here overhead is a lot bigger, ~1670ns per call. There's some overhead in calling
+from Go into C as well and the probes attach to a C function in the benchmark.
+
 ## Performance analysis with perf
 
 See [`ebpf_exporter_ebpf_programs`](../README.md#ebpf_exporter_ebpf_programs)

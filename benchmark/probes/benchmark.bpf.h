@@ -19,6 +19,8 @@
 
 #define TRACEPOINT_SEC() SEC("tp_btf/sys_enter")
 
+#define UPROBE_SEC() SEC("uprobe//proc/self/exe:uprobe_target")
+
 #define BENCHMARK_PROBE(sec, impl)                                                                                     \
     sec() int probe()                                                                                                  \
     {                                                                                                                  \
