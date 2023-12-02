@@ -1,48 +1,48 @@
 metrics:
-    counters:
-      - name: tcp_retransmit_ipv4_packets_total
-        help: Total count of IPv4 TCP retransmissions
-        labels:
-          - name: local_ip
-            size: 4
-            decoders:
-              - name: inet_ip
-          - name: peer_ip
-            size: 4
-            decoders:
-              - name: inet_ip
-          - name: main_port
-            size: 4
-            decoders:
-              - name: uint
-          - name: type
-            size: 4
-            decoders:
-              - name: uint
-              - name: static_map
-                static_map:
-                  1: retransmit
-                  2: tail_loss_probe
-      - name: tcp_retransmit_ipv6_packets_total
-        help: Total count of IPv6 TCP retransmissions
-        labels:
-          - name: local_ip
-            size: 16
-            decoders:
-              - name: inet_ip
-          - name: peer_ip
-            size: 16
-            decoders:
-              - name: inet_ip
-          - name: main_port
-            size: 4
-            decoders:
-              - name: uint
-          - name: type
-            size: 4
-            decoders:
-              - name: uint
-              - name: static_map
-                static_map:
-                  1: retransmit
-                  2: tail_loss_probe
+  counters:
+    - name: tcp_retransmit_ipv4_packets_total
+      help: Total count of IPv4 TCP retransmissions
+      labels:
+        - name: local_ip
+          size: 4
+          decoders:
+            - name: inet_ip
+        - name: peer_ip
+          size: 4
+          decoders:
+            - name: inet_ip
+        - name: main_port
+          size: 2
+          decoders:
+            - name: uint
+        - name: type
+          size: 2
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                1: retransmit
+                2: tail_loss_probe
+    - name: tcp_retransmit_ipv6_packets_total
+      help: Total count of IPv6 TCP retransmissions
+      labels:
+        - name: local_ip
+          size: 16
+          decoders:
+            - name: inet_ip
+        - name: peer_ip
+          size: 16
+          decoders:
+            - name: inet_ip
+        - name: main_port
+          size: 2
+          decoders:
+            - name: uint
+        - name: type
+          size: 2
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                1: retransmit
+                2: tail_loss_probe
