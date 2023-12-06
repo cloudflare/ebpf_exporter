@@ -1,6 +1,5 @@
 #include <vmlinux.h>
 #include <bpf/bpf_tracing.h>
-#include <bpf/bpf_core_read.h>
 #include "maps.bpf.h"
 
 #define MAX_ENTRIES 8192
@@ -17,15 +16,15 @@
 struct ipv4_key_t {
     u32 saddr;
     u32 daddr;
-    u16 mainport;
-    u32 type;
+    u16 main_port;
+    u8 type;
 };
 
 struct ipv6_key_t {
     u8 saddr[16];
     u8 daddr[16];
-    u16 mainport;
-    u32 type;
+    u16 main_port;
+    u8 type;
 };
 
 struct {
@@ -42,60 +41,59 @@ struct {
     __type(value, u64);
 } tcp_retransmit_ipv6_packets_total SEC(".maps");
 
-static int trace_event(const struct sock *sk, u32 type)
+static int extract_main_port(const struct sock *sk)
 {
-    u32 family = sk->__sk_common.skc_family;
+    u16 sport = sk->__sk_common.skc_num;
+    u16 dport = __builtin_bswap16(sk->__sk_common.skc_dport);
 
-    if (family == AF_INET) {
-        struct ipv4_key_t key;
-        __builtin_memset(&key, 0, sizeof(key));
+    if (sport > UPPER_PORT_BOUND && dport > UPPER_PORT_BOUND) {
+        return 0;
+    }
 
+    if (sport < dport) {
+        return sport;
+    }
+
+    return dport;
+}
+
+#define TRACE_PROTOCOL(key_type, map, ip_extractor)                                                                    \
+    key_type key = {};                                                                                                 \
+                                                                                                                       \
+    key.type = type;                                                                                                   \
+    key.main_port = extract_main_port(sk);                                                                             \
+                                                                                                                       \
+    ip_extractor;                                                                                                      \
+                                                                                                                       \
+    increment_map(map, &key, 1);                                                                                       \
+                                                                                                                       \
+    return 0;
+
+static int trace_ipv4(const struct sock *sk, u8 type)
+{
+    TRACE_PROTOCOL(struct ipv4_key_t, &tcp_retransmit_ipv4_packets_total, {
         key.saddr = sk->__sk_common.skc_rcv_saddr;
         key.daddr = sk->__sk_common.skc_daddr;
+    });
+}
 
-        u16 sport = sk->__sk_common.skc_num;
-        u16 dport = sk->__sk_common.skc_dport;
-        dport = __builtin_bswap16(dport);
-
-        if (sport <= dport) {
-            key.mainport = sport;
-        } else {
-            key.mainport = dport;
-        }
-
-        if (key.mainport >= UPPER_PORT_BOUND) {
-            key.mainport = 0;
-        }
-
-        key.type = type;
-
-        increment_map(&tcp_retransmit_ipv4_packets_total, &key, 1);
-
-    } else if (family == AF_INET6) {
-        struct ipv6_key_t key;
-        __builtin_memset(&key, 0, sizeof(key));
-
+static int trace_ipv6(const struct sock *sk, u8 type)
+{
+    TRACE_PROTOCOL(struct ipv6_key_t, &tcp_retransmit_ipv6_packets_total, {
         bpf_probe_read_kernel(&key.saddr, sizeof(key.saddr), sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
         bpf_probe_read_kernel(&key.daddr, sizeof(key.daddr), sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
+    });
+}
 
-        u16 sport = sk->__sk_common.skc_num;
-        u16 dport = sk->__sk_common.skc_dport;
-        dport = __builtin_bswap16(dport);
-
-        if (sport <= dport) {
-            key.mainport = sport;
-        } else {
-            key.mainport = dport;
-        }
-
-        if (key.mainport >= UPPER_PORT_BOUND) {
-            key.mainport = 0;
-        }
-
-        key.type = type;
-
-        increment_map(&tcp_retransmit_ipv6_packets_total, &key, 1);
+static int trace_event(const struct sock *sk, u8 type)
+{
+    switch (sk->__sk_common.skc_family) {
+    case AF_INET:
+        return trace_ipv4(sk, type);
+    case AF_INET6:
+        return trace_ipv6(sk, type);
     }
+
     return 0;
 }
 
