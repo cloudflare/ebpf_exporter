@@ -188,7 +188,7 @@ func (m *fanotifyMonitor) Resolve(id int) string {
 }
 
 // The following kernel patch is required to take advantage of this (included in v6.6-rc1):
-// * https://github.com/torvalds/linux/commit/0ce7c12e88cf
+// * https://git.kernel.org/torvalds/c/0ce7c12e88cf ("kernfs: attach uuid for every kernfs and report it in fsid")
 func attachFanotify(path string) (io.Reader, error) {
 	fd, err := unix.FanotifyInit(unix.FAN_CLASS_NOTIF|unix.FAN_REPORT_DFID_NAME, uint(0))
 	if err != nil {
