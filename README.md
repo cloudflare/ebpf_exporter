@@ -121,6 +121,15 @@ docker run --rm -it --privileged -p 9435:9435 \
   ghcr.io/cloudflare/ebpf_exporter --config.dir=examples --config.names=timers
 ```
 
+## Kubernetes Helm chart
+
+A third party helm chart is available here:
+
+* https://github.com/kubeservice-stack/kubservice-charts/tree/master/charts/kubeservice-ebpf-exporter
+
+Please note that the helm chart is not provided or supported by Cloudflare,
+so do your own due diligence and use it at your own risk.
+
 ## Benchmarking overhead
 
 See [benchmark](benchmark) directory to get an idea of how low ebpf overhead is.
