@@ -41,6 +41,7 @@ func NewSet() (*Set, error) {
 		decoders: map[string]Decoder{
 			"cgroup":       cgroup,
 			"dname":        &Dname{},
+			"ifname":       &IfName{},
 			"inet_ip":      &InetIP{},
 			"kstack":       &KStack{ksym},
 			"ksym":         &KSym{ksym},

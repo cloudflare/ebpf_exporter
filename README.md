@@ -566,6 +566,11 @@ into a human readable string representing cgroup path, like:
 
 * `/sys/fs/cgroup/system.slice/ssh.service`
 
+#### ifname
+
+Ifname decoder takes a network interface index and converts it into its
+name like `eth0`.
+
 #### `dname`
 
 Dname decoder read DNS qname from string in wire format, then decode
