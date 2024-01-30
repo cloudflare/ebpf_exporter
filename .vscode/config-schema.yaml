@@ -97,6 +97,7 @@ definitions:
                 enum:
                   - cgroup
                   - dname
+                  - ifname
                   - inet_ip
                   - kstack
                   - ksym
