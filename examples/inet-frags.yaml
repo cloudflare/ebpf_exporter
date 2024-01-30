@@ -1,0 +1,13 @@
+metrics:
+  counters:
+    - name: inet_frags_total
+      help: Netfilter inet fragments per interface and IP version
+      labels:
+        - name: interface
+          size: 4
+          decoders:
+            - name: ifname
+        - name: ip_version
+          size: 4
+          decoders:
+            - name: uint
