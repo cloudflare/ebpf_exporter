@@ -151,6 +151,77 @@ func TestDecodeLabels(t *testing.T) {
 	}
 }
 
+func BenchmarkCache(b *testing.B) {
+	in := []byte{
+		0x8, 0xab, 0xce, 0xef,
+		0xde, 0xad,
+		0xbe, 0xef,
+		0x8, 0xab, 0xce, 0xef, 0x8, 0xab, 0xce, 0xef,
+	}
+
+	labels := []config.Label{
+		{
+			Name: "number1",
+			Size: 4,
+			Decoders: []config.Decoder{
+				{
+					Name: "uint",
+				},
+			},
+		},
+		{
+			Name: "number2",
+			Size: 2,
+			Decoders: []config.Decoder{
+				{
+					Name: "uint",
+				},
+			},
+		},
+		{
+			Name: "number3",
+			Size: 2,
+			Decoders: []config.Decoder{
+				{
+					Name: "uint",
+				},
+			},
+		},
+		{
+			Name: "number4",
+			Size: 8,
+			Decoders: []config.Decoder{
+				{
+					Name: "uint",
+				},
+			},
+		},
+	}
+
+	s, err := NewSet()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.Run("direct", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err := s.decodeLabels(in, labels)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	b.Run("cached", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err := s.DecodeLabels(in, labels)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+}
+
 func zeroPaddedString(in string, size int) []byte {
 	if len(in) > size {
 		panic(fmt.Sprintf("string %q is longer than requested size %d", in, size))
