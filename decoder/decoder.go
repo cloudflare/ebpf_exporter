@@ -1,9 +1,10 @@
 package decoder
 
 import (
-	"encoding/hex"
+	"bytes"
 	"errors"
 	"fmt"
+	"hash/maphash"
 	"sync"
 
 	"github.com/cloudflare/ebpf_exporter/v2/config"
@@ -12,6 +13,11 @@ import (
 
 // ErrSkipLabelSet instructs exporter to skip label set
 var ErrSkipLabelSet = errors.New("this label set should be skipped")
+
+type cacheValue struct {
+	in  []byte
+	out []string
+}
 
 // Decoder transforms byte field value into a byte value representing string
 // to either use as an input for another Decoder or to use as the final
@@ -24,7 +30,8 @@ type Decoder interface {
 type Set struct {
 	mu       sync.Mutex
 	decoders map[string]Decoder
-	cache    map[string][]string
+	cache    map[uint64]cacheValue
+	seed     maphash.Seed
 }
 
 // NewSet creates a Set with all known decoders
@@ -58,7 +65,8 @@ func NewSet() (*Set, error) {
 			"syscall":      &Syscall{},
 			"uint":         &UInt{},
 		},
-		cache: map[string][]string{},
+		cache: map[uint64]cacheValue{},
+		seed:  maphash.MakeSeed(),
 	}, nil
 }
 
@@ -90,9 +98,12 @@ func (s *Set) Decode(in []byte, label config.Label) ([]byte, error) {
 // DecodeLabels transforms eBPF map key bytes into a list of label values
 // according to configuration
 func (s *Set) DecodeLabels(in []byte, labels []config.Label) ([]string, error) {
-	cacheKey := hex.EncodeToString(in)
+	cacheKey := maphash.Bytes(s.seed, in)
 	if cached, ok := s.cache[cacheKey]; ok {
-		return cached, nil
+		// Make sure that there is no collision here
+		if bytes.Equal(cached.in, in) {
+			return cached.out, nil
+		}
 	}
 
 	values, err := s.decodeLabels(in, labels)
@@ -100,7 +111,7 @@ func (s *Set) DecodeLabels(in []byte, labels []config.Label) ([]string, error) {
 		return nil, err
 	}
 
-	s.cache[cacheKey] = values
+	s.cache[cacheKey] = cacheValue{in: in, out: values}
 
 	return values, nil
 }
