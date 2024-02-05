@@ -314,36 +314,6 @@ jobs:
       - name: Test privileged
         run: make -j $(nproc) test-privileged
 
-  lint-ebpf-exporter-x86_64-system-libbpf:
-    name: Lint ebpf_exporter (x86_64, system libbpf)
-    needs: build-libbpf-docker-x86_64
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/setup-go@v3
-        with:
-          go-version: ^1.21
-
-      - uses: actions/checkout@v3
-
-      - name: Download libbpf.tar.gz
-        uses: actions/download-artifact@v3
-        with:
-          name: libbpf.x86_64.tar.gz
-
-      - name: Install libbpf
-        run: sudo tar -C / -xvvf libbpf.x86_64.tar.gz
-
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
-
-      - name: Check vendored dependencies
-        run: go mod verify
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.54.2
-
   lint-ebpf-exporter-x86_64-built-in-libbpf:
     name: Lint ebpf_exporter (x86_64, built-in libbpf)
     runs-on: ubuntu-22.04
