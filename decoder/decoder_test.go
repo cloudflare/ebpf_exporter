@@ -121,13 +121,13 @@ func TestDecodeLabels(t *testing.T) {
 		},
 	}
 
-	for _, c := range cases {
+	for i, c := range cases {
 		s, err := NewSet()
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		out, err := s.DecodeLabels(c.in, c.labels)
+		out, err := s.DecodeLabels(c.in, fmt.Sprintf("test:%d", i), c.labels)
 		if c.err {
 			if err == nil {
 				t.Errorf("Expected error for input %#v and labels %#v, but did not receive it", c.in, c.labels)
@@ -152,7 +152,7 @@ func TestDecodeLabels(t *testing.T) {
 	}
 }
 
-func TestConcurrency(t *testing.T) {
+func TestDecoderSetConcurrency(t *testing.T) {
 	in := append([]byte{0x8, 0x0, 0x0, 0x0}, zeroPaddedString("bananas", 32)...)
 
 	labels := []config.Label{
@@ -197,7 +197,7 @@ func TestConcurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			_, err := s.DecodeLabels(in, labels)
+			_, err := s.DecodeLabels(in, "concurrency", labels)
 			if err != nil {
 				t.Error(err)
 			}
@@ -205,6 +205,66 @@ func TestConcurrency(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestDecoderSetCache(t *testing.T) {
+	in := []byte{0xba, 0xbe, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef}
+
+	one := []config.Label{
+		{
+			Name: "single_u64",
+			Size: 8,
+			Decoders: []config.Decoder{
+				{
+					Name: "uint",
+				},
+			},
+		},
+	}
+
+	two := []config.Label{
+		{
+			Name: "u32_one",
+			Size: 4,
+			Decoders: []config.Decoder{
+				{
+					Name: "uint",
+				},
+			},
+		},
+		{
+			Name: "u32_two",
+			Size: 4,
+			Decoders: []config.Decoder{
+				{
+					Name: "uint",
+				},
+			},
+		},
+	}
+
+	s, err := NewSet()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	single, err := s.DecodeLabels(in, "one", one)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(single) != 1 {
+		t.Errorf("Expected one u64 from %#v, got %#v", one, single)
+	}
+
+	double, err := s.DecodeLabels(in, "two", two)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(double) != 2 {
+		t.Errorf("Expected two u32 from %#v, got %#v", two, double)
+	}
 }
 
 func BenchmarkCache(b *testing.B) {
@@ -270,7 +330,7 @@ func BenchmarkCache(b *testing.B) {
 
 	b.Run("cached", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, err := s.DecodeLabels(in, labels)
+			_, err := s.DecodeLabels(in, "test", labels)
 			if err != nil {
 				b.Fatal(err)
 			}

@@ -23,7 +23,7 @@ type Decoder interface {
 type Set struct {
 	mu       sync.Mutex
 	decoders map[string]Decoder
-	cache    map[string][]string
+	cache    map[string]map[string][]string
 }
 
 // NewSet creates a Set with all known decoders
@@ -57,7 +57,7 @@ func NewSet() (*Set, error) {
 			"syscall":      &Syscall{},
 			"uint":         &UInt{},
 		},
-		cache: map[string][]string{},
+		cache: map[string]map[string][]string{},
 	}, nil
 }
 
@@ -85,14 +85,20 @@ func (s *Set) decode(in []byte, label config.Label) ([]byte, error) {
 }
 
 // DecodeLabels transforms eBPF map key bytes into a list of label values
-// according to configuration
-func (s *Set) DecodeLabels(in []byte, labels []config.Label) ([]string, error) {
+// according to configuration (different label sets require different names)
+func (s *Set) DecodeLabels(in []byte, name string, labels []config.Label) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	cache, ok := s.cache[name]
+	if !ok {
+		cache = map[string][]string{}
+		s.cache[name] = cache
+	}
+
 	// string(in) must not be a variable to avoid allocation:
 	// * https://github.com/golang/go/commit/f5f5a8b6209f8
-	if cached, ok := s.cache[string(in)]; ok {
+	if cached, ok := cache[string(in)]; ok {
 		return cached, nil
 	}
 
@@ -101,7 +107,7 @@ func (s *Set) DecodeLabels(in []byte, labels []config.Label) ([]string, error) {
 		return nil, err
 	}
 
-	s.cache[string(in)] = values
+	cache[string(in)] = values
 
 	return values, nil
 }
