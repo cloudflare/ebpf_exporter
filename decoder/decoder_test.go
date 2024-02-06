@@ -2,6 +2,7 @@ package decoder
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/cloudflare/ebpf_exporter/v2/config"
@@ -149,6 +150,61 @@ func TestDecodeLabels(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestConcurrency(t *testing.T) {
+	in := append([]byte{0x8, 0x0, 0x0, 0x0}, zeroPaddedString("bananas", 32)...)
+
+	labels := []config.Label{
+		{
+			Name: "number",
+			Size: 4,
+			Decoders: []config.Decoder{
+				{
+					Name: "uint",
+				},
+			},
+		},
+		{
+			Name: "fruit",
+			Size: 32,
+			Decoders: []config.Decoder{
+				{
+					Name: "string",
+				},
+				{
+					Name: "regexp",
+					Regexps: []string{
+						"^bananas$",
+						"$is-banana-even-fruit$",
+					},
+				},
+			},
+		},
+	}
+
+	s, err := NewSet()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	count := 1000
+
+	wg := sync.WaitGroup{}
+	wg.Add(count)
+
+	for i := 0; i < count; i++ {
+		go func() {
+			defer wg.Done()
+
+			_, err := s.DecodeLabels(in, labels)
+			if err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+
+	wg.Wait()
 }
 
 func BenchmarkCache(b *testing.B) {

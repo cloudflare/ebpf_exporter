@@ -61,8 +61,8 @@ func NewSet() (*Set, error) {
 	}, nil
 }
 
-// Decode transforms input byte field into a string according to configuration
-func (s *Set) Decode(in []byte, label config.Label) ([]byte, error) {
+// decode transforms input byte field into a string according to configuration
+func (s *Set) decode(in []byte, label config.Label) ([]byte, error) {
 	result := in
 
 	for _, decoder := range label.Decoders {
@@ -70,9 +70,7 @@ func (s *Set) Decode(in []byte, label config.Label) ([]byte, error) {
 			return result, fmt.Errorf("unknown decoder %q", decoder.Name)
 		}
 
-		s.mu.Lock()
 		decoded, err := s.decoders[decoder.Name].Decode(result, decoder)
-		s.mu.Unlock()
 		if err != nil {
 			if err == ErrSkipLabelSet {
 				return decoded, err
@@ -89,6 +87,9 @@ func (s *Set) Decode(in []byte, label config.Label) ([]byte, error) {
 // DecodeLabels transforms eBPF map key bytes into a list of label values
 // according to configuration
 func (s *Set) DecodeLabels(in []byte, labels []config.Label) ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	// string(in) must not be a variable to avoid allocation:
 	// * https://github.com/golang/go/commit/f5f5a8b6209f8
 	if cached, ok := s.cache[string(in)]; ok {
@@ -132,7 +133,7 @@ func (s *Set) decodeLabels(in []byte, labels []config.Label) ([]string, error) {
 
 		size := label.Size
 
-		decoded, err := s.Decode(in[off:off+size], label)
+		decoded, err := s.decode(in[off:off+size], label)
 		if err != nil {
 			return nil, err
 		}
