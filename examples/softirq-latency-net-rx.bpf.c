@@ -52,14 +52,14 @@ struct {
     __uint(max_entries, MAX_LATENCY_SLOT + 2);
     __type(key, u32);
     __type(value, u64);
-} softirq_entry_latency_seconds SEC(".maps");
+} softirq_wait_seconds SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __uint(max_entries, MAX_LATENCY_SLOT + 2);
     __type(key, u32);
     __type(value, u64);
-} softirq_service_latency_seconds SEC(".maps");
+} softirq_runtime_seconds SEC(".maps");
 
 SEC("tp_btf/softirq_raise")
 int BPF_PROG(softirq_raise, unsigned int vec_nr)
@@ -110,7 +110,7 @@ int BPF_PROG(softirq_entry, unsigned int vec_nr)
 
     delta_us = (ts - *raise_ts_ptr) / 1000;
 
-    increment_exp2_histogram_nosync(&softirq_entry_latency_seconds, key, delta_us, MAX_LATENCY_SLOT);
+    increment_exp2_histogram_nosync(&softirq_wait_seconds, key, delta_us, MAX_LATENCY_SLOT);
 
     // Allow raise timestamp to be set again
     *raise_ts_ptr = 0;
@@ -142,7 +142,7 @@ int BPF_PROG(softirq_exit, unsigned int vec_nr)
 
     delta_us = (ts - *entry_ts_ptr) / 1000;
 
-    increment_exp2_histogram_nosync(&softirq_service_latency_seconds, key, delta_us, MAX_LATENCY_SLOT);
+    increment_exp2_histogram_nosync(&softirq_runtime_seconds, key, delta_us, MAX_LATENCY_SLOT);
 
     // Reset entry ts to prevent skipped entries to be counted at exit
     *entry_ts_ptr = 0;

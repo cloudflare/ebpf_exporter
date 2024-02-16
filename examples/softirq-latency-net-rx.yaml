@@ -1,7 +1,7 @@
 metrics:
   histograms:
-    - name: softirq_entry_latency_seconds
-      help: Latency histogram for how long it takes from NET_RX softirq raise to entry
+    - name: softirq_wait_seconds
+      help: Latency histogram for how long it takes from NET_RX softirq raise to entry aka wait time
       bucket_type: exp2
       bucket_min: 0
       bucket_max: 21
@@ -11,8 +11,8 @@ metrics:
           size: 4
           decoders:
             - name: uint
-    - name: softirq_service_latency_seconds
-      help: Latency histogram for how long it takes from NET_RX softirq entry to exit
+    - name: softirq_runtime_seconds
+      help: Latency histogram for how long it takes from NET_RX softirq entry to exit aka runtime
       bucket_type: exp2
       bucket_min: 0
       bucket_max: 21
