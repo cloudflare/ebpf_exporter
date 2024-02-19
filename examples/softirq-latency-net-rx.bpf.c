@@ -12,6 +12,12 @@
         return 0;                                                                                                      \
     }
 
+/* This provide easy way to disable measuring 'runtime'.
+ * This avoids hooking 'softirq_exit' as it can be expensive and for NET_RX
+ * this isn't the right hook as runtime is affected by NAPI packet bulking.
+ */
+#define CONFIG_MEASURE_RUNTIME 1
+
 // We only use one index in the array for this
 u32 net_rx_idx = 0;
 
@@ -42,6 +48,14 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __uint(max_entries, MAX_LATENCY_SLOT + 2);
+    __type(key, u32);
+    __type(value, u64);
+} softirq_wait_seconds SEC(".maps");
+
+#ifdef CONFIG_MEASURE_RUNTIME
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __uint(max_entries, 1);
     __type(key, u32);
     __type(value, u64);
@@ -52,14 +66,8 @@ struct {
     __uint(max_entries, MAX_LATENCY_SLOT + 2);
     __type(key, u32);
     __type(value, u64);
-} softirq_wait_seconds SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __uint(max_entries, MAX_LATENCY_SLOT + 2);
-    __type(key, u32);
-    __type(value, u64);
 } softirq_runtime_seconds SEC(".maps");
+#endif
 
 SEC("tp_btf/softirq_raise")
 int BPF_PROG(softirq_raise, unsigned int vec_nr)
@@ -86,7 +94,7 @@ int BPF_PROG(softirq_raise, unsigned int vec_nr)
 SEC("tp_btf/softirq_entry")
 int BPF_PROG(softirq_entry, unsigned int vec_nr)
 {
-    u64 delta_ns, *raise_ts_ptr, *existing_entry_ts_ptr, *serviced_total_ptr, ts;
+    u64 delta_ns, *raise_ts_ptr, *serviced_total_ptr, ts;
     struct softirq_latency_key_t key = {};
 
     check_net_rx(vec_nr);
@@ -115,14 +123,18 @@ int BPF_PROG(softirq_entry, unsigned int vec_nr)
     // Allow raise timestamp to be set again
     *raise_ts_ptr = 0;
 
+#ifdef CONFIG_MEASURE_RUNTIME
+    u64 *existing_entry_ts_ptr;
+
     read_array_ptr(&softirq_entry_timestamp, &net_rx_idx, existing_entry_ts_ptr);
 
     // There is some time from function start to here, so overall service time includes it
     *existing_entry_ts_ptr = ts;
-
+#endif
     return 0;
 }
 
+#ifdef CONFIG_MEASURE_RUNTIME
 SEC("tp_btf/softirq_exit")
 int BPF_PROG(softirq_exit, unsigned int vec_nr)
 {
@@ -149,5 +161,6 @@ int BPF_PROG(softirq_exit, unsigned int vec_nr)
 
     return 0;
 }
+#endif
 
 char LICENSE[] SEC("license") = "GPL";
