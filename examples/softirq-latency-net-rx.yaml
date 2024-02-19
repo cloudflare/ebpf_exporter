@@ -4,8 +4,8 @@ metrics:
       help: Latency histogram for how long it takes from NET_RX softirq raise to entry aka wait time
       bucket_type: exp2
       bucket_min: 0
-      bucket_max: 21
-      bucket_multiplier: 0.000001 # nano to seconds
+      bucket_max: 31
+      bucket_multiplier: 0.000000001 # nano to seconds
       labels:
         - name: bucket
           size: 4
@@ -15,8 +15,8 @@ metrics:
       help: Latency histogram for how long it takes from NET_RX softirq entry to exit aka runtime
       bucket_type: exp2
       bucket_min: 0
-      bucket_max: 21
-      bucket_multiplier: 0.000001 # nano to seconds
+      bucket_max: 31
+      bucket_multiplier: 0.000000001 # nano to seconds
       labels:
         - name: bucket
           size: 4

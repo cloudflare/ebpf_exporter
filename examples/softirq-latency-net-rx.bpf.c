@@ -4,8 +4,8 @@
 
 // Loosely based on https://github.com/xdp-project/xdp-project/blob/master/areas/latency/softirq_net_latency.bt
 
-// 20 buckets for latency, max range is 0.5s .. 1.0s
-#define MAX_LATENCY_SLOT 21
+// 30 buckets for latency, max range is 0.5s .. 1.0s
+#define MAX_LATENCY_SLOT 31
 
 #define check_net_rx(vec_nr)                                                                                           \
     if (vec_nr != NET_RX_SOFTIRQ) {                                                                                    \
@@ -86,7 +86,7 @@ int BPF_PROG(softirq_raise, unsigned int vec_nr)
 SEC("tp_btf/softirq_entry")
 int BPF_PROG(softirq_entry, unsigned int vec_nr)
 {
-    u64 delta_us, *raise_ts_ptr, *existing_entry_ts_ptr, *serviced_total_ptr, ts;
+    u64 delta_ns, *raise_ts_ptr, *existing_entry_ts_ptr, *serviced_total_ptr, ts;
     struct softirq_latency_key_t key = {};
 
     check_net_rx(vec_nr);
@@ -108,9 +108,9 @@ int BPF_PROG(softirq_entry, unsigned int vec_nr)
         return 0;
     }
 
-    delta_us = (ts - *raise_ts_ptr) / 1000;
+    delta_ns = ts - *raise_ts_ptr;
 
-    increment_exp2_histogram_nosync(&softirq_wait_seconds, key, delta_us, MAX_LATENCY_SLOT);
+    increment_exp2_histogram_nosync(&softirq_wait_seconds, key, delta_ns, MAX_LATENCY_SLOT);
 
     // Allow raise timestamp to be set again
     *raise_ts_ptr = 0;
@@ -126,7 +126,7 @@ int BPF_PROG(softirq_entry, unsigned int vec_nr)
 SEC("tp_btf/softirq_exit")
 int BPF_PROG(softirq_exit, unsigned int vec_nr)
 {
-    u64 delta_us, *entry_ts_ptr, ts;
+    u64 delta_ns, *entry_ts_ptr, ts;
     struct softirq_latency_key_t key = {};
 
     check_net_rx(vec_nr);
@@ -140,9 +140,9 @@ int BPF_PROG(softirq_exit, unsigned int vec_nr)
         return 0;
     }
 
-    delta_us = (ts - *entry_ts_ptr) / 1000;
+    delta_ns = ts - *entry_ts_ptr;
 
-    increment_exp2_histogram_nosync(&softirq_runtime_seconds, key, delta_us, MAX_LATENCY_SLOT);
+    increment_exp2_histogram_nosync(&softirq_runtime_seconds, key, delta_ns, MAX_LATENCY_SLOT);
 
     // Reset entry ts to prevent skipped entries to be counted at exit
     *entry_ts_ptr = 0;
