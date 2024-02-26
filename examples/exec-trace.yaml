@@ -1,0 +1,30 @@
+tracing:
+  spans:
+    - name: exec
+      ringbuf: exec_spans
+      service: exec-trace
+      labels:
+        - name: trace_id
+          size: 16
+          decoders:
+            - name: hex
+        - name: parent_span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_monotonic_timestamp_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: span_duration_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: span_name
+          size: 64
+          decoders:
+            - name: string

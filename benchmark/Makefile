@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := build
 
-export CGO_LDFLAGS := -l bpf
+CGO_LDFLAGS := -l bpf
 
 include ../Makefile.libbpf
 

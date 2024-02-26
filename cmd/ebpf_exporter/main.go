@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/aquasecurity/libbpfgo"
 	"github.com/cloudflare/ebpf_exporter/v2/config"
 	"github.com/cloudflare/ebpf_exporter/v2/exporter"
+	"github.com/cloudflare/ebpf_exporter/v2/tracing"
 	"github.com/coreos/go-systemd/activation"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -58,7 +60,16 @@ func main() {
 		log.Fatalf("Error parsing configs: %v", err)
 	}
 
-	e, err := exporter.New(configs, *btfPath)
+	if os.Getenv("OTEL_SERVICE_NAME") == "" {
+		os.Setenv("OTEL_SERVICE_NAME", "ebpf_exporter")
+	}
+
+	processor, err := tracing.NewProcessor()
+	if err != nil {
+		log.Fatalf("Error creating tracing processor: %v", err)
+	}
+
+	e, err := exporter.New(configs, tracing.NewProvider(processor), *btfPath)
 	if err != nil {
 		log.Fatalf("Error creating exporter: %s", err)
 	}

@@ -3,6 +3,7 @@ package exporter
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -15,8 +16,12 @@ import (
 	"github.com/aquasecurity/libbpfgo"
 	"github.com/cloudflare/ebpf_exporter/v2/config"
 	"github.com/cloudflare/ebpf_exporter/v2/decoder"
+	"github.com/cloudflare/ebpf_exporter/v2/tracing"
 	"github.com/cloudflare/ebpf_exporter/v2/util"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Namespace to use for all metrics
@@ -43,10 +48,11 @@ type Exporter struct {
 	descs                    map[string]map[string]*prometheus.Desc
 	decoders                 *decoder.Set
 	btfPath                  string
+	tracingProvider          tracing.Provider
 }
 
 // New creates a new exporter with the provided config
-func New(configs []config.Config, btfPath string) (*Exporter, error) {
+func New(configs []config.Config, tracingProvider tracing.Provider, btfPath string) (*Exporter, error) {
 	enabledConfigsDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(prometheusNamespace, "", "enabled_configs"),
 		"The set of enabled configs",
@@ -100,69 +106,115 @@ func New(configs []config.Config, btfPath string) (*Exporter, error) {
 		descs:               map[string]map[string]*prometheus.Desc{},
 		decoders:            decoders,
 		btfPath:             btfPath,
+		tracingProvider:     tracingProvider,
 	}, nil
 }
 
 // Attach injects eBPF into kernel and attaches necessary programs
 func (e *Exporter) Attach() error {
+	tracer := e.tracingProvider.Tracer("")
+
+	ctx, attachSpan := tracer.Start(context.Background(), "attach")
+	defer attachSpan.End()
+
+	_, registerHandlersSpan := tracer.Start(ctx, "register_handlers")
+
 	err := registerHandlers()
 	if err != nil {
 		return fmt.Errorf("error registering libbpf handlers: %v", err)
 	}
+
 	err = registerXDPHandler()
 	if err != nil {
 		return fmt.Errorf("error registering xdp handlers: %v", err)
 	}
 
+	registerHandlersSpan.End()
+
+	ctx, attachConfigsSpan := tracer.Start(ctx, "attach_configs")
+
 	for _, cfg := range e.configs {
-		if _, ok := e.modules[cfg.Name]; ok {
-			return fmt.Errorf("multiple configs with name %q", cfg.Name)
-		}
+		ctx, attachConfigSpan := tracer.Start(ctx, "attach_config", trace.WithAttributes(attribute.String("config", cfg.Name)))
 
-		args := libbpfgo.NewModuleArgs{
-			BPFObjPath:      cfg.BPFPath,
-			SkipMemlockBump: true, // Let libbpf itself decide whether it is needed
-		}
-
-		if e.btfPath != "" {
-			if _, err := os.Stat(e.btfPath); err == nil {
-				args.BTFObjPath = e.btfPath
-			} else if errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("could not find BTF file %q", e.btfPath)
-			} else {
-				return fmt.Errorf("failed to retrieve file info for %q: %v", e.btfPath, err)
-			}
-		}
-
-		module, err := libbpfgo.NewModuleFromFileArgs(args)
+		err = e.attachConfig(ctx, cfg)
 		if err != nil {
-			return fmt.Errorf("error creating module from %q for config %q: %v", cfg.BPFPath, cfg.Name, err)
+			attachConfigSpan.SetStatus(codes.Error, err.Error())
+			attachConfigSpan.End()
+			return err
 		}
 
-		if len(cfg.Kaddrs) > 0 {
-			err = e.passKaddrs(module, cfg)
-			if err != nil {
-				return fmt.Errorf("error passing kaddrs to config %q: %v", cfg.Name, err)
-			}
-		}
-
-		err = module.BPFLoadObject()
-		if err != nil {
-			return fmt.Errorf("error loading bpf object from %q for config %q: %v", cfg.BPFPath, cfg.Name, err)
-		}
-
-		attachments := attachModule(module, cfg)
-
-		err = validateMaps(module, cfg)
-		if err != nil {
-			return fmt.Errorf("error validating maps for config %q: %v", cfg.Name, err)
-		}
-
-		e.attachedProgs[cfg.Name] = attachments
-		e.modules[cfg.Name] = module
+		attachConfigSpan.End()
 	}
 
+	attachConfigsSpan.End()
+
 	postAttachMark()
+
+	return nil
+}
+
+func (e *Exporter) attachConfig(ctx context.Context, cfg config.Config) error {
+	tracer := e.tracingProvider.Tracer("")
+
+	if _, ok := e.modules[cfg.Name]; ok {
+		return fmt.Errorf("multiple configs with name %q", cfg.Name)
+	}
+
+	_, newModuleSpan := tracer.Start(ctx, "new_module")
+	defer newModuleSpan.End()
+
+	args := libbpfgo.NewModuleArgs{
+		BPFObjPath:      cfg.BPFPath,
+		SkipMemlockBump: true, // Let libbpf itself decide whether it is needed
+	}
+
+	if e.btfPath != "" {
+		if _, err := os.Stat(e.btfPath); err == nil {
+			args.BTFObjPath = e.btfPath
+		} else if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("could not find BTF file %q", e.btfPath)
+		} else {
+			return fmt.Errorf("failed to retrieve file info for %q: %v", e.btfPath, err)
+		}
+	}
+
+	module, err := libbpfgo.NewModuleFromFileArgs(args)
+	if err != nil {
+		return fmt.Errorf("error creating module from %q for config %q: %v", cfg.BPFPath, cfg.Name, err)
+	}
+
+	newModuleSpan.End()
+
+	if len(cfg.Kaddrs) > 0 {
+		err = e.passKaddrs(module, cfg)
+		if err != nil {
+			return fmt.Errorf("error passing kaddrs to config %q: %v", cfg.Name, err)
+		}
+	}
+
+	_, bpfLoadObjectSpan := tracer.Start(ctx, "bpf_load_object")
+	defer bpfLoadObjectSpan.End()
+
+	err = module.BPFLoadObject()
+	if err != nil {
+		return fmt.Errorf("error loading bpf object from %q for config %q: %v", cfg.BPFPath, cfg.Name, err)
+	}
+
+	bpfLoadObjectSpan.End()
+
+	_, attachModuleSpan := tracer.Start(ctx, "attach_module")
+
+	attachments := attachModule(attachModuleSpan, module, cfg)
+
+	attachModuleSpan.End()
+
+	err = validateMaps(module, cfg)
+	if err != nil {
+		return fmt.Errorf("error validating maps for config %q: %v", cfg.Name, err)
+	}
+
+	e.attachedProgs[cfg.Name] = attachments
+	e.modules[cfg.Name] = module
 
 	return nil
 }
@@ -270,6 +322,14 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 		for _, histogram := range cfg.Metrics.Histograms {
 			addDescs(cfg.Name, histogram.Name, histogram.Help, histogram.Labels[0:len(histogram.Labels)-1])
+		}
+
+		if e.tracingProvider == nil && len(cfg.Tracing.Spans) > 0 {
+			log.Printf("Tracing is not enabled, but some spans are configured in config %q", cfg.Name)
+		} else {
+			for _, span := range cfg.Tracing.Spans {
+				startTracingSink(e.tracingProvider, e.decoders, e.modules[cfg.Name], span)
+			}
 		}
 	}
 }
