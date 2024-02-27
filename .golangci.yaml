@@ -5,6 +5,8 @@ linters:
     - exhaustive
     - exportloopref
     - forcetypeassert
+    - gochecksumtype
+    - gofmt
     - goimports
     - gomoddirectives
     - interfacebloat
