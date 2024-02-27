@@ -44,19 +44,18 @@ int BPF_PROG(sched_process_exec, struct task_struct *p, pid_t old_pid, struct li
     u64 tgid = p->tgid, ptgid = p->real_parent->tgid;
     struct exec_span_t *parent;
     struct exec_span_t span = { 0 };
-    char path[EXE_LENGTH];
     bool start;
 
     if (!bprm) {
         return 0;
     }
 
-    if (bpf_probe_read_kernel_str(path, sizeof(path), bprm->filename) < 0) {
+    if (bpf_probe_read_kernel_str(span.exe, sizeof(span.exe), bprm->filename) < 0) {
         return 0;
     }
 
     parent = bpf_map_lookup_elem(&traced_tgids, &ptgid);
-    start = memcmp_fallback(path, BASH_PATH, sizeof(BASH_PATH)) == 0;
+    start = memcmp_fallback(span.exe, BASH_PATH, sizeof(BASH_PATH)) == 0;
 
     if (parent) {
         span.span_base.parent.trace_id_hi = parent->span_base.parent.trace_id_hi;
@@ -71,7 +70,6 @@ int BPF_PROG(sched_process_exec, struct task_struct *p, pid_t old_pid, struct li
     }
 
     span.span_base.span_monotonic_timestamp_ns = ts;
-    __builtin_memcpy(&span.exe, &path, sizeof(span.exe));
 
     bpf_map_update_elem(&traced_tgids, &tgid, &span, BPF_ANY);
 
