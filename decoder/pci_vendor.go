@@ -27,5 +27,5 @@ func (d *PCIVendor) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 		return []byte(vendor.Name), nil
 	}
 
-	return []byte(fmt.Sprintf("unknown pci vendor: 0x%s", key)), nil
+	return []byte("unknown pci vendor: 0x" + key), nil
 }

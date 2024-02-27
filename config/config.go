@@ -93,7 +93,7 @@ func ParseConfigs(dir string, names []string) ([]Config, error) {
 	configs := make([]Config, len(names))
 
 	for i, name := range names {
-		path := filepath.Join(dir, fmt.Sprintf("%s.yaml", name))
+		path := filepath.Join(dir, name+".yaml")
 
 		f, err := os.Open(path)
 		if err != nil {
@@ -114,7 +114,7 @@ func ParseConfigs(dir string, names []string) ([]Config, error) {
 			return nil, fmt.Errorf("error validating config: %v", err)
 		}
 
-		configs[i].BPFPath = filepath.Join(dir, fmt.Sprintf("%s.bpf.o", name))
+		configs[i].BPFPath = filepath.Join(dir, name+".bpf.o")
 	}
 
 	return configs, nil

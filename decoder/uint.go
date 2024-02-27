@@ -2,6 +2,7 @@ package decoder
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/cloudflare/ebpf_exporter/v2/config"
 	"github.com/cloudflare/ebpf_exporter/v2/util"
@@ -29,5 +30,5 @@ func (u *UInt) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 		return nil, fmt.Errorf("unknown value length %d for %#v", len(in), in)
 	}
 
-	return []byte(fmt.Sprintf("%d", result)), nil
+	return []byte(strconv.FormatUint(result, 10)), nil
 }

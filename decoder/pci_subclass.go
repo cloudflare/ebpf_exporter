@@ -34,5 +34,5 @@ func (d *PCISubClass) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 		return []byte(fmt.Sprintf("unknown pci subclass: 0x%s (class 0x%s)", subclassID, classID)), nil
 	}
 
-	return []byte(fmt.Sprintf("unknown pci class: 0x%s", classID)), nil
+	return []byte("unknown pci class: 0x" + classID), nil
 }

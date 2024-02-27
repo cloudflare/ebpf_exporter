@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -147,7 +148,7 @@ func listen(addr string) error {
 		}
 
 		if len(listeners) < fd+1 {
-			return fmt.Errorf("no listeners passed via activation")
+			return errors.New("no listeners passed via activation")
 		}
 
 		return http.Serve(listeners[fd], nil)

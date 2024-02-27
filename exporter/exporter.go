@@ -251,7 +251,7 @@ func (e *Exporter) passKaddrs(module *libbpfgo.Module, cfg config.Config) error 
 			return fmt.Errorf("error finding kaddr for %q", kaddr)
 		}
 
-		name := fmt.Sprintf("kaddr_%s", kaddr)
+		name := "kaddr_" + kaddr
 		if err := module.InitGlobalVariable(name, addr); err != nil {
 			return fmt.Errorf("error setting kaddr value for %q (const volatile %q) to 0x%x: %v", kaddr, name, addr, err)
 		}
