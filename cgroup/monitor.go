@@ -5,7 +5,7 @@ import (
 )
 
 type monitor interface {
-	Resolve(int) string
+	Resolve(id int) string
 }
 
 // Monitor resolves cgroup ids into their respective paths

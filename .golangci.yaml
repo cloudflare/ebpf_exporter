@@ -9,6 +9,7 @@ linters:
     - gofmt
     - goimports
     - gomoddirectives
+    - inamedparam
     - interfacebloat
     - makezero
     - mirror
