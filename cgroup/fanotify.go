@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -42,7 +43,7 @@ func newFanotifyMonitor(path string) (*fanotifyMonitor, error) {
 	}
 
 	if !dacAllowed {
-		return nil, fmt.Errorf("missing CAP_DAC_READ_SEARCH needed for open_by_handle_at in fanotify monitor")
+		return nil, errors.New("missing CAP_DAC_READ_SEARCH needed for open_by_handle_at in fanotify monitor")
 	}
 
 	mapping, err := walk(path)
@@ -86,11 +87,11 @@ func (m *fanotifyMonitor) readFanotifyLoop() error {
 		}
 
 		if metadata.Mask&unix.FAN_CREATE == 0 {
-			return fmt.Errorf("fanotify event for non-create event")
+			return errors.New("fanotify event for non-create event")
 		}
 
 		if metadata.Mask&unix.FAN_ONDIR == 0 {
-			return fmt.Errorf("fanotify event for non-directory")
+			return errors.New("fanotify event for non-directory")
 		}
 
 		size := int(metadata.Event_len) - int(metadata.Metadata_len)

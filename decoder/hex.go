@@ -1,7 +1,7 @@
 package decoder
 
 import (
-	"fmt"
+	"encoding/hex"
 
 	"github.com/cloudflare/ebpf_exporter/v2/config"
 )
@@ -11,5 +11,5 @@ type Hex struct{}
 
 // Decode transforms bytes into their hex string representation
 func (u *Hex) Decode(in []byte, _ config.Decoder) ([]byte, error) {
-	return []byte(fmt.Sprintf("%x", in)), nil
+	return []byte(hex.EncodeToString(in)), nil
 }

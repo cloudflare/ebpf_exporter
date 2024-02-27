@@ -7,14 +7,14 @@ import (
 	"github.com/jaypipes/pcidb"
 )
 
-const pciIdsPath = "/usr/share/misc/pci.ids"
-const missingPciIdsText = "missing pci.ids db"
+const pciIDsPath = "/usr/share/misc/pci.ids"
+const missingPciIDsText = "missing pci.ids db"
 
 var pci *pcidb.PCIDB
 
 func init() {
-	if _, err := os.Stat(pciIdsPath); err != nil {
-		log.Printf("PCI DB path %q is not accessible: %v", pciIdsPath, err)
+	if _, err := os.Stat(pciIDsPath); err != nil {
+		log.Printf("PCI DB path %q is not accessible: %v", pciIDsPath, err)
 		return
 	}
 

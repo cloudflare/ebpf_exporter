@@ -13,7 +13,7 @@ type PCIDevice struct{}
 // Decode transforms PCI device id into a name
 func (d *PCIDevice) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	if pci == nil {
-		return []byte(missingPciIdsText), nil
+		return []byte(missingPciIDsText), nil
 	}
 
 	num, err := strconv.Atoi(string(in))
@@ -27,5 +27,5 @@ func (d *PCIDevice) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 		return []byte(device.Name), nil
 	}
 
-	return []byte(fmt.Sprintf("unknown pci device: 0x%s", key)), nil
+	return []byte("unknown pci device: 0x" + key), nil
 }

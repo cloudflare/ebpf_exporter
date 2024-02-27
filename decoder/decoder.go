@@ -16,7 +16,7 @@ var ErrSkipLabelSet = errors.New("this label set should be skipped")
 // to either use as an input for another Decoder or to use as the final
 // label value for Prometheus metrics
 type Decoder interface {
-	Decode([]byte, config.Decoder) ([]byte, error)
+	Decode(in []byte, conf config.Decoder) ([]byte, error)
 }
 
 // Set is a set of Decoders that may be applied to produce a label

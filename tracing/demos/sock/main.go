@@ -28,7 +28,7 @@ func main() {
 	_, dialSpan := tracer.Start(ctx, "dial")
 
 	dialer := net.Dialer{
-		Control: func(network, address string, c syscall.RawConn) error {
+		Control: func(_, _ string, c syscall.RawConn) error {
 			return c.Control(func(fd uintptr) {
 				sockSentParentSpan(fd, dialSpan)
 				connFd = fd

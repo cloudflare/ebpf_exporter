@@ -118,6 +118,7 @@ func (e *Exporter) Attach() error {
 	defer attachSpan.End()
 
 	_, registerHandlersSpan := tracer.Start(ctx, "register_handlers")
+	defer registerHandlersSpan.End()
 
 	err := registerHandlers()
 	if err != nil {
@@ -132,6 +133,7 @@ func (e *Exporter) Attach() error {
 	registerHandlersSpan.End()
 
 	ctx, attachConfigsSpan := tracer.Start(ctx, "attach_configs")
+	defer attachConfigsSpan.End()
 
 	for _, cfg := range e.configs {
 		ctx, attachConfigSpan := tracer.Start(ctx, "attach_config", trace.WithAttributes(attribute.String("config", cfg.Name)))
@@ -249,7 +251,7 @@ func (e *Exporter) passKaddrs(module *libbpfgo.Module, cfg config.Config) error 
 			return fmt.Errorf("error finding kaddr for %q", kaddr)
 		}
 
-		name := fmt.Sprintf("kaddr_%s", kaddr)
+		name := "kaddr_" + kaddr
 		if err := module.InitGlobalVariable(name, addr); err != nil {
 			return fmt.Errorf("error setting kaddr value for %q (const volatile %q) to 0x%x: %v", kaddr, name, addr, err)
 		}

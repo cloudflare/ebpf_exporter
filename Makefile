@@ -43,7 +43,7 @@ endif
 .PHONY: lint
 lint:
 	go mod verify
-	golangci-lint run ./...
+	CGO_LDFLAGS="$(CGO_LDFLAGS)" CGO_CFLAGS="$(CGO_CFLAGS)" golangci-lint run ./...
 
 .PHONY: jsonschema
 jsonschema:

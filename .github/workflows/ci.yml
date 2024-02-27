@@ -344,9 +344,9 @@ jobs:
         run: go mod verify
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@c67416616c29c3c48d26b59c45cadb56966d80aa # https://github.com/golangci/golangci-lint-action/issues/953
+        uses: golangci/golangci-lint-action@v4
         with:
-          version: v1.54.2
+          version: v1.56.2
         env:
           CGO_CFLAGS: "-I${{ github.workspace }}/libbpf/dest/usr/include"
 

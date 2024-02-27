@@ -5,8 +5,11 @@ linters:
     - exhaustive
     - exportloopref
     - forcetypeassert
+    - gochecksumtype
+    - gofmt
     - goimports
     - gomoddirectives
+    - inamedparam
     - interfacebloat
     - makezero
     - mirror
@@ -16,11 +19,13 @@ linters:
     - nilnil
     - nolintlint
     - nosprintfhostport
+    - perfsprint
     - prealloc
     - predeclared
     - promlinter
     - reassign
     - revive
+    - spancheck
     - stylecheck
     - tagalign
     - unconvert
