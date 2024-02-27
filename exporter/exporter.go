@@ -188,7 +188,7 @@ func (e *Exporter) attachConfig(ctx context.Context, cfg config.Config) error {
 	newModuleSpan.End()
 
 	if len(cfg.Kaddrs) > 0 {
-		err = e.passKaddrs(module, cfg)
+		err = e.passKaddrs(ctx, module, cfg)
 		if err != nil {
 			return fmt.Errorf("error passing kaddrs to config %q: %v", cfg.Name, err)
 		}
@@ -238,22 +238,40 @@ func (e *Exporter) MissedAttachments() []string {
 	return missed
 }
 
-func (e *Exporter) passKaddrs(module *libbpfgo.Module, cfg config.Config) error {
+func (e *Exporter) passKaddrs(ctx context.Context, module *libbpfgo.Module, cfg config.Config) error {
+	tracer := e.tracingProvider.Tracer("")
+
+	passKaddrsCtx, passKaddrsSpan := tracer.Start(ctx, "pass_kaddrs")
+	defer passKaddrsSpan.End()
+
 	if len(e.kaddrs) == 0 {
+		_, populateKaddrsSpan := tracer.Start(passKaddrsCtx, "populate_kaddrs")
+
 		if err := e.populateKaddrs(); err != nil {
-			return fmt.Errorf("error populating kaddrs: %v", err)
+			err = fmt.Errorf("error populating kaddrs: %v", err)
+			populateKaddrsSpan.SetStatus(codes.Error, err.Error())
+			populateKaddrsSpan.End()
+			return err
 		}
+
+		populateKaddrsSpan.End()
 	}
 
 	for _, kaddr := range cfg.Kaddrs {
+		passKaddrsSpan.AddEvent("kaddr", trace.WithAttributes(attribute.String("symbol", kaddr)))
+
 		addr, ok := e.kaddrs[kaddr]
 		if !ok {
-			return fmt.Errorf("error finding kaddr for %q", kaddr)
+			err := fmt.Errorf("error finding kaddr for %q", kaddr)
+			passKaddrsSpan.SetStatus(codes.Error, err.Error())
+			return err
 		}
 
 		name := "kaddr_" + kaddr
 		if err := module.InitGlobalVariable(name, addr); err != nil {
-			return fmt.Errorf("error setting kaddr value for %q (const volatile %q) to 0x%x: %v", kaddr, name, addr, err)
+			err = fmt.Errorf("error setting kaddr value for %q (const volatile %q) to 0x%x: %v", kaddr, name, addr, err)
+			passKaddrsSpan.SetStatus(codes.Error, err.Error())
+			return err
 		}
 	}
 
