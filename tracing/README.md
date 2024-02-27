@@ -113,6 +113,17 @@ To build the demos for examples below, run:
 make tracing-demos
 ```
 
+### `bio-trace`
+
+* Config: [bio-trace.yaml](../examples/bio-trace.yaml)
+* eBPF: [bio-trace.bpf.c](../examples/bio-trace.bpf.c)
+* Userspace: n/a
+
+In this example we trace block io insertion and servicing. Here's a random
+write request caught by tracing with this example:
+
+![bio-trace](../examples/bio-trace.png)
+
 ### `cfs-throttling-trace`
 
 * Config: [cfs-throttling-trace.yaml](../examples/cfs-throttling-trace.yaml)
@@ -130,7 +141,7 @@ sudo systemd-run --pty --quiet --collect --unit demo.service --property CPUQuota
 
 This results in a trace that looks like this:
 
-![cfs-throttling-trace](./demos/cfs-throttling/trace.png)
+![cfs-throttling-trace](../examples/cfs-throttling-trace.png)
 
 We enabled kernel tracing for the first span and disabled for the second one.
 
@@ -146,7 +157,7 @@ In this example we generate traces for executions of binaries that originate
 in `/bin/bash`. Every binary's lifetime is a span and spans are named after
 binaries, so that end user traces end up looking like this:
 
-![exec-trace](./demos/exec/trace.png)
+![exec-trace](../examples/exec-trace.png)
 
 The trace above shows an ssh session where `sudo apt-get update` ran.
 
@@ -166,7 +177,7 @@ GOMAXPROCS=1 ./tracing/demos/sched/demo
 
 The trace would look something like this:
 
-![sched-trace](./demos/sched/trace.png)
+![sched-trace](../examples/sched-trace.png)
 
 Similar to CFS throttling example, there's both userspace and kernel parts
 present in the same trace, with one part traced and one not.
@@ -187,7 +198,7 @@ To run the demo:
 ./tracing/demos/sock/demo
 ```
 
-![sock-trace](./demos/sock/trace.png)
+![sock-trace](../examples/sock-trace.png)
 
 The demo showcases multiple attached kernel functions, but you can imagine
 only being interested in a few of them (like TCP retransmits).

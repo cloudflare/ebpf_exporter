@@ -2,6 +2,7 @@ tracing:
   spans:
     - name: block_rq_insert
       ringbuf: block_rq_insert_spans
+      service: bio-trace
       labels:
         - name: trace_id
           size: 16
@@ -38,6 +39,7 @@ tracing:
                 2: flush
     - name: block_rq_service
       ringbuf: block_rq_service_spans
+      service: bio-trace
       labels:
         - name: trace_id
           size: 16
