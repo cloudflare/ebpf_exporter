@@ -1,6 +1,7 @@
 #include <vmlinux.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
+#include <bpf/usdt.bpf.h>
 #include "tracing.bpf.h"
 
 // Skipping 3 frames off the top as they are just bpf trampoline
@@ -25,13 +26,10 @@ struct {
     __type(value, struct span_parent_t);
 } traced_cgroups SEC(".maps");
 
-SEC("uprobe/./tracing/demos/cfs-throttling/demo:cfs_set_parent_span")
-int sock_set_parent_span(struct pt_regs *ctx)
+SEC("usdt/./tracing/demos/cfs-throttling/demo:ebpf_exporter:cfs_set_parent_span")
+int BPF_USDT(cfs_set_parent_span, u64 trace_id_hi, u64 trace_id_lo, u64 span_id)
 {
     u32 cgroup = bpf_get_current_cgroup_id();
-    u64 trace_id_hi = PT_REGS_PARM1(ctx);
-    u64 trace_id_lo = PT_REGS_PARM2(ctx);
-    u64 span_id = PT_REGS_PARM3(ctx);
     struct span_parent_t parent = { .trace_id_hi = trace_id_hi, .trace_id_lo = trace_id_lo, .span_id = span_id };
 
     bpf_map_update_elem(&traced_cgroups, &cgroup, &parent, BPF_ANY);
@@ -39,8 +37,8 @@ int sock_set_parent_span(struct pt_regs *ctx)
     return 0;
 }
 
-SEC("uprobe/./tracing/demos/cfs-throttling/demo:cfs_clear_parent_span")
-int sched_clear_parent_span(struct pt_regs *ctx)
+SEC("usdt/./tracing/demos/cfs-throttling/demo:ebpf_exporter:cfs_clear_parent_span")
+int BPF_USDT(cfs_clear_parent_span)
 {
     u32 cgroup = bpf_get_current_cgroup_id();
 

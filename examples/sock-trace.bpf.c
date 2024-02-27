@@ -1,6 +1,7 @@
 #include <vmlinux.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
+#include <bpf/usdt.bpf.h>
 #include "tracing.bpf.h"
 
 u32 yes = true;
@@ -92,8 +93,8 @@ int BPF_PROG(close_fd, unsigned int fd)
     return 0;
 }
 
-SEC("uprobe/./tracing/demos/sock/demo:enable_kernel_tracing")
-int enable_tracing()
+SEC("usdt/./tracing/demos/sock/demo:ebpf_exporter:enable_kernel_tracing")
+int BPF_USDT(enable_kernel_tracing)
 {
     u32 tgid = bpf_get_current_pid_tgid() >> 32;
 
@@ -116,14 +117,10 @@ int BPF_PROG(sched_process_exit, struct task_struct *p)
     return 0;
 }
 
-SEC("uprobe/./tracing/demos/sock/demo:sock_set_parent_span")
-int sock_set_parent_span(struct pt_regs *ctx)
+SEC("usdt/./tracing/demos/sock/demo:ebpf_exporter:sock_set_parent_span")
+int BPF_USDT(sock_set_parent_span, int fd, u64 trace_id_hi, u64 trace_id_lo, u64 span_id)
 {
     u32 tgid = bpf_get_current_pid_tgid() >> 32;
-    int fd = PT_REGS_PARM1(ctx);
-    u64 trace_id_hi = PT_REGS_PARM2(ctx);
-    u64 trace_id_lo = PT_REGS_PARM3(ctx);
-    u64 span_id = PT_REGS_PARM4(ctx);
     struct span_parent_t parent = { .trace_id_hi = trace_id_hi, .trace_id_lo = trace_id_lo, .span_id = span_id };
     struct file_key_t key = { .tgid = tgid, .fd = fd };
     struct sock **sk = bpf_map_lookup_elem(&fd_to_sock, &key);

@@ -268,6 +268,9 @@ jobs:
         with:
           go-version: ^1.22
 
+      - name: Install systemtap-sdt-dev
+        run: sudo apt-get install -y systemtap-sdt-dev
+
       - name: Download libbpf.tar.gz
         uses: actions/download-artifact@v4
         with:
@@ -300,6 +303,9 @@ jobs:
         with:
           go-version: ^1.22
 
+      - name: Install systemtap-sdt-dev
+        run: sudo apt-get install -y systemtap-sdt-dev
+
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
 
@@ -324,6 +330,9 @@ jobs:
         with:
           go-version: ^1.22
           cache: false # https://github.com/golangci/golangci-lint-action/issues/807
+
+      - name: Install systemtap-sdt-dev
+        run: sudo apt-get install -y systemtap-sdt-dev
 
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
@@ -395,6 +404,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ^1.22
+
+      - name: Install systemtap-sdt-dev
+        run: sudo apt-get install -y systemtap-sdt-dev
 
       - name: Build
         run: make -j $(nproc) tracing-demos

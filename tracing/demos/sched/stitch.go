@@ -2,18 +2,17 @@ package main
 
 /*
 #include <stdint.h>
+#include <sys/sdt.h>
 
-void
-#if defined(__clang__)
-__attribute__ ((optnone))
-#endif
-sched_set_parent_span(uint64_t trace_id_hi, uint64_t trace_id_lo, uint64_t span_id) { }
+void sched_set_parent_span(uint64_t trace_id_hi, uint64_t trace_id_lo, uint64_t span_id)
+{
+	DTRACE_PROBE3(ebpf_exporter, sched_set_parent_span, trace_id_hi, trace_id_lo, span_id);
+}
 
-void
-#if defined(__clang__)
-__attribute__ ((optnone))
-#endif
-sched_clear_parent_span() { }
+void sched_clear_parent_span()
+{
+	DTRACE_PROBE(ebpf_exporter, sched_clear_parent_span);
+}
 */
 import "C"
 import (
