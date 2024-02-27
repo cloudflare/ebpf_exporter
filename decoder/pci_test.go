@@ -18,8 +18,8 @@ func testPCIMissing(t *testing.T, d Decoder, cases [][]byte) {
 			t.Errorf("Error decoding %#v: %v", c, err)
 		}
 
-		if !bytes.Equal(out, []byte(missingPciIdsText)) {
-			t.Errorf("Expected %q, got %s", missingPciIdsText, out)
+		if !bytes.Equal(out, []byte(missingPciIDsText)) {
+			t.Errorf("Expected %q, got %s", missingPciIDsText, out)
 		}
 	}
 }

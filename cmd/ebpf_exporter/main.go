@@ -38,7 +38,7 @@ func main() {
 
 	libbpfgoCallbacks := libbpfgo.Callbacks{Log: libbpfLogCallback}
 	if !*debug {
-		libbpfgoCallbacks.LogFilters = append(libbpfgoCallbacks.LogFilters, func(libLevel int, msg string) bool {
+		libbpfgoCallbacks.LogFilters = append(libbpfgoCallbacks.LogFilters, func(libLevel int, _ string) bool {
 			return libLevel == libbpfgo.LibbpfDebugLevel
 		})
 	}
@@ -109,7 +109,7 @@ func main() {
 	}
 
 	http.Handle(*metricsPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		_, err = w.Write([]byte(`<html>
 			<head><title>eBPF Exporter</title></head>
 			<body>

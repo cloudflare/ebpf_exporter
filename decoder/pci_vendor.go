@@ -13,7 +13,7 @@ type PCIVendor struct{}
 // Decode transforms PCI vendor id into a name
 func (d *PCIVendor) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	if pci == nil {
-		return []byte(missingPciIdsText), nil
+		return []byte(missingPciIDsText), nil
 	}
 
 	num, err := strconv.Atoi(string(in))

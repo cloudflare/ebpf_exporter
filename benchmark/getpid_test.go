@@ -12,7 +12,7 @@ import (
 
 func init() {
 	libbpfgoCallbacks := libbpfgo.Callbacks{}
-	libbpfgoCallbacks.LogFilters = append(libbpfgoCallbacks.LogFilters, func(libLevel int, msg string) bool {
+	libbpfgoCallbacks.LogFilters = append(libbpfgoCallbacks.LogFilters, func(libLevel int, _ string) bool {
 		return libLevel == libbpfgo.LibbpfDebugLevel
 	})
 

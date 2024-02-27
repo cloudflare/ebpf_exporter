@@ -13,7 +13,7 @@ type PCIDevice struct{}
 // Decode transforms PCI device id into a name
 func (d *PCIDevice) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	if pci == nil {
-		return []byte(missingPciIdsText), nil
+		return []byte(missingPciIDsText), nil
 	}
 
 	num, err := strconv.Atoi(string(in))

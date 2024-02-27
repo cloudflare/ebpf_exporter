@@ -13,7 +13,7 @@ type PCISubClass struct{}
 // Decode transforms PCI class id into a name
 func (d *PCISubClass) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	if pci == nil {
-		return []byte(missingPciIdsText), nil
+		return []byte(missingPciIDsText), nil
 	}
 
 	num, err := strconv.Atoi(string(in))
