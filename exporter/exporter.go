@@ -118,6 +118,7 @@ func (e *Exporter) Attach() error {
 	defer attachSpan.End()
 
 	_, registerHandlersSpan := tracer.Start(ctx, "register_handlers")
+	defer registerHandlersSpan.End()
 
 	err := registerHandlers()
 	if err != nil {
@@ -132,6 +133,7 @@ func (e *Exporter) Attach() error {
 	registerHandlersSpan.End()
 
 	ctx, attachConfigsSpan := tracer.Start(ctx, "attach_configs")
+	defer attachConfigsSpan.End()
 
 	for _, cfg := range e.configs {
 		ctx, attachConfigSpan := tracer.Start(ctx, "attach_config", trace.WithAttributes(attribute.String("config", cfg.Name)))

@@ -24,6 +24,7 @@ linters:
     - promlinter
     - reassign
     - revive
+    - spancheck
     - stylecheck
     - tagalign
     - unconvert
