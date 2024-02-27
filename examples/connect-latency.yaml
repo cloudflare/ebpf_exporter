@@ -1,0 +1,21 @@
+metrics:
+  histograms:
+    - name: connect_latency_seconds
+      help: Latency histogram for TCP connect() syscall
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 26
+      bucket_multiplier: 0.000001 # microseconds to seconds
+      labels:
+        - name: ip
+          size: 4
+          decoders:
+            - name: inet_ip
+        - name: port
+          size: 4
+          decoders:
+            - name: uint
+        - name: bucket
+          size: 8
+          decoders:
+            - name: uint
