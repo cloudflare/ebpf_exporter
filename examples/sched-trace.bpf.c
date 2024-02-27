@@ -1,6 +1,7 @@
 #include <vmlinux.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
+#include <bpf/usdt.bpf.h>
 #include "tracing.bpf.h"
 
 // https://github.com/torvalds/linux/blob/v6.1/include/linux/sched.h#L84
@@ -68,13 +69,10 @@ static int task_state(unsigned int state)
     return STATE_TASK_PROBABLY_RUNNING;
 }
 
-SEC("uprobe/./tracing/demos/sched/demo:sched_set_parent_span")
-int sock_set_parent_span(struct pt_regs *ctx)
+SEC("usdt/./tracing/demos/sched/demo:ebpf_exporter:sched_set_parent_span")
+int BPF_USDT(sock_set_parent_span, u64 trace_id_hi, u64 trace_id_lo, u64 span_id)
 {
     u32 tgid = bpf_get_current_pid_tgid() >> 32;
-    u64 trace_id_hi = PT_REGS_PARM1(ctx);
-    u64 trace_id_lo = PT_REGS_PARM2(ctx);
-    u64 span_id = PT_REGS_PARM3(ctx);
     struct span_parent_t parent = { .trace_id_hi = trace_id_hi, .trace_id_lo = trace_id_lo, .span_id = span_id };
 
     bpf_map_update_elem(&traced_tgids, &tgid, &parent, BPF_ANY);
@@ -82,8 +80,8 @@ int sock_set_parent_span(struct pt_regs *ctx)
     return 0;
 }
 
-SEC("uprobe/./tracing/demos/sched/demo:sched_clear_parent_span")
-int sched_clear_parent_span(struct pt_regs *ctx)
+SEC("usdt/./tracing/demos/sched/demo:ebpf_exporter:sched_clear_parent_span")
+int BPF_USDT(sched_clear_parent_span)
 {
     u32 tgid = bpf_get_current_pid_tgid() >> 32;
 
