@@ -13,12 +13,12 @@ Prometheus exporter for custom eBPF metrics and OpenTelemetry traces.
 Motivation of this exporter is to allow you to write eBPF code and export
 metrics that are not otherwise accessible from the Linux kernel.
 
-eBPF was [described by](https://lkml.org/lkml/2015/4/14/232) Ingo Molnár as:
+[ebpf.io](https://ebpf.io/what-is-ebpf/) describes eBPF:
 
-> One of the more interesting features in this cycle is the ability to attach
-> eBPF programs (user-defined, sandboxed bytecode executed by the kernel)
-> to kprobes. This allows user-defined instrumentation on a live kernel image
-> that can never crash, hang or interfere with the kernel negatively.
+> eBPF is a revolutionary technology with origins in the Linux kernel that can
+> run sandboxed programs in a privileged context such as the operating system
+> kernel. It is used to safely and efficiently extend the capabilities of the
+> kernel without requiring to change kernel source code or load kernel modules.
 
 An easy way of thinking about this exporter is bcc tools as prometheus metrics:
 
