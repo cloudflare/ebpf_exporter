@@ -16,6 +16,7 @@ import (
 	"github.com/cloudflare/ebpf_exporter/v2/tracing"
 	"github.com/coreos/go-systemd/activation"
 	"github.com/prometheus/client_golang/prometheus"
+	version_collector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -99,7 +100,7 @@ func main() {
 		return
 	}
 
-	err = prometheus.Register(version.NewCollector("ebpf_exporter"))
+	err = prometheus.Register(version_collector.NewCollector("ebpf_exporter"))
 	if err != nil {
 		log.Fatalf("Error registering version collector: %s", err)
 	}

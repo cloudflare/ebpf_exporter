@@ -1,6 +1,6 @@
 module github.com/cloudflare/ebpf_exporter/v2
 
-go 1.20
+go 1.21
 
 require (
 	github.com/aquasecurity/libbpfgo v0.6.0-libbpf-1.3
@@ -9,7 +9,7 @@ require (
 	github.com/iovisor/gobpf v0.2.0
 	github.com/jaypipes/pcidb v1.0.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/prometheus/common v0.48.0
+	github.com/prometheus/common v0.49.0
 	go.opentelemetry.io/contrib/exporters/autoexport v0.49.0
 	go.opentelemetry.io/otel v1.24.0
 	go.opentelemetry.io/otel/sdk v1.24.0
