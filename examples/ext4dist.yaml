@@ -1,0 +1,24 @@
+metrics:
+  histograms:
+    - name: ext4_latency_seconds
+      help: ext4 IO latency histogram
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 27
+      bucket_multiplier: 0.000001 # microseconds to seconds
+      labels:
+        - name: operation
+          size: 8
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: read
+                1: write
+                2: open
+                3: sync
+                4: getattr
+        - name: bucket
+          size: 8
+          decoders:
+            - name: uint
