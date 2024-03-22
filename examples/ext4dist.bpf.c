@@ -32,7 +32,6 @@ enum fs_file_op {
     F_OPEN,
     F_FSYNC,
     F_GETATTR,
-    F_MAX_OP,
 };
 static int probe_entry()
 {
