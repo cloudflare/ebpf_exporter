@@ -20,7 +20,7 @@ func extractLabels(raw []byte, decoders *decoder.Set, config config.Span) ([]str
 		validDataSize += labelConfig.Size
 	}
 
-	decoded, err := decoders.DecodeLabels(raw[:validDataSize], config.Name, config.Labels)
+	decoded, err := decoders.DecodeLabelsForTracing(raw[:validDataSize], config.Labels)
 	if err != nil {
 		if err != decoder.ErrSkipLabelSet {
 			return nil, fmt.Errorf("failed to decode labels: %v", err)

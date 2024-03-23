@@ -43,7 +43,7 @@ func newPerfEventArraySink(decoders *decoder.Set, module *libbpfgo.Module, count
 				validDataSize += labelConfig.Size
 			}
 
-			labelValues, err := decoders.DecodeLabels(rawBytes[:validDataSize], counterConfig.Name, sink.counterConfig.Labels)
+			labelValues, err := decoders.DecodeLabelsForMetrics(rawBytes[:validDataSize], counterConfig.Name, sink.counterConfig.Labels)
 			if err != nil {
 				if err == decoder.ErrSkipLabelSet {
 					continue

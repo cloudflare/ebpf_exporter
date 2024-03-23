@@ -85,9 +85,10 @@ func (s *Set) decode(in []byte, label config.Label) ([]byte, error) {
 	return result, nil
 }
 
-// DecodeLabels transforms eBPF map key bytes into a list of label values
-// according to configuration (different label sets require different names)
-func (s *Set) DecodeLabels(in []byte, name string, labels []config.Label) ([]string, error) {
+// DecodeLabelsForMetrics transforms eBPF map key bytes into a list of label values
+// according to configuration (different label sets require different names).
+// This decoder method variant does caching and is suitable for metrics.
+func (s *Set) DecodeLabelsForMetrics(in []byte, name string, labels []config.Label) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -111,6 +112,16 @@ func (s *Set) DecodeLabels(in []byte, name string, labels []config.Label) ([]str
 	cache[string(in)] = values
 
 	return values, nil
+}
+
+// DecodeLabelsForTracing transforms eBPF map key bytes into a list of label values
+// according to configuration (different label sets require different names).
+// This decoder method variant does not do caching and is suitable for tracing.
+func (s *Set) DecodeLabelsForTracing(in []byte, labels []config.Label) ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.decodeLabels(in, labels)
 }
 
 // decodeLabels is the inner function of DecodeLabels without any caching

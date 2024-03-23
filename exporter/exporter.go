@@ -518,7 +518,7 @@ func (e *Exporter) mapValues(module *libbpfgo.Module, name string, labels []conf
 			raw = raw[4:]
 		}
 
-		metricValues[i].labels, err = e.decoders.DecodeLabels(raw, name, labels)
+		metricValues[i].labels, err = e.decoders.DecodeLabelsForMetrics(raw, name, labels)
 		if err != nil {
 			if err == decoder.ErrSkipLabelSet {
 				continue
