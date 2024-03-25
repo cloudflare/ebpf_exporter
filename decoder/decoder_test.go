@@ -127,7 +127,7 @@ func TestDecodeLabels(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		out, err := s.DecodeLabels(c.in, fmt.Sprintf("test:%d", i), c.labels)
+		out, err := s.DecodeLabelsForMetrics(c.in, fmt.Sprintf("test:%d", i), c.labels)
 		if c.err {
 			if err == nil {
 				t.Errorf("Expected error for input %#v and labels %#v, but did not receive it", c.in, c.labels)
@@ -197,7 +197,12 @@ func TestDecoderSetConcurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			_, err := s.DecodeLabels(in, "concurrency", labels)
+			_, err := s.DecodeLabelsForMetrics(in, "concurrency", labels)
+			if err != nil {
+				t.Error(err)
+			}
+
+			_, err = s.DecodeLabelsForTracing(in, labels)
 			if err != nil {
 				t.Error(err)
 			}
@@ -248,7 +253,7 @@ func TestDecoderSetCache(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	single, err := s.DecodeLabels(in, "one", one)
+	single, err := s.DecodeLabelsForMetrics(in, "one", one)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +262,7 @@ func TestDecoderSetCache(t *testing.T) {
 		t.Errorf("Expected one u64 from %#v, got %#v", one, single)
 	}
 
-	double, err := s.DecodeLabels(in, "two", two)
+	double, err := s.DecodeLabelsForMetrics(in, "two", two)
 	if err != nil {
 		t.Error(err)
 	}
@@ -330,7 +335,7 @@ func BenchmarkCache(b *testing.B) {
 
 	b.Run("cached", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, err := s.DecodeLabels(in, "test", labels)
+			_, err := s.DecodeLabelsForMetrics(in, "test", labels)
 			if err != nil {
 				b.Fatal(err)
 			}
