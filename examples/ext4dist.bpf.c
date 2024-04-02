@@ -7,13 +7,21 @@
 // 27 buckets for latency, max range is 33.6s .. 67.1s
 #define MAX_LATENCY_SLOT 27
 
+enum fs_file_op {
+    F_READ,
+    F_WRITE,
+    F_OPEN,
+    F_FSYNC,
+    F_GETATTR,
+};
+
 struct ext4_latency_key_t {
     u8 op;
-    u64 bucket;
+    u8 bucket;
 };
 
 struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
     __uint(max_entries, MAX_ENTRIES);
     __type(key, u32);
     __type(value, u64);
@@ -26,17 +34,10 @@ struct {
     __type(value, u64);
 } ext4_latency_seconds SEC(".maps");
 
-enum fs_file_op {
-    F_READ,
-    F_WRITE,
-    F_OPEN,
-    F_FSYNC,
-    F_GETATTR,
-};
 static int probe_entry()
 {
-    u32 pid = bpf_get_current_pid_tgid();
     u64 ts = bpf_ktime_get_ns();
+    u32 pid = bpf_get_current_pid_tgid();
 
     bpf_map_update_elem(&start, &pid, &ts, BPF_ANY);
 
@@ -47,18 +48,19 @@ static int probe_return(enum fs_file_op op)
 {
     u64 *tsp, delta_us, ts = bpf_ktime_get_ns();
     u32 pid = bpf_get_current_pid_tgid();
-    struct ext4_latency_key_t key = {};
+    struct ext4_latency_key_t key = { .op = (u8) op };
 
     tsp = bpf_map_lookup_elem(&start, &pid);
     if (!tsp) {
         return 0;
     }
+
     delta_us = (ts - *tsp) / 1000;
-    key.op = op;
 
     increment_exp2_histogram(&ext4_latency_seconds, key, delta_us, MAX_LATENCY_SLOT);
 
     bpf_map_delete_elem(&start, &pid);
+
     return 0;
 }
 

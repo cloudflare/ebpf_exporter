@@ -8,7 +8,7 @@ metrics:
       bucket_multiplier: 0.000001 # microseconds to seconds
       labels:
         - name: operation
-          size: 8
+          size: 1
           decoders:
             - name: uint
             - name: static_map
@@ -19,6 +19,6 @@ metrics:
                 3: sync
                 4: getattr
         - name: bucket
-          size: 8
+          size: 1
           decoders:
             - name: uint
