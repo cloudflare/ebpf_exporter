@@ -447,6 +447,10 @@ jobs:
       - name: Extract tracing-demos.x86_64.tar.gz
         run: tar -xzvf tracing-demos.x86_64.tar.gz
 
+      # Some programs expect to attach to symbols in modules
+      - name: Load expected kernel modules
+        run: sudo modprobe xfs
+
       - name: Run configuration check
         run: make config-check
 

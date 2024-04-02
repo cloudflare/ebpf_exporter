@@ -1,0 +1,23 @@
+metrics:
+  histograms:
+    - name: xfs_latency_seconds
+      help: xfs IO latency histogram
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 27
+      bucket_multiplier: 0.000001 # microseconds to seconds
+      labels:
+        - name: operation
+          size: 1
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: read
+                1: write
+                2: open
+                3: sync
+        - name: bucket
+          size: 1
+          decoders:
+            - name: uint
