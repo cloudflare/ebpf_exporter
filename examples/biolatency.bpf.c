@@ -6,6 +6,10 @@
 // Max number of disks we expect to see on the host
 #define MAX_DISKS 255
 
+// Max number of different request ops we expect to see in use.
+// As of 6.9-rc2, Linux defines 14 REQ_OP_* in include/linux/blk_types.h
+#define MAX_REQ_OPS 14
+
 // 27 buckets for latency, max range is 33.6s .. 67.1s
 #define MAX_LATENCY_SLOT 27
 
@@ -31,7 +35,7 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, (MAX_LATENCY_SLOT + 1) * MAX_DISKS);
+    __uint(max_entries, (MAX_LATENCY_SLOT + 1) * MAX_DISKS * MAX_REQ_OPS);
     __type(key, struct disk_latency_key_t);
     __type(value, u64);
 } bio_latency_seconds SEC(".maps");
