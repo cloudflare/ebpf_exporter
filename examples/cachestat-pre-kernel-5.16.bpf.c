@@ -1,4 +1,4 @@
-// Use this version of cachestat when kernel version >= 5.16
+// Use this version of cachestat when kernel version <= 5.15
 // https://github.com/cloudflare/ebpf_exporter/issues/132
 
 #include <vmlinux.h>
@@ -44,8 +44,8 @@ int add_to_page_cache_lru()
     return trace_event(OP_PAGE_ADD_LRU);
 }
 
-SEC("raw_tp/writeback_dirty_folio")
-int writeback_dirty_folio()
+SEC("fentry/account_page_dirtied")
+int account_page_dirtied()
 {
     return trace_event(OP_PAGE_MARK_DIRTIES);
 }
