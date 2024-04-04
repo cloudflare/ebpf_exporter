@@ -16,10 +16,18 @@ metrics:
           decoders:
             - name: uint
             - name: static_map
+              # Values from include/linux/blk_types.h
+              # REQ_OP_ZONE_* values changed in v6.8-rc1 so they are
+              # not mentioned here.
               static_map:
                 0: read
                 1: write
                 2: flush
+                3: discard
+                5: secure_erase
+                9: write_zeroes
+                34: drv_in
+                35: drv_in
         - name: bucket
           size: 8
           decoders:
