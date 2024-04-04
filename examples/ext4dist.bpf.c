@@ -13,6 +13,8 @@ enum fs_file_op {
     F_OPEN,
     F_FSYNC,
     F_GETATTR,
+
+    F_MAX
 };
 
 struct ext4_latency_key_t {
@@ -29,7 +31,7 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, MAX_LATENCY_SLOT + 1);
+    __uint(max_entries, (MAX_LATENCY_SLOT + 1) * F_MAX);
     __type(key, struct ext4_latency_key_t);
     __type(value, u64);
 } ext4_latency_seconds SEC(".maps");
