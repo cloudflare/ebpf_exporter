@@ -63,6 +63,7 @@ type Span struct {
 type Label struct {
 	Name     string    `yaml:"name"`
 	Size     uint      `yaml:"size"`
+	Padding  uint      `yaml:"padding"`
 	Decoders []Decoder `yaml:"decoders"`
 }
 

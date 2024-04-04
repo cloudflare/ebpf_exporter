@@ -57,6 +57,32 @@ func TestDecodeLabels(t *testing.T) {
 			err: false,
 		},
 		{
+			in: append([]byte{0x8, 0x1, 0x1, 0x1}, zeroPaddedString("bananas", 32)...),
+			labels: []config.Label{
+				{
+					Name:    "number",
+					Size:    1,
+					Padding: 3, // only first byte should be used  for the label
+					Decoders: []config.Decoder{
+						{
+							Name: "uint",
+						},
+					},
+				},
+				{
+					Name: "fruit",
+					Size: 32,
+					Decoders: []config.Decoder{
+						{
+							Name: "string",
+						},
+					},
+				},
+			},
+			out: []string{"8", "bananas"},
+			err: false,
+		},
+		{
 			in: append([]byte{0x8, 0x0, 0x0, 0x0}, zeroPaddedString("bananas", 32)...),
 			labels: []config.Label{
 				{

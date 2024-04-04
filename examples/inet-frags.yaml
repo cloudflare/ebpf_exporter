@@ -8,6 +8,7 @@ metrics:
           decoders:
             - name: ifname
         - name: ip_version
-          size: 4
+          size: 1
+          padding: 3
           decoders:
             - name: uint

@@ -555,7 +555,8 @@ Is represented as:
 * 3 byte padding to align `slot`
 * 8 byte `slot` integer
 
-When decoding, label sizes should be supplied with padding included:
+When decoding, either specify the padding explicitly with the key `padding` or
+include it in the label size:
 
 * 4 for `dev`
 * 4 for `op` (1 byte value + 3 byte padding)
@@ -777,7 +778,8 @@ See [Labels](#labels) section for more details.
 
 ```
 name: <prometheus label name>
-size: <field size with padding>
+size: <field size>
+padding: <padding size>
 decoders:
   [ - decoder ]
 ```

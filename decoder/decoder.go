@@ -137,7 +137,7 @@ func (s *Set) decodeLabels(in []byte, labels []config.Label) ([]string, error) {
 			return nil, fmt.Errorf("error decoding label %q: size is zero or not set", label.Name)
 		}
 
-		totalSize += size
+		totalSize += size + label.Padding
 	}
 
 	if totalSize != uint(len(in)) {
@@ -156,7 +156,7 @@ func (s *Set) decodeLabels(in []byte, labels []config.Label) ([]string, error) {
 			return nil, err
 		}
 
-		off += size
+		off += size + label.Padding
 
 		values[i] = string(decoded)
 	}

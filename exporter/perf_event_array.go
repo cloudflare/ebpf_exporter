@@ -40,7 +40,7 @@ func newPerfEventArraySink(decoders *decoder.Set, module *libbpfgo.Module, count
 			// https://lore.kernel.org/patchwork/patch/1244339/
 			var validDataSize uint
 			for _, labelConfig := range sink.counterConfig.Labels {
-				validDataSize += labelConfig.Size
+				validDataSize += labelConfig.Size + labelConfig.Padding
 			}
 
 			labelValues, err := decoders.DecodeLabelsForMetrics(rawBytes[:validDataSize], counterConfig.Name, sink.counterConfig.Labels)
