@@ -27,7 +27,7 @@ metrics:
                 5: secure_erase
                 9: write_zeroes
                 34: drv_in
-                35: drv_in
+                35: drv_out
         - name: bucket
           size: 8
           decoders:
