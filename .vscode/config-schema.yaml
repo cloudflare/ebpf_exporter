@@ -125,6 +125,7 @@ definitions:
                 enum:
                   - cgroup
                   - dname
+                  - errno
                   - hex
                   - ifname
                   - inet_ip
