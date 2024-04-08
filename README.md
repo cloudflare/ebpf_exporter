@@ -8,7 +8,7 @@ Prometheus exporter for custom eBPF metrics and OpenTelemetry traces.
 
 * [Traces](./tracing):
 
-![tracing](./tracing/demos/exec/trace.png)
+![tracing](./examples/exec-trace.png)
 
 Motivation of this exporter is to allow you to write eBPF code and export
 metrics that are not otherwise accessible from the Linux kernel.
