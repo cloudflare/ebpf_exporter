@@ -111,6 +111,8 @@ definitions:
           type: string
         size:
           type: number
+        padding:
+          type: number
         decoders:
           type: array
           items:

@@ -17,7 +17,7 @@ var nilSpanID = "0000000000000000"
 func extractLabels(raw []byte, decoders *decoder.Set, config config.Span) ([]string, error) {
 	var validDataSize uint
 	for _, labelConfig := range config.Labels {
-		validDataSize += labelConfig.Size
+		validDataSize += labelConfig.Size + labelConfig.Padding
 	}
 
 	decoded, err := decoders.DecodeLabelsForTracing(raw[:validDataSize], config.Labels)
