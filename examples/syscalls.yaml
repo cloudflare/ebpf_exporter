@@ -8,3 +8,11 @@ metrics:
           decoders:
             - name: uint
             - name: syscall
+    - name: syscall_errors_total
+      help: Total number of errors returned from syscalls by errno
+      labels:
+        - name: errno
+          size: 8
+          decoders:
+            - name: uint
+            - name: errno

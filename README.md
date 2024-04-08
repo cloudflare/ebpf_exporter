@@ -597,6 +597,11 @@ could be used after `string` decode, like the following example:
     - name: dname
 ```
 
+#### `errno`
+
+Errno decoder converts `errno` number into a string representation like
+`EPIPE`. It is normally paired with a `unit` decoder as the first step.
+
 ### `hex`
 
 Hex decoder turns bytes into their hex representation.
