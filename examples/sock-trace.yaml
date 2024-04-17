@@ -23,11 +23,7 @@ tracing:
           size: 8
           decoders:
             - name: uint
-        - name: fd
-          size: 8
-          decoders:
-            - name: uint
-        - name: addr_bytes # will look weird in little endian
+        - name: socket_cookie
           size: 8
           decoders:
             - name: hex
@@ -55,8 +51,8 @@ tracing:
           size: 8
           decoders:
             - name: uint
-    - name: skb
-      ringbuf: skb_spans
+    - name: sk_spans
+      ringbuf: sk_spans
       service: kernel
       labels:
         - name: trace_id
