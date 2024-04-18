@@ -3,6 +3,8 @@
 #include <bpf/usdt.bpf.h>
 #include "tracing.bpf.h"
 
+#define MAX_STACK_DEPTH 8
+
 // Skipping 3 frames off the top as they are just bpf trampoline
 #define SKIP_FRAMES (3 & BPF_F_SKIP_FIELD_MASK)
 
@@ -23,6 +25,12 @@ struct sk_span_t {
     u64 ksym;
 };
 
+struct sk_error_report_span_t {
+    struct span_base_t span_base;
+    u64 kstack[MAX_STACK_DEPTH];
+    u32 sk_err;
+};
+
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 256 * 1024);
@@ -37,6 +45,11 @@ struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 256 * 1024);
 } sk_spans SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 256 * 1024);
+} sk_error_report_spans SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_LRU_HASH);
@@ -148,6 +161,26 @@ SEC("fentry/dev_hard_start_xmit")
 int BPF_PROG(dev_hard_start_xmit, struct sk_buff *skb)
 {
     return handle_skb((struct pt_regs *) ctx, skb);
+}
+
+// bpf_get_socket_cookie is not available in raw_tp:
+// * https://github.com/torvalds/linux/blob/v6.6/kernel/trace/bpf_trace.c#L1926-L1939
+SEC("fentry/sk_error_report")
+int BPF_PROG(sk_error_report, struct sock *sk)
+{
+    u64 socket_cookie = bpf_get_socket_cookie(sk);
+    struct span_parent_t *parent = bpf_map_lookup_elem(&traced_socket_cookies, &socket_cookie);
+
+    if (!parent) {
+        return 0;
+    }
+
+    submit_span(&sk_error_report_spans, struct sk_error_report_span_t, parent, {
+        bpf_get_stack(ctx, &span->kstack, sizeof(span->kstack), SKIP_FRAMES);
+        span->sk_err = sk->sk_err;
+    });
+
+    return 0;
 }
 
 char LICENSE[] SEC("license") = "GPL";

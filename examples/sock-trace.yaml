@@ -79,3 +79,36 @@ tracing:
           size: 8
           decoders:
             - name: ksym
+    - name: sk_error_report
+      ringbuf: sk_error_report_spans
+      service: kernel
+      labels:
+        - name: trace_id
+          size: 16
+          decoders:
+            - name: hex
+        - name: parent_span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_monotonic_timestamp_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: span_duration_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: kstack
+          size: 64
+          decoders:
+            - name: kstack
+        - name: sk_err
+          size: 4
+          decoders:
+            - name: uint
+            - name: errno
