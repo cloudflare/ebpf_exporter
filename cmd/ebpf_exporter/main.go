@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/cloudflare/ebpf_exporter/v2/exporter"
 	"github.com/cloudflare/ebpf_exporter/v2/tracing"
 	"github.com/coreos/go-systemd/activation"
+	"github.com/mdlayher/sdnotify"
 	"github.com/prometheus/client_golang/prometheus"
 	version_collector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -56,7 +58,19 @@ func main() {
 
 	libbpfgo.SetLoggerCbs(libbpfgoCallbacks)
 
+	notifier, _ := sdnotify.New()
+
+	notify := func(format string, v ...interface{}) {
+		if notifier == nil {
+			return
+		}
+
+		_ = notifier.Notify(sdnotify.Statusf(format, v...))
+	}
+
 	started := time.Now()
+
+	notify("parsing config...")
 
 	configs, err := config.ParseConfigs(*configDir, strings.Split(*configNames, ","))
 	if err != nil {
@@ -72,10 +86,14 @@ func main() {
 		log.Fatalf("Error creating tracing processor: %v", err)
 	}
 
+	notify("creating exporter...")
+
 	e, err := exporter.New(configs, tracing.NewProvider(processor), *btfPath)
 	if err != nil {
 		log.Fatalf("Error creating exporter: %s", err)
 	}
+
+	notify("attaching configs...")
 
 	err = e.Attach()
 	if err != nil {
@@ -87,7 +105,9 @@ func main() {
 		log.Fatalf("Error dropping capabilities: %s", err)
 	}
 
-	log.Printf("Started with %d programs found in the config in %dms", len(configs), time.Since(started).Milliseconds())
+	readyString := fmt.Sprintf("%d programs found in the config in %dms", len(configs), time.Since(started).Milliseconds())
+
+	log.Printf("Started with %s", readyString)
 
 	if *configStrict {
 		missed := e.MissedAttachments()
@@ -130,33 +150,44 @@ func main() {
 		http.HandleFunc("/maps", e.MapsHandler)
 	}
 
-	err = listen(*listenAddress)
+	listener, err := listen(*listenAddress)
 	if err != nil {
-		log.Fatalf("Error listening on %s: %s", *listenAddress, err)
+		log.Fatalf("Error listening on %s: %v", *listenAddress, err)
+	}
+
+	notify("ready with %s", readyString)
+
+	if notifier != nil {
+		_ = notifier.Notify(sdnotify.Ready)
+	}
+
+	err = http.Serve(listener, nil)
+	if err != nil {
+		log.Fatalf("Error serving HTTP: %v", err)
 	}
 }
 
-func listen(addr string) error {
+func listen(addr string) (net.Listener, error) {
 	log.Printf("Listening on %s", addr)
 	if strings.HasPrefix(addr, "fd://") {
 		fd, err := strconv.Atoi(strings.TrimPrefix(addr, "fd://"))
 		if err != nil {
-			return fmt.Errorf("error extracting fd number from %q: %v", addr, err)
+			return nil, fmt.Errorf("error extracting fd number from %q: %v", addr, err)
 		}
 
 		listeners, err := activation.Listeners()
 		if err != nil {
-			return fmt.Errorf("error getting activation listeners: %v", err)
+			return nil, fmt.Errorf("error getting activation listeners: %v", err)
 		}
 
 		if len(listeners) < fd+1 {
-			return errors.New("no listeners passed via activation")
+			return nil, errors.New("no listeners passed via activation")
 		}
 
-		return http.Serve(listeners[fd], nil)
+		return listeners[fd], nil
 	}
 
-	return http.ListenAndServe(addr, nil)
+	return net.Listen("tcp", addr)
 }
 
 func ensureCapabilities(keep string) error {
