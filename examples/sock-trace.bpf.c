@@ -1,15 +1,18 @@
 #include <vmlinux.h>
 #include <bpf/bpf_tracing.h>
-#include <bpf/bpf_core_read.h>
 #include <bpf/usdt.bpf.h>
 #include "tracing.bpf.h"
 
-u32 yes = true;
+#define MAX_STACK_DEPTH 8
+
+// Skipping 3 frames off the top as they are just bpf trampoline
+#define SKIP_FRAMES (3 & BPF_F_SKIP_FIELD_MASK)
+
+extern int LINUX_KERNEL_VERSION __kconfig;
 
 struct stitch_span_t {
     struct span_base_t span_base;
-    u32 fd;
-    u64 addr;
+    u64 socket_cookie;
 };
 
 struct sock_release_span_t {
@@ -17,14 +20,15 @@ struct sock_release_span_t {
     u64 span_id;
 };
 
-struct skb_span_t {
+struct sk_span_t {
     struct span_base_t span_base;
     u64 ksym;
 };
 
-struct file_key_t {
-    u32 tgid;
-    u32 fd;
+struct sk_error_report_span_t {
+    struct span_base_t span_base;
+    u64 kstack[MAX_STACK_DEPTH];
+    u32 sk_err;
 };
 
 struct {
@@ -40,101 +44,28 @@ struct {
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 256 * 1024);
-} skb_spans SEC(".maps");
+} sk_spans SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 256 * 1024);
+} sk_error_report_spans SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_LRU_HASH);
     __uint(max_entries, 1024 * 10);
-    __type(key, u32);
-    __type(value, bool);
-} traced_tgids SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_LRU_HASH);
-    __uint(max_entries, 1024 * 10);
-    __type(key, struct sock *);
+    __type(key, u64);
     __type(value, struct span_parent_t);
-} traced_socks SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_LRU_HASH);
-    __uint(max_entries, 1024 * 10);
-    __type(key, struct file_key_t);
-    __type(value, struct sock *);
-} fd_to_sock SEC(".maps");
-
-SEC("fentry/fd_install")
-int BPF_PROG(fd_install, unsigned int fd, struct file *file)
-{
-    u32 tgid = bpf_get_current_pid_tgid() >> 32;
-    struct file_key_t key = { .tgid = tgid, .fd = fd };
-    bool *traced = bpf_map_lookup_elem(&traced_tgids, &tgid);
-    struct sock *sk;
-
-    if (!traced) {
-        return 0;
-    }
-
-    sk = BPF_CORE_READ((struct socket *) file->private_data, sk);
-
-    bpf_map_update_elem(&fd_to_sock, &key, &sk, BPF_ANY);
-
-    return 0;
-}
-
-SEC("fentry/close_fd")
-int BPF_PROG(close_fd, unsigned int fd)
-{
-    u32 tgid = bpf_get_current_pid_tgid() >> 32;
-    struct file_key_t key = { .tgid = tgid, .fd = fd };
-
-    bpf_map_delete_elem(&traced_socks, &key);
-
-    return 0;
-}
-
-SEC("usdt/./tracing/demos/sock/demo:ebpf_exporter:enable_kernel_tracing")
-int BPF_USDT(enable_kernel_tracing)
-{
-    u32 tgid = bpf_get_current_pid_tgid() >> 32;
-
-    bpf_map_update_elem(&traced_tgids, &tgid, &yes, BPF_NOEXIST);
-
-    return 0;
-}
-
-SEC("tp_btf/sched_process_exit")
-int BPF_PROG(sched_process_exit, struct task_struct *p)
-{
-    u32 tgid = p->tgid;
-
-    if (p->pid != p->tgid) {
-        return 0;
-    }
-
-    bpf_map_delete_elem(&traced_tgids, &tgid);
-
-    return 0;
-}
+} traced_socket_cookies SEC(".maps");
 
 SEC("usdt/./tracing/demos/sock/demo:ebpf_exporter:sock_set_parent_span")
-int BPF_USDT(sock_set_parent_span, int fd, u64 trace_id_hi, u64 trace_id_lo, u64 span_id)
+int BPF_USDT(sock_set_parent_span, u64 socket_cookie, u64 trace_id_hi, u64 trace_id_lo, u64 span_id)
 {
-    u32 tgid = bpf_get_current_pid_tgid() >> 32;
     struct span_parent_t parent = { .trace_id_hi = trace_id_hi, .trace_id_lo = trace_id_lo, .span_id = span_id };
-    struct file_key_t key = { .tgid = tgid, .fd = fd };
-    struct sock **sk = bpf_map_lookup_elem(&fd_to_sock, &key);
 
-    if (!sk) {
-        return 0;
-    }
+    bpf_map_update_elem(&traced_socket_cookies, &socket_cookie, &parent, BPF_ANY);
 
-    bpf_map_update_elem(&traced_socks, sk, &parent, BPF_ANY);
-
-    submit_span(&stitch_spans, struct stitch_span_t, &parent, {
-        span->fd = fd;
-        span->addr = (u64) *sk;
-    });
+    submit_span(&stitch_spans, struct stitch_span_t, &parent, { span->socket_cookie = socket_cookie; });
 
     return 0;
 }
@@ -142,8 +73,8 @@ int BPF_USDT(sock_set_parent_span, int fd, u64 trace_id_hi, u64 trace_id_lo, u64
 SEC("fentry/__sock_release")
 int BPF_PROG(__sock_release, struct socket *sock)
 {
-    struct sock *sk = BPF_CORE_READ(sock, sk);
-    struct span_parent_t *parent = bpf_map_lookup_elem(&traced_socks, &sk);
+    u64 socket_cookie = bpf_get_socket_cookie(sock->sk);
+    struct span_parent_t *parent = bpf_map_lookup_elem(&traced_socket_cookies, &socket_cookie);
 
     if (!parent) {
         return 0;
@@ -151,64 +82,105 @@ int BPF_PROG(__sock_release, struct socket *sock)
 
     submit_span(&sock_release_spans, struct sock_release_span_t, parent, { span->span_id = 0xdead; });
 
-    bpf_map_delete_elem(&traced_socks, &sk);
+    bpf_map_delete_elem(&traced_socket_cookies, &socket_cookie);
 
     return 0;
 }
 
-static int handle_skb(struct pt_regs *ctx, struct sock *sk, struct sk_buff *skb)
+static int handle_sk(struct pt_regs *ctx, u64 socket_cookie)
 {
-    struct span_parent_t *parent = bpf_map_lookup_elem(&traced_socks, &sk);
+    struct span_parent_t *parent = bpf_map_lookup_elem(&traced_socket_cookies, &socket_cookie);
 
     if (!parent) {
         return 0;
     }
 
-    submit_span(&skb_spans, struct skb_span_t, parent, { span->ksym = PT_REGS_IP_CORE(ctx); });
+    submit_span(&sk_spans, struct sk_span_t, parent, {
+        // FIXME: PT_REGS_IP_CORE(ctx) does not work for fentry, so we abuse kstack
+        bpf_get_stack(ctx, &span->ksym, sizeof(span->ksym), SKIP_FRAMES);
+        span->ksym -= 8;
+    });
 
     return 0;
 }
 
-SEC("kprobe/tcp_v4_do_rcv")
+SEC("fentry/tcp_v4_do_rcv")
 int BPF_PROG(tcp_v4_do_rcv, struct sock *sk, struct sk_buff *skb)
 {
-    return handle_skb((struct pt_regs *) ctx, sk, skb);
+    return handle_sk((struct pt_regs *) ctx, bpf_get_socket_cookie(sk));
 }
 
-SEC("kprobe/nf_hook_slow")
-int BPF_PROG(nf_hook_slow, struct sk_buff *skb)
-{
-    return handle_skb((struct pt_regs *) ctx, BPF_CORE_READ(skb, sk), skb);
-}
-
-SEC("kprobe/__ip_local_out")
+SEC("fentry/__ip_local_out")
 int BPF_PROG(__ip_local_out, struct net *net, struct sock *sk, struct sk_buff *skb)
 {
-    return handle_skb((struct pt_regs *) ctx, sk, skb);
+    return handle_sk((struct pt_regs *) ctx, bpf_get_socket_cookie(sk));
 }
 
-SEC("kprobe/ip_finish_output")
+SEC("fentry/ip_finish_output")
 int BPF_PROG(ip_finish_output, struct net *net, struct sock *sk, struct sk_buff *skb)
 {
-    return handle_skb((struct pt_regs *) ctx, sk, skb);
+    return handle_sk((struct pt_regs *) ctx, bpf_get_socket_cookie(sk));
 }
 
-SEC("kprobe/__dev_queue_xmit")
-int BPF_PROG(__dev_queue_xmit, struct sk_buff *skb)
-{
-    return handle_skb((struct pt_regs *) ctx, BPF_CORE_READ(skb, sk), skb);
-}
-
-SEC("kprobe/dev_hard_start_xmit")
-int BPF_PROG(dev_hard_start_xmit, struct sk_buff *skb)
-{
-    return handle_skb((struct pt_regs *) ctx, BPF_CORE_READ(skb, sk), skb);
-}
-
-SEC("kprobe/__tcp_retransmit_skb")
+SEC("fentry/__tcp_retransmit_skb")
 int BPF_PROG(__tcp_retransmit_skb, struct sock *sk, struct sk_buff *skb)
 {
-    return handle_skb((struct pt_regs *) ctx, sk, skb);
+    return handle_sk((struct pt_regs *) ctx, bpf_get_socket_cookie(sk));
+}
+
+// Older kernels are not happy with calls to bpf_get_socket_cookie(skb->sk):
+//
+// ; return handle_sk((struct pt_regs *) ctx, bpf_get_socket_cookie(skb->sk));
+// 3: (85) call bpf_get_socket_cookie#46
+// R1 type=untrusted_ptr_ expected=sock_common, sock, tcp_sock, xdp_sock, ptr_, trusted_ptr_
+//
+// I'm not sure which is the oldest available kernel, but I know it doesn't work on v6.5
+// in Github Actions, but runs fine on v6.9-rc3 locally. I'm too lazy to bisect.
+static int handle_skb(struct pt_regs *ctx, struct sk_buff *skb)
+{
+    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 9, 0)) {
+        return 0;
+    }
+
+    return handle_sk(ctx, bpf_get_socket_cookie(skb->sk));
+}
+
+SEC("fentry/nf_hook_slow")
+int BPF_PROG(nf_hook_slow, struct sk_buff *skb)
+{
+    return handle_skb((struct pt_regs *) ctx, skb);
+}
+
+SEC("fentry/__dev_queue_xmit")
+int BPF_PROG(__dev_queue_xmit, struct sk_buff *skb)
+{
+    return handle_skb((struct pt_regs *) ctx, skb);
+}
+
+SEC("fentry/dev_hard_start_xmit")
+int BPF_PROG(dev_hard_start_xmit, struct sk_buff *skb)
+{
+    return handle_skb((struct pt_regs *) ctx, skb);
+}
+
+// bpf_get_socket_cookie is not available in raw_tp:
+// * https://github.com/torvalds/linux/blob/v6.6/kernel/trace/bpf_trace.c#L1926-L1939
+SEC("fentry/sk_error_report")
+int BPF_PROG(sk_error_report, struct sock *sk)
+{
+    u64 socket_cookie = bpf_get_socket_cookie(sk);
+    struct span_parent_t *parent = bpf_map_lookup_elem(&traced_socket_cookies, &socket_cookie);
+
+    if (!parent) {
+        return 0;
+    }
+
+    submit_span(&sk_error_report_spans, struct sk_error_report_span_t, parent, {
+        bpf_get_stack(ctx, &span->kstack, sizeof(span->kstack), SKIP_FRAMES);
+        span->sk_err = sk->sk_err;
+    });
+
+    return 0;
 }
 
 char LICENSE[] SEC("license") = "GPL";

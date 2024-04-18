@@ -12,8 +12,6 @@ import (
 )
 
 func main() {
-	enableKernelTracing()
-
 	processor, err := demos.SetupTracing()
 	if err != nil {
 		log.Fatalf("Error setting up tracing: %v", err)
