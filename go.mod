@@ -8,6 +8,7 @@ require (
 	github.com/elastic/go-perf v0.0.0-20191212140718-9c656876f595
 	github.com/iovisor/gobpf v0.2.0
 	github.com/jaypipes/pcidb v1.0.0
+	github.com/mdlayher/sdnotify v1.0.0
 	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/common v0.51.1
 	go.opentelemetry.io/contrib/exporters/autoexport v0.49.0
