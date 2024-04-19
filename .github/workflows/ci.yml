@@ -528,3 +528,62 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
           provenance: false # https://github.com/docker/build-push-action/issues/755
+
+  release-archive:
+    name: Release archive
+    runs-on: ubuntu-22.04
+    needs:
+      - build-ebpf-exporter-docker-aarch64
+      - build-ebpf-exporter-docker-x86_64
+    steps:
+      - name: Download ebpf_exporter.aarch64
+        uses: actions/download-artifact@v4
+        with:
+          name: ebpf_exporter.aarch64
+
+      - name: Rename ebpf_exporter.aarch64
+        run: mv ebpf_exporter ebpf_exporter.aarch64
+
+      - name: Download ebpf_exporter.x86_64
+        uses: actions/download-artifact@v4
+        with:
+          name: ebpf_exporter.x86_64
+
+      - name: Rename ebpf_exporter.x86_64
+        run: mv ebpf_exporter ebpf_exporter.x86_64
+
+      - name: Download examples.aarch64.tar.gz
+        uses: actions/download-artifact@v4
+        with:
+          name: examples.aarch64.tar.gz
+
+      - name: Download examples.x86_64.tar.gz
+        uses: actions/download-artifact@v4
+        with:
+          name: examples.x86_64.tar.gz
+
+      - name: Download ebpf_exporter_with_examples.aarch64.tar.gz
+        uses: actions/download-artifact@v4
+        with:
+          name: ebpf_exporter_with_examples.aarch64.tar.gz
+
+      - name: Download ebpf_exporter_with_examples.x86_64.tar.gz
+        uses: actions/download-artifact@v4
+        with:
+          name: ebpf_exporter_with_examples.x86_64.tar.gz
+
+      - name: Mark ebpf_exporter binaries as executable
+        run: chmod +x ebpf_exporter.aarch64 ebpf_exporter.x86_64
+
+      - name: Create sha256sums.txt
+        run: shasum -a 256 * > sha256sums.txt
+
+      - name: Create release archive
+        run: tar -czf release.tar.gz --transform "s,\(.*\),ebpf_exporter-${GITHUB_SHA}/\1," *
+
+      - name: Upload release.tar.gz
+        uses: actions/upload-artifact@v4
+        with:
+          name: release.tar.gz
+          path: release.tar.gz
+          if-no-files-found: error
