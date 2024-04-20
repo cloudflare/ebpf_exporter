@@ -179,6 +179,9 @@ jobs:
       - name: Check static linkage
         run: (ldd --verbose ./ebpf_exporter 2>&1 || true) | grep 'not a dynamic executable'
 
+      - name: Check for nss presence
+        run: if [[ $(objdump -tT ebpf_exporter | grep 'hidden _nss') ]]; then echo "unexpected nss symbols found"; exit 1; fi
+
       - name: Check that it runs
         run: ./ebpf_exporter --version
 
@@ -200,6 +203,9 @@ jobs:
 
       - name: Check static linkage
         run: (ldd --verbose ./ebpf_exporter 2>&1 || true) | grep 'not a dynamic executable'
+
+      - name: Check for nss presence
+        run: if [[ $(objdump -tT ebpf_exporter | grep 'hidden _nss') ]]; then echo "unexpected nss symbols found"; exit 1; fi
 
       - name: Check that it runs
         run: ./ebpf_exporter --version

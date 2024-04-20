@@ -70,7 +70,7 @@ build: build-static
 
 .PHONY: build-static
 build-static:
-	$(MAKE) build-binary GO_LDFLAGS='-extldflags "-static"'
+	$(MAKE) build-binary GO_BUILD_ARGS="-tags netgo,osusergo" GO_LDFLAGS='-extldflags "-static"'
 
 .PHONY: build-dynamic
 build-dynamic:
@@ -78,7 +78,7 @@ build-dynamic:
 
 .PHONY: build-binary
 build-binary: $(LIBBPF_DEPS)
-	CGO_LDFLAGS="$(CGO_LDFLAGS)" CGO_CFLAGS="$(CGO_CFLAGS)" go build -o ebpf_exporter -v -ldflags="$(GO_LDFLAGS) $(GO_LDFLAGS_VARS)" ./cmd/ebpf_exporter
+	CGO_LDFLAGS="$(CGO_LDFLAGS)" CGO_CFLAGS="$(CGO_CFLAGS)" go build $(GO_BUILD_ARGS) -o ebpf_exporter -v -ldflags="$(GO_LDFLAGS) $(GO_LDFLAGS_VARS)" ./cmd/ebpf_exporter
 
 .PHONY: examples
 examples:
