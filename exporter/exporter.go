@@ -44,6 +44,7 @@ type Exporter struct {
 	programAttachedDesc      *prometheus.Desc
 	programRunTimeDesc       *prometheus.Desc
 	programRunCountDesc      *prometheus.Desc
+	decoderErrorCount        *prometheus.CounterVec
 	attachedProgs            map[string]map[*libbpfgo.BPFProg]bool
 	descs                    map[string]map[string]*prometheus.Desc
 	decoders                 *decoder.Set
@@ -88,6 +89,15 @@ func New(configs []config.Config, tracingProvider tracing.Provider, btfPath stri
 		nil,
 	)
 
+	decoderErrorCount := prometheus.NewCounterVec(
+		prometheus.CounterOpts{Namespace: prometheusNamespace, Name: "decoder_errors_total", Help: "How many times has decoders encountered errors"},
+		[]string{"config"},
+	)
+
+	for _, config := range configs {
+		decoderErrorCount.WithLabelValues(config.Name).Add(0.0)
+	}
+
 	decoders, err := decoder.NewSet()
 	if err != nil {
 		return nil, fmt.Errorf("error creating decoder set: %v", err)
@@ -102,6 +112,7 @@ func New(configs []config.Config, tracingProvider tracing.Provider, btfPath stri
 		programAttachedDesc: programAttachedDesc,
 		programRunTimeDesc:  programRunTimeDesc,
 		programRunCountDesc: programRunCountDesc,
+		decoderErrorCount:   decoderErrorCount,
 		attachedProgs:       map[string]map[*libbpfgo.BPFProg]bool{},
 		descs:               map[string]map[string]*prometheus.Desc{},
 		decoders:            decoders,
@@ -326,6 +337,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.programInfoDesc
 	ch <- e.programAttachedDesc
 
+	e.decoderErrorCount.Describe(ch)
+
 	for _, cfg := range e.configs {
 		if _, ok := e.descs[cfg.Name]; !ok {
 			e.descs[cfg.Name] = map[string]*prometheus.Desc{}
@@ -333,7 +346,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 		for _, counter := range cfg.Metrics.Counters {
 			if counter.PerfEventArray {
-				perfSink := newPerfEventArraySink(e.decoders, e.modules[cfg.Name], counter)
+				perfSink := newPerfEventArraySink(e.decoders, e.modules[cfg.Name], counter, e.decoderErrorCount.WithLabelValues(cfg.Name))
 				e.perfEventArrayCollectors = append(e.perfEventArrayCollectors, perfSink)
 			}
 
@@ -348,7 +361,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 			log.Printf("Tracing is not enabled, but some spans are configured in config %q", cfg.Name)
 		} else {
 			for _, span := range cfg.Tracing.Spans {
-				startTracingSink(e.tracingProvider, e.decoders, e.modules[cfg.Name], span)
+				startTracingSink(e.tracingProvider, e.decoders, e.modules[cfg.Name], span, e.decoderErrorCount.WithLabelValues(cfg.Name))
 			}
 		}
 	}
@@ -359,6 +372,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, cfg := range e.configs {
 		ch <- prometheus.MustNewConstMetric(e.enabledConfigsDesc, prometheus.GaugeValue, 1, cfg.Name)
 	}
+
+	e.decoderErrorCount.Collect(ch)
 
 	for name, attachments := range e.attachedProgs {
 		for program, attached := range attachments {
@@ -408,6 +423,7 @@ func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 
 			mapValues, err := e.mapValues(e.modules[cfg.Name], counter.Name, counter.Labels)
 			if err != nil {
+				e.decoderErrorCount.WithLabelValues(cfg.Name).Inc()
 				log.Printf("Error getting map %q values for metric %q of config %q: %s", counter.Name, counter.Name, cfg.Name, err)
 				continue
 			}
@@ -433,6 +449,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 
 			mapValues, err := e.mapValues(e.modules[cfg.Name], histogram.Name, histogram.Labels)
 			if err != nil {
+				e.decoderErrorCount.WithLabelValues(cfg.Name).Inc()
 				log.Printf("Error getting map %q values for metric %q of config %q: %s", histogram.Name, histogram.Name, cfg.Name, err)
 				continue
 			}
@@ -561,6 +578,7 @@ func (e Exporter) exportMaps() (map[string]map[string][]metricValue, error) {
 		for name, labels := range metricMaps {
 			metricValues, err := e.mapValues(e.modules[cfg.Name], name, labels)
 			if err != nil {
+				e.decoderErrorCount.WithLabelValues(cfg.Name).Inc()
 				return nil, fmt.Errorf("error getting values for map %q of config %q: %s", name, cfg.Name, err)
 			}
 
