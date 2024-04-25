@@ -90,7 +90,7 @@ tracing-demos:
 
 .PHONY: syscalls
 syscalls:
-	go run ./scripts/mksyscalls --strace.version v6.4
+	go run ./scripts/mksyscalls --strace.version v6.8
 
 .PHONY: clean
 clean:
