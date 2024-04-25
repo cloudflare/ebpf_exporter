@@ -885,6 +885,17 @@ It requires `kernel.bpf_stats_enabled` sysctl to be enabled.
 It needs to be joined by `id` label with `ebpf_exporter_ebpf_program_info`
 to get more information about the program.
 
+### `ebpf_exporter_decoder_errors_total`
+
+This counter reports the number of times labels failed to be decoded by config.
+
+```
+# HELP ebpf_exporter_decoder_errors_total How many times has decoders encountered errors
+# TYPE ebpf_exporter_decoder_errors_total counter
+ebpf_exporter_decoder_errors_total{config="kstack"} 0
+ebpf_exporter_decoder_errors_total{config="sock-trace"} 4
+```
+
 ## License
 
 MIT
