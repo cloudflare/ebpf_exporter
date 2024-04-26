@@ -10,8 +10,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func attachModule(span trace.Span, module *libbpfgo.Module, cfg config.Config) map[*libbpfgo.BPFProg]bool {
-	attached := map[*libbpfgo.BPFProg]bool{}
+func attachModule(span trace.Span, module *libbpfgo.Module, cfg config.Config) map[*libbpfgo.BPFProg]*libbpfgo.BPFLink {
+	attached := map[*libbpfgo.BPFProg]*libbpfgo.BPFLink{}
 
 	iter := module.Iterator()
 	for {
@@ -22,15 +22,14 @@ func attachModule(span trace.Span, module *libbpfgo.Module, cfg config.Config) m
 
 		span.AddEvent("prog_attach", trace.WithAttributes(attribute.String("SEC", prog.SectionName())))
 
-		_, err := prog.AttachGeneric()
+		link, err := prog.AttachGeneric()
 		if err != nil {
 			log.Printf("Failed to attach program %q for config %q: %v", prog.Name(), cfg.Name, err)
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
-			attached[prog] = false
-		} else {
-			attached[prog] = true
 		}
+
+		attached[prog] = link
 	}
 
 	return attached
