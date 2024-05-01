@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"unsafe"
 
 	"github.com/aquasecurity/libbpfgo"
@@ -45,11 +46,13 @@ type Exporter struct {
 	programRunTimeDesc       *prometheus.Desc
 	programRunCountDesc      *prometheus.Desc
 	decoderErrorCount        *prometheus.CounterVec
-	attachedProgs            map[string]map[*libbpfgo.BPFProg]bool
+	attachedProgs            map[string]map[*libbpfgo.BPFProg]*libbpfgo.BPFLink
 	descs                    map[string]map[string]*prometheus.Desc
 	decoders                 *decoder.Set
 	btfPath                  string
 	tracingProvider          tracing.Provider
+	active                   bool
+	activeMutex              sync.Mutex
 }
 
 // New creates a new exporter with the provided config
@@ -113,7 +116,7 @@ func New(configs []config.Config, tracingProvider tracing.Provider, btfPath stri
 		programRunTimeDesc:  programRunTimeDesc,
 		programRunCountDesc: programRunCountDesc,
 		decoderErrorCount:   decoderErrorCount,
-		attachedProgs:       map[string]map[*libbpfgo.BPFProg]bool{},
+		attachedProgs:       map[string]map[*libbpfgo.BPFProg]*libbpfgo.BPFLink{},
 		descs:               map[string]map[string]*prometheus.Desc{},
 		decoders:            decoders,
 		btfPath:             btfPath,
@@ -162,6 +165,8 @@ func (e *Exporter) Attach() error {
 	attachConfigsSpan.End()
 
 	postAttachMark()
+
+	e.active = true
 
 	return nil
 }
@@ -232,13 +237,46 @@ func (e *Exporter) attachConfig(ctx context.Context, cfg config.Config) error {
 	return nil
 }
 
+// Detach detaches bpf programs and maps for exiting
+func (e *Exporter) Detach() {
+	e.activeMutex.Lock()
+	defer e.activeMutex.Unlock()
+
+	e.active = false
+
+	tracer := e.tracingProvider.Tracer("")
+
+	ctx, attachSpan := tracer.Start(context.Background(), "detach")
+	defer attachSpan.End()
+
+	for name, module := range e.modules {
+		_, moduleCloseSpan := tracer.Start(ctx, "close_module", trace.WithAttributes(attribute.String("config", name)))
+
+		for prog, link := range e.attachedProgs[name] {
+			moduleCloseSpan.AddEvent("prog_detach", trace.WithAttributes(attribute.String("SEC", prog.SectionName())))
+
+			if err := link.Destroy(); err != nil {
+				log.Printf("Failed to detach program %q for config %q: %v", prog.Name(), name, err)
+				moduleCloseSpan.RecordError(err)
+				moduleCloseSpan.SetStatus(codes.Error, err.Error())
+			}
+		}
+
+		moduleCloseSpan.AddEvent("close")
+
+		module.Close()
+
+		moduleCloseSpan.End()
+	}
+}
+
 // MissedAttachments returns the list of module:prog names that failed to attach
 func (e *Exporter) MissedAttachments() []string {
 	missed := []string{}
 
 	for name, progs := range e.attachedProgs {
-		for prog, attached := range progs {
-			if attached {
+		for prog, link := range progs {
+			if link != nil {
 				continue
 			}
 
@@ -290,7 +328,7 @@ func (e *Exporter) passKaddrs(ctx context.Context, module *libbpfgo.Module, cfg 
 }
 
 // populateKaddrs populates cache of ksym -> kaddr mappings
-func (e Exporter) populateKaddrs() error {
+func (e *Exporter) populateKaddrs() error {
 	fd, err := os.Open("/proc/kallsyms")
 	if err != nil {
 		return err
@@ -369,6 +407,13 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect satisfies prometheus.Collector interface and sends all metrics
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
+	e.activeMutex.Lock()
+	defer e.activeMutex.Unlock()
+
+	if !e.active {
+		return
+	}
+
 	for _, cfg := range e.configs {
 		ch <- prometheus.MustNewConstMetric(e.enabledConfigsDesc, prometheus.GaugeValue, 1, cfg.Name)
 	}
@@ -376,7 +421,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.decoderErrorCount.Collect(ch)
 
 	for name, attachments := range e.attachedProgs {
-		for program, attached := range attachments {
+		for program, link := range attachments {
 			info, err := extractProgramInfo(program)
 			if err != nil {
 				log.Printf("Error extracting program info for %q in config %q: %v", program.Name(), name, err)
@@ -387,7 +432,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			ch <- prometheus.MustNewConstMetric(e.programInfoDesc, prometheus.GaugeValue, 1, name, program.Name(), info.tag, id)
 
 			attachedValue := 0.0
-			if attached {
+			if link != nil {
 				attachedValue = 1.0
 			}
 
@@ -548,7 +593,7 @@ func (e *Exporter) mapValues(module *libbpfgo.Module, name string, labels []conf
 	return metricValues, nil
 }
 
-func (e Exporter) exportMaps() (map[string]map[string][]metricValue, error) {
+func (e *Exporter) exportMaps() (map[string]map[string][]metricValue, error) {
 	maps := map[string]map[string][]metricValue{}
 
 	for _, cfg := range e.configs {

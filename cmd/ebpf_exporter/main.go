@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -8,8 +9,10 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/aquasecurity/libbpfgo"
@@ -22,6 +25,7 @@ import (
 	version_collector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
+	"go.opentelemetry.io/otel/sdk/trace"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
@@ -161,6 +165,8 @@ func main() {
 		_ = notifier.Notify(sdnotify.Ready)
 	}
 
+	go handleSignals(e, processor, notifier)
+
 	err = http.Serve(listener, nil)
 	if err != nil {
 		log.Fatalf("Error serving HTTP: %v", err)
@@ -231,6 +237,34 @@ func ensureCapabilities(keep string) error {
 	log.Printf("Dropped capabilities to %q", ensure)
 
 	return nil
+}
+
+func handleSignals(e *exporter.Exporter, processor trace.SpanProcessor, notifier *sdnotify.Notifier) {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
+	sig := <-signals
+
+	log.Printf("Received signal: %v", sig)
+
+	if notifier != nil {
+		_ = notifier.Notify(sdnotify.Stopping)
+	}
+
+	started := time.Now()
+
+	e.Detach()
+
+	log.Printf("Detached in %dms", time.Since(started).Milliseconds())
+
+	err := processor.ForceFlush(context.Background())
+	if err != nil {
+		log.Fatalf("Error flushing spans: %v", err)
+	}
+
+	time.Sleep(time.Second * 10)
+
+	os.Exit(0)
 }
 
 func libbpfLogCallback(level int, msg string) {
