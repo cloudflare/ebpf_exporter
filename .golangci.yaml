@@ -1,9 +1,12 @@
 linters:
   enable:
     - dupl
+    - canonicalheader
+    - copyloopvar
     - durationcheck
     - exhaustive
     - exportloopref
+    - fatcontext
     - forcetypeassert
     - gochecksumtype
     - gofmt
@@ -11,6 +14,7 @@ linters:
     - gomoddirectives
     - inamedparam
     - interfacebloat
+    - intrange
     - makezero
     - mirror
     - misspell

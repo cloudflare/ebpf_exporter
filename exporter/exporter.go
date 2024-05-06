@@ -441,11 +441,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			statsEnabled, err := bpfStatsEnabled()
 			if err != nil {
 				log.Printf("Error checking whether bpf stats are enabled: %v", err)
-			} else {
-				if statsEnabled {
-					ch <- prometheus.MustNewConstMetric(e.programRunTimeDesc, prometheus.CounterValue, info.runTime.Seconds(), id)
-					ch <- prometheus.MustNewConstMetric(e.programRunCountDesc, prometheus.CounterValue, float64(info.runCount), id)
-				}
+			} else if statsEnabled {
+				ch <- prometheus.MustNewConstMetric(e.programRunTimeDesc, prometheus.CounterValue, info.runTime.Seconds(), id)
+				ch <- prometheus.MustNewConstMetric(e.programRunCountDesc, prometheus.CounterValue, float64(info.runCount), id)
 			}
 		}
 	}
@@ -639,7 +637,7 @@ func (e *Exporter) MapsHandler(w http.ResponseWriter, r *http.Request) {
 	maps, err := e.exportMaps()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Header().Add("Content-type", "text/plain")
+		w.Header().Add("Content-Type", "text/plain")
 		if _, err = fmt.Fprintf(w, "%s\n", err); err != nil {
 			log.Printf("Error returning error to client %q: %s", r.RemoteAddr, err)
 			return
@@ -647,7 +645,7 @@ func (e *Exporter) MapsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Add("Content-type", "text/plain")
+	w.Header().Add("Content-Type", "text/plain")
 
 	buf := []byte{}
 
