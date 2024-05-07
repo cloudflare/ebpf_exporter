@@ -11,7 +11,7 @@ on:
 jobs:
   build-libbpf-docker-x86_64:
     name: Build libbpf in Docker (x86_64)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -30,7 +30,7 @@ jobs:
 
   build-libbpf-docker-aarch64:
     name: Build libbpf in Docker (aarch64, emulated)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -54,7 +54,7 @@ jobs:
 
   build-ebpf-exporter-docker-x86_64:
     name: Build ebpf_exporter in Docker (x86_64, built-in libbpf)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -101,7 +101,7 @@ jobs:
 
   build-ebpf-exporter-docker-aarch64:
     name: Build ebpf_exporter in Docker (aarch64, emulated, built-in libbpf)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -154,7 +154,7 @@ jobs:
   build-ebpf-exporter-static-x86_64-system-libbpf:
     name: Build ebpf_exporter (x86_64, statically linked, system libbpf)
     needs: build-libbpf-docker-x86_64
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -187,7 +187,7 @@ jobs:
 
   build-ebpf-exporter-static-x86_64-built-in-libbpf:
     name: Build ebpf_exporter (x86_64, statically linked, built-in libbpf)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -213,7 +213,7 @@ jobs:
   build-ebpf-exporter-dynamic-x86_64-system-libbpf:
     name: Build ebpf_exporter (x86_64, dynamically linked, system libbpf)
     needs: build-libbpf-docker-x86_64
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -243,7 +243,7 @@ jobs:
 
   build-ebpf-exporter-dynamic-x86_64-built-in-libbpf:
     name: Build ebpf_exporter (x86_64, dynamically linked, built-in libbpf)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -266,7 +266,7 @@ jobs:
   test-ebpf-exporter-x86_64-system-libbpf:
     name: Test ebpf_exporter (x86_64, system libbpf)
     needs: build-libbpf-docker-x86_64
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -301,7 +301,7 @@ jobs:
 
   test-ebpf-exporter-x86_64-built-in-libbpf:
     name: Test ebpf_exporter (x86_64, built-in libbpf)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -328,7 +328,7 @@ jobs:
 
   lint-ebpf-exporter-x86_64-built-in-libbpf:
     name: Lint ebpf_exporter (x86_64, built-in libbpf)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -359,7 +359,7 @@ jobs:
   build-examples-x86_64-system-libbpf:
     name: Build examples (x86_64, system libbpf)
     needs: build-libbpf-docker-x86_64
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -385,7 +385,7 @@ jobs:
 
   build-examples-x86_64-built-in-libbpf:
     name: Build examples (x86_64, built-in libbpf)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -403,7 +403,7 @@ jobs:
 
   build-tracing-demos-x86_64:
     name: Build tracing demos (x86_64)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -430,7 +430,7 @@ jobs:
 
   check-configs-x86_64:
     name: Check examples
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - build-ebpf-exporter-docker-x86_64
       - build-tracing-demos-x86_64
@@ -457,12 +457,17 @@ jobs:
       - name: Load expected kernel modules
         run: sudo modprobe xfs
 
+      - name: Install python3
+        run: |
+          sudo apt-get install -y python3 bpfcc-tools
+          sudo tplist-bpfcc -vv -l /usr/bin/python3
+
       - name: Run configuration check
         run: make config-check
 
   clang-format:
     name: Run clang-format check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -474,7 +479,7 @@ jobs:
 
   jsonschema:
     name: Run jsonschema checks
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -489,7 +494,7 @@ jobs:
 
   publish-docker-images:
     name: Publish Docker images (x86_64, aarch64)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -537,7 +542,7 @@ jobs:
 
   release-archive:
     name: Release archive
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - build-ebpf-exporter-docker-aarch64
       - build-ebpf-exporter-docker-x86_64
