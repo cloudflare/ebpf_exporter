@@ -1,40 +1,38 @@
 linters:
-  enable:
-    - dupl
-    - durationcheck
-    - exhaustive
-    - exportloopref
-    - forcetypeassert
-    - gochecksumtype
-    - gofmt
-    - goimports
-    - gomoddirectives
-    - inamedparam
-    - interfacebloat
-    - makezero
-    - mirror
-    - misspell
-    - musttag
-    - nestif
-    - nilnil
-    - nolintlint
-    - nosprintfhostport
-    - perfsprint
-    - prealloc
-    - predeclared
-    - promlinter
-    - reassign
-    - revive
-    - spancheck
-    - stylecheck
-    - tagalign
-    - unconvert
-    - unparam
-    - unused
-    - usestdlibvars
-    - whitespace
-    # nilerr: https://github.com/gostaticanalysis/nilerr/issues/8
-    # wastedassign: https://github.com/sanposhiho/wastedassign/issues/39
+  enable-all: true
+  disable:
+    - cyclop
+    - depguard
+    - dupword
+    - err113
+    - errorlint
+    - execinquery # deprecated
+    - exhaustruct
+    - funlen
+    - gci
+    - gochecknoglobals
+    - gochecknoinits
+    - gocritic
+    - godot
+    - gofumpt
+    - gomnd # deprecated
+    - gosec
+    - ireturn
+    - lll
+    - mnd
+    - nakedret
+    - nilerr # https://github.com/gostaticanalysis/nilerr/issues/8
+    - nlreturn
+    - noctx
+    - nonamedreturns
+    - paralleltest
+    - tagliatelle
+    - testpackage
+    - thelper
+    - varnamelen
+    - wastedassign # https://github.com/sanposhiho/wastedassign/issues/39
+    - wrapcheck
+    - wsl
 issues:
   exclude-use-default: false
   exclude:

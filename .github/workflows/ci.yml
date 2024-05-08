@@ -352,7 +352,7 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
-          version: v1.56.2
+          version: v1.58.0
         env:
           CGO_CFLAGS: "-I${{ github.workspace }}/libbpf/dest/usr/include"
 
