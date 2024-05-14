@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strconv"
 
-	"gopkg.in/alecthomas/kingpin.v2"
+	"github.com/alecthomas/kingpin/v2"
 )
 
 const straceBasePath = "https://raw.githubusercontent.com/strace/strace"
