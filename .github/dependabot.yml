@@ -2,5 +2,7 @@ version: 2
 updates:
   - package-ecosystem: gomod
     directory: /
+    allow:
+      - dependency-type: all
     schedule:
       interval: monthly
