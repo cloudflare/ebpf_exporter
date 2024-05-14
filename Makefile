@@ -23,14 +23,18 @@ GO_LDFLAGS_VARS := -X $(BUILD_VAR_PREFIX).Version=$(BUILD_VERSION) \
 CLANG_FORMAT_FILES = ${wildcard examples/*.c examples/*.h benchmark/probes/*.c benchmark/probes/*.h}
 
 # * cachestat-pre-kernel-5.16 fails to attach in newer kernels (see code)
-# * kfree_skb doesn't load in ci, possibly due to older verifier
 # * llcstat requires real hardware to attach perf events, which is not present in ci
-# * pci doesn't load in ci, possibly due to older verifier
 # * unix-socket-backlog requires a newer kernel than we have in ci
-CONFIGS_TO_IGNORE_IN_CHECK := cachestat-pre-kernel-5.16 kfree_skb llcstat pci unix-socket-backlog
+# * usdt depends on python:function__entry which is missing from ubuntu 24.04
+CONFIGS_TO_IGNORE_IN_CHECK := cachestat-pre-kernel-5.16 llcstat unix-socket-backlog usdt
 CONFIGS_TO_CHECK := $(filter-out $(CONFIGS_TO_IGNORE_IN_CHECK), ${patsubst examples/%.yaml, %, ${wildcard examples/*.yaml}})
 
 CGO_LDFLAGS := -l bpf
+
+# If libelf is new and it links to zstd, then zstd needs to be manually linked in.
+ifneq ($(shell ldd $(shell /sbin/ldconfig -n -p | grep libelf.so.1 | awk '{ print $$NF }') | grep zstd),)
+CGO_LDFLAGS := $(CGO_LDFLAGS) -l zstd
+endif
 
 include Makefile.libbpf
 
