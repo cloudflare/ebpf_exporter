@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/aquasecurity/libbpfgo"
 	"github.com/cloudflare/ebpf_exporter/v2/config"
 	"github.com/cloudflare/ebpf_exporter/v2/exporter"
@@ -26,7 +27,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"go.opentelemetry.io/otel/sdk/trace"
-	"gopkg.in/alecthomas/kingpin.v2"
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
