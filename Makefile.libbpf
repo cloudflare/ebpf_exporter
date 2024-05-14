@@ -1,6 +1,6 @@
 LIBBPF_TOP := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
-LIBBPF_VERSION := 1.3.0
+LIBBPF_VERSION := 1.4.2
 LIBBPF_BRANCH := v$(LIBBPF_VERSION)
 LIBBPF_PATH := $(LIBBPF_TOP)/libbpf/dest/usr/lib/libbpf.so.$(LIBBPF_VERSION)
 
