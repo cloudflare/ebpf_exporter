@@ -262,8 +262,6 @@ func handleSignals(e *exporter.Exporter, processor trace.SpanProcessor, notifier
 		log.Fatalf("Error flushing spans: %v", err)
 	}
 
-	time.Sleep(time.Second * 10)
-
 	os.Exit(0)
 }
 
