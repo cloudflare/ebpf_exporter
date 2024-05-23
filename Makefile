@@ -49,6 +49,10 @@ lint:
 	go mod verify
 	CGO_LDFLAGS="$(CGO_LDFLAGS)" CGO_CFLAGS="$(CGO_CFLAGS)" golangci-lint run ./...
 
+.PHONY: markdown-link-check
+markdown-link-check:
+	docker run --rm -v $(shell pwd):/tmp/check:ro -w /tmp/check --entrypoint /bin/sh ghcr.io/tcort/markdown-link-check:stable -c 'markdown-link-check --config .markdown-link-check.json $$(find . -name \*.md | grep -v ^\./libbpf)'
+
 .PHONY: jsonschema
 jsonschema:
 	./scripts/jsonschema.sh
