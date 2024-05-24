@@ -10,6 +10,8 @@ LIBBPF_CFLAGS := -I$(LIBBPF_TOP)/libbpf/dest/usr/include
 LIBBPF_LDFLAGS := -L$(LIBBPF_TOP)/libbpf/dest/usr/lib
 CGO_LDFLAGS := $(CGO_LDFLAGS) $(LIBBPF_LDFLAGS)
 CGO_CFLAGS := $(LIBBPF_CFLAGS)
+
+export LD_LIBRARY_PATH=$(LIBBPF_TOP)/libbpf/dest/usr/lib
 endif
 
 .PHONY: clean-libbpf
