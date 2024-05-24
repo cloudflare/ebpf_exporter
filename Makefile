@@ -63,7 +63,7 @@ clang-format-check:
 
 .PHONY: test
 test: $(LIBBPF_DEPS)
-	CGO_LDFLAGS="$(CGO_LDFLAGS)" CGO_CFLAGS="$(CGO_CFLAGS)" go test -ldflags='-extldflags "-static"' $(GO_TEST_ARGS) ./...
+	CGO_LDFLAGS="$(CGO_LDFLAGS)" CGO_CFLAGS="$(CGO_CFLAGS)" go test $(GO_TEST_ARGS) ./...
 
 .PHONY: test-privileged
 test-privileged:

@@ -18,4 +18,4 @@ run: build $(LIBBPF_DEPS)
 	# * https://github.com/golang/go/blob/go1.21.0/src/cmd/go/internal/test/test.go#L1028
 	# * https://github.com/golang/go/blob/go1.21.0/src/cmd/go/internal/test/test.go#L630-L631
 	# The symbols are necessary to attach a uprobe to itself.
-	sudo GOMAXPROCS=1 CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" go test -ldflags='-extldflags "-static"' -o benchmark.test -bench .
+	sudo LD_LIBRARY_PATH=$(LD_LIBRARY_PATH) GOMAXPROCS=1 CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" go test -o benchmark.test -bench .
