@@ -477,6 +477,15 @@ jobs:
       - name: Run clang-format check
         run: make clang-format-check
 
+  markdown-links:
+    name: Run markdown-links-check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run markdown-links-check
+        run: make markdown-link-check
+
   jsonschema:
     name: Run jsonschema checks
     runs-on: ubuntu-24.04
