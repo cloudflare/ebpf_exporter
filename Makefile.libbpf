@@ -6,6 +6,7 @@ LIBBPF_PATH := $(LIBBPF_TOP)/libbpf/dest/usr/lib/libbpf.so.$(LIBBPF_VERSION)
 
 ifneq ($(BUILD_LIBBPF),0)
 LIBBPF_DEPS := $(LIBBPF_PATH)
+LIBBPF_PKG_CONFIG_PATH=$(LIBBPF_TOP)/libbpf/dest/usr/lib/pkgconfig
 LIBBPF_CFLAGS := -I$(LIBBPF_TOP)/libbpf/dest/usr/include
 LIBBPF_LDFLAGS := -L$(LIBBPF_TOP)/libbpf/dest/usr/lib
 CGO_LDFLAGS := $(CGO_LDFLAGS) $(LIBBPF_LDFLAGS)

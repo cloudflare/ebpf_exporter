@@ -29,12 +29,8 @@ CLANG_FORMAT_FILES = ${wildcard examples/*.c examples/*.h benchmark/probes/*.c b
 CONFIGS_TO_IGNORE_IN_CHECK := cachestat-pre-kernel-5.16 llcstat unix-socket-backlog usdt
 CONFIGS_TO_CHECK := $(filter-out $(CONFIGS_TO_IGNORE_IN_CHECK), ${patsubst examples/%.yaml, %, ${wildcard examples/*.yaml}})
 
-CGO_LDFLAGS := -l bpf
-
-# If libelf is new and it links to zstd, then zstd needs to be manually linked in.
-ifneq ($(shell ldd $(shell /sbin/ldconfig -n -p | grep libelf.so.1 | awk '{ print $$NF }') | grep zstd),)
-CGO_LDFLAGS := $(CGO_LDFLAGS) -l zstd
-endif
+CGO_LDFLAGS_DYNAMIC = -l bpf
+CGO_LDFLAGS = $(CGO_LDFLAGS_DYNAMIC)
 
 include Makefile.libbpf
 
@@ -77,8 +73,9 @@ config-check:
 build: build-static
 
 .PHONY: build-static
-build-static:
-	$(MAKE) build-binary GO_BUILD_ARGS="-tags netgo,osusergo" GO_LDFLAGS='-extldflags "-static"'
+build-static: $(LIBBPF_DEPS)
+	$(eval CGO_LDFLAGS=$(subst $(CGO_LDFLAGS_DYNAMIC),$(shell PKG_CONFIG_PATH=$(LIBBPF_PKG_CONFIG_PATH) pkg-config --static --libs libbpf),$(CGO_LDFLAGS)))
+	$(MAKE) build-binary GO_BUILD_ARGS="-tags netgo,osusergo" GO_LDFLAGS='-extldflags "-static"' CGO_LDFLAGS="$(CGO_LDFLAGS)"
 
 .PHONY: build-dynamic
 build-dynamic:
