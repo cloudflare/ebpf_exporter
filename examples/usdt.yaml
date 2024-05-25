@@ -1,13 +1,9 @@
 metrics:
   counters:
-    - name: python_function_entries_total
-      help: Number of python:function__entry USDT calls per function
+    - name: python_module_imports_total
+      help: Number of python:import__find__load__start USDT calls per module
       labels:
         - name: module
-          size: 128
-          decoders:
-            - name: string
-        - name: function
           size: 128
           decoders:
             - name: string
