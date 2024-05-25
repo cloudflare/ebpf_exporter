@@ -27,13 +27,13 @@ RUN make -j $(nproc) -C /build/ebpf_exporter build && \
 FROM debian:bookworm as examples_builder
 
 RUN apt-get update && \
-    apt-get install -y clang make
+    apt-get install -y clang-16 make
 
 COPY --from=libbpf_builder /build/ebpf_exporter/libbpf /build/ebpf_exporter/libbpf
 
 COPY ./ /build/ebpf_exporter
 
-RUN make -j $(nproc) -C /build/ebpf_exporter/examples
+RUN make -j $(nproc) -C /build/ebpf_exporter/examples CC=clang-16
 
 
 # ebpf_exporter release image
