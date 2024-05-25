@@ -25,8 +25,7 @@ CLANG_FORMAT_FILES = ${wildcard examples/*.c examples/*.h benchmark/probes/*.c b
 # * cachestat-pre-kernel-5.16 fails to attach in newer kernels (see code)
 # * llcstat requires real hardware to attach perf events, which is not present in ci
 # * unix-socket-backlog requires a newer kernel than we have in ci
-# * usdt depends on python:function__entry which is missing from ubuntu 24.04
-CONFIGS_TO_IGNORE_IN_CHECK := cachestat-pre-kernel-5.16 llcstat unix-socket-backlog usdt
+CONFIGS_TO_IGNORE_IN_CHECK := cachestat-pre-kernel-5.16 llcstat unix-socket-backlog
 CONFIGS_TO_CHECK := $(filter-out $(CONFIGS_TO_IGNORE_IN_CHECK), ${patsubst examples/%.yaml, %, ${wildcard examples/*.yaml}})
 
 CGO_LDFLAGS := -l bpf

@@ -453,14 +453,12 @@ jobs:
       - name: Extract tracing-demos.x86_64.tar.gz
         run: tar -xzvf tracing-demos.x86_64.tar.gz
 
+      - name: Print kernel version
+        run: uname -a
+
       # Some programs expect to attach to symbols in modules
       - name: Load expected kernel modules
         run: sudo modprobe xfs
-
-      - name: Install python3
-        run: |
-          sudo apt-get install -y python3 bpfcc-tools
-          sudo tplist-bpfcc -vv -l /usr/bin/python3
 
       - name: Run configuration check
         run: make config-check
