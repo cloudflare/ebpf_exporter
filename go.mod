@@ -18,7 +18,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.26.0
 	golang.org/x/sys v0.20.0
 	gopkg.in/yaml.v2 v2.4.0
-	kernel.org/pub/linux/libs/security/libcap/cap v1.2.69
+	kernel.org/pub/linux/libs/security/libcap/cap v1.2.70
 )
 
 require (
@@ -50,5 +50,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240401170217-c3f982113cda // indirect
 	google.golang.org/grpc v1.63.2 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
-	kernel.org/pub/linux/libs/security/libcap/psx v1.2.69 // indirect
+	kernel.org/pub/linux/libs/security/libcap/psx v1.2.70 // indirect
 )
