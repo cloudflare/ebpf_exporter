@@ -6,3 +6,8 @@ updates:
       - dependency-type: all
     schedule:
       interval: monthly
+    groups:
+      opentelemetry:
+        applies-to: version-updates
+        patterns:
+          - go.opentelemetry.io/*
