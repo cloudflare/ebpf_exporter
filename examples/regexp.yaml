@@ -1,0 +1,14 @@
+metrics:
+  counters:
+    - name: mm_shrink_slab_events_total
+      help: Total number of calls into vmscan:mm_shrink_slab_end by comm
+      labels:
+        - name: comm
+          size: 16
+          decoders:
+            - name: string
+            - name: regexp
+              regexps:
+                - ^(kswapd).*$ # anything matching kswapd prefix, mapping to one kswapd bucket
+                - ^(systemd.*)$ # anything matching systemd prefix, mapping to one systemd bucket
+                - ^.*$ # everything else as is
