@@ -32,6 +32,12 @@ func TestRegexpDecoder(t *testing.T) {
 			out:     []byte(""),
 			err:     ErrSkipLabelSet,
 		},
+		{
+			in:      []byte("systemd-bananad"),
+			regexps: []string{"^(systemd).*$", "^syslog-ng$"},
+			out:     []byte("systemd"),
+			err:     nil,
+		},
 	}
 
 	for _, c := range cases {

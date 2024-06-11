@@ -23,8 +23,6 @@ func (r *Regexp) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 		r.cache = map[string]*regexp.Regexp{}
 	}
 
-	matched := false
-
 	for _, expr := range conf.Regexps {
 		if _, ok := r.cache[expr]; !ok {
 			compiled, err := regexp.Compile(expr)
@@ -35,15 +33,18 @@ func (r *Regexp) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 			r.cache[expr] = compiled
 		}
 
-		if r.cache[expr].MatchString(string(in)) {
-			matched = true
-			break
+		matches := r.cache[expr].FindSubmatch(in)
+
+		// First sub-match if present
+		if len(matches) == 2 {
+			return matches[1], nil
+		}
+
+		// General match
+		if len(matches) == 1 {
+			return matches[0], nil
 		}
 	}
 
-	if !matched {
-		return nil, ErrSkipLabelSet
-	}
-
-	return in, nil
+	return nil, ErrSkipLabelSet
 }

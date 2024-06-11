@@ -664,6 +664,7 @@ An example to report metrics only for `systemd-journal` and `syslog-ng`:
     - name: string
     - name: regexp
       regexps:
+        - ^(kswapd).*$ # if sub-matches are present, the first one is used for the value
         - ^systemd-journal$
         - ^syslog-ng$
 ```
