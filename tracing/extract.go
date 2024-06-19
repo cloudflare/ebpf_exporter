@@ -105,11 +105,13 @@ func extractSpan(labels []string, config config.Span) (string, time.Time, time.D
 	return name, timestamp, duration, traceID, parentID, spanID, attributes, nil
 }
 
-func handleDecodedLabels(provider Provider, labels []string, config config.Span) error {
+func handleDecodedLabels(provider Provider, labels []string, configName string, config config.Span) error {
 	name, timestamp, duration, traceID, parentID, spanID, attributes, err := extractSpan(labels, config)
 	if err != nil {
 		return err
 	}
+
+	attributes = append(attributes, attribute.String("ebpf_exporter.config", configName))
 
 	tracer := provider.Tracer(config.Service)
 

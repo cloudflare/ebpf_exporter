@@ -9,9 +9,9 @@ import (
 )
 
 // HandleInput reads inputs from the input channel and turns them into spans
-func HandleInput(input <-chan []byte, provider Provider, decoders *decoder.Set, config config.Span, errors prometheus.Counter) {
+func HandleInput(input <-chan []byte, provider Provider, decoders *decoder.Set, configName string, config config.Span, errors prometheus.Counter) {
 	for raw := range input {
-		err := handleRawBytes(raw, provider, decoders, config)
+		err := handleRawBytes(raw, provider, decoders, configName, config)
 		if err != nil {
 			if err != decoder.ErrSkipLabelSet {
 				errors.Inc()
@@ -23,11 +23,11 @@ func HandleInput(input <-chan []byte, provider Provider, decoders *decoder.Set, 
 	}
 }
 
-func handleRawBytes(raw []byte, provider Provider, decoders *decoder.Set, config config.Span) error {
+func handleRawBytes(raw []byte, provider Provider, decoders *decoder.Set, configName string, config config.Span) error {
 	decoded, err := extractLabels(raw, decoders, config)
 	if err != nil {
 		return err
 	}
 
-	return handleDecodedLabels(provider, decoded, config)
+	return handleDecodedLabels(provider, decoded, configName, config)
 }

@@ -399,7 +399,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 			log.Printf("Tracing is not enabled, but some spans are configured in config %q", cfg.Name)
 		} else {
 			for _, span := range cfg.Tracing.Spans {
-				startTracingSink(e.tracingProvider, e.decoders, e.modules[cfg.Name], span, e.decoderErrorCount.WithLabelValues(cfg.Name))
+				startTracingSink(e.tracingProvider, e.decoders, e.modules[cfg.Name], cfg.Name, span, e.decoderErrorCount.WithLabelValues(cfg.Name))
 			}
 		}
 	}
