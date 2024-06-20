@@ -3,6 +3,7 @@ package cgroup
 import (
 	"io/fs"
 	"log"
+	"os"
 	"path/filepath"
 )
 
@@ -49,6 +50,11 @@ func walk(dir string) (map[int]string, error) {
 
 	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
+			// Things can disappear from under us, that's fine
+			if os.IsNotExist(err) {
+				return nil
+			}
+
 			return err
 		}
 
