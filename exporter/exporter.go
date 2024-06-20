@@ -253,6 +253,10 @@ func (e *Exporter) Detach() {
 		_, moduleCloseSpan := tracer.Start(ctx, "close_module", trace.WithAttributes(attribute.String("config", name)))
 
 		for prog, link := range e.attachedProgs[name] {
+			if link == nil {
+				continue
+			}
+
 			moduleCloseSpan.AddEvent("prog_detach", trace.WithAttributes(attribute.String("SEC", prog.SectionName())))
 
 			if err := link.Destroy(); err != nil {
