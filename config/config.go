@@ -98,21 +98,21 @@ func ParseConfigs(dir string, names []string) ([]Config, error) {
 
 		f, err := os.Open(path)
 		if err != nil {
-			return nil, fmt.Errorf("error opening %q for config %q: %v", path, name, err)
+			return nil, fmt.Errorf("error opening %q for config %q: %w", path, name, err)
 		}
 
 		defer f.Close()
 
 		err = yaml.NewDecoder(f).Decode(&configs[i])
 		if err != nil {
-			return nil, fmt.Errorf("error parsing %q for config %q: %v", path, name, err)
+			return nil, fmt.Errorf("error parsing %q for config %q: %w", path, name, err)
 		}
 
 		configs[i].Name = name
 
 		err = validateConfig(&configs[i])
 		if err != nil {
-			return nil, fmt.Errorf("error validating config: %v", err)
+			return nil, fmt.Errorf("error validating config: %w", err)
 		}
 
 		configs[i].BPFPath = filepath.Join(dir, name+".bpf.o")

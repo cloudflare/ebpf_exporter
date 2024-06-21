@@ -2,6 +2,7 @@ package decoder
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/cloudflare/ebpf_exporter/v2/config"
@@ -44,7 +45,7 @@ func TestRegexpDecoder(t *testing.T) {
 		d := &Regexp{}
 
 		out, err := d.Decode(c.in, config.Decoder{Regexps: c.regexps})
-		if err != c.err {
+		if !errors.Is(err, c.err) {
 			t.Errorf("Error decoding %s (expected err = %v): %v", c.in, c.err, err)
 		}
 

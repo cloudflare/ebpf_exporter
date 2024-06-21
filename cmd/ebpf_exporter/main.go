@@ -178,12 +178,12 @@ func listen(addr string) (net.Listener, error) {
 	if strings.HasPrefix(addr, "fd://") {
 		fd, err := strconv.Atoi(strings.TrimPrefix(addr, "fd://"))
 		if err != nil {
-			return nil, fmt.Errorf("error extracting fd number from %q: %v", addr, err)
+			return nil, fmt.Errorf("error extracting fd number from %q: %w", addr, err)
 		}
 
 		listeners, err := activation.Listeners()
 		if err != nil {
-			return nil, fmt.Errorf("error getting activation listeners: %v", err)
+			return nil, fmt.Errorf("error getting activation listeners: %w", err)
 		}
 
 		if len(listeners) < fd+1 {
@@ -212,7 +212,7 @@ func ensureCapabilities(keep string) error {
 		for _, name := range strings.Split(keep, ",") {
 			value, err := cap.FromName(name)
 			if err != nil {
-				return fmt.Errorf("error parsing capability %q: %v", name, err)
+				return fmt.Errorf("error parsing capability %q: %w", name, err)
 			}
 
 			values = append(values, value)
@@ -221,17 +221,17 @@ func ensureCapabilities(keep string) error {
 
 	err := ensure.SetFlag(cap.Permitted, true, values...)
 	if err != nil {
-		return fmt.Errorf("error setting permitted capabilities: %v", err)
+		return fmt.Errorf("error setting permitted capabilities: %w", err)
 	}
 
 	err = ensure.SetFlag(cap.Effective, true, values...)
 	if err != nil {
-		return fmt.Errorf("error setting effective capabilities: %v", err)
+		return fmt.Errorf("error setting effective capabilities: %w", err)
 	}
 
 	err = ensure.SetProc()
 	if err != nil {
-		return fmt.Errorf("failed to drop capabilities: %q -> %q: %v", existing, ensure, err)
+		return fmt.Errorf("failed to drop capabilities: %q -> %q: %w", existing, ensure, err)
 	}
 
 	log.Printf("Dropped capabilities to %q", ensure)

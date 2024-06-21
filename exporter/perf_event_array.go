@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"errors"
 	"log"
 	"time"
 
@@ -16,7 +17,7 @@ type perfEventArraySink struct {
 	dropCounter   prometheus.Counter
 }
 
-func newPerfEventArraySink(decoders *decoder.Set, module *libbpfgo.Module, counterConfig config.Counter, errors prometheus.Counter) *perfEventArraySink {
+func newPerfEventArraySink(decoders *decoder.Set, module *libbpfgo.Module, counterConfig config.Counter, errorCounter prometheus.Counter) *perfEventArraySink {
 	var (
 		receiveCh = make(chan []byte)
 		lostCh    = make(chan uint64)
@@ -49,11 +50,11 @@ func newPerfEventArraySink(decoders *decoder.Set, module *libbpfgo.Module, count
 
 			labelValues, err := decoders.DecodeLabelsForMetrics(rawBytes[:validDataSize], counterConfig.Name, sink.counterConfig.Labels)
 			if err != nil {
-				if err == decoder.ErrSkipLabelSet {
+				if errors.Is(err, decoder.ErrSkipLabelSet) {
 					continue
 				}
 
-				errors.Inc()
+				errorCounter.Inc()
 				log.Printf("Failed to decode labels: %s", err)
 			}
 

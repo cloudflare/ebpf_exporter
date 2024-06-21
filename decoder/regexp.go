@@ -27,7 +27,7 @@ func (r *Regexp) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 		if _, ok := r.cache[expr]; !ok {
 			compiled, err := regexp.Compile(expr)
 			if err != nil {
-				return nil, fmt.Errorf("error compiling regexp %q: %s", expr, err)
+				return nil, fmt.Errorf("error compiling regexp %q: %w", expr, err)
 			}
 
 			r.cache[expr] = compiled

@@ -73,7 +73,7 @@ func download(version string, path string) (map[int]string, error) {
 		if len(matches) > 0 {
 			number, err := strconv.Atoi(matches[1])
 			if err != nil {
-				return nil, fmt.Errorf("error parsing syscall number %q from line %q from %q: %v", matches[1], line, uri, err)
+				return nil, fmt.Errorf("error parsing syscall number %q from line %q from %q: %w", matches[1], line, uri, err)
 			}
 
 			syscalls[number] = matches[2]
@@ -81,7 +81,7 @@ func download(version string, path string) (map[int]string, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading response body for %q: %v", uri, err)
+		return nil, fmt.Errorf("error reading response body for %q: %w", uri, err)
 	}
 
 	return syscalls, nil
@@ -90,7 +90,7 @@ func download(version string, path string) (map[int]string, error) {
 func generate(arch architecture) error {
 	file, err := os.Create(arch.path)
 	if err != nil {
-		return fmt.Errorf("error creating %q: %v", arch.path, err)
+		return fmt.Errorf("error creating %q: %w", arch.path, err)
 	}
 
 	if _, err := file.WriteString(fmt.Sprintf("// Syscall table mapping id to name for %s\n", arch.name)); err != nil {

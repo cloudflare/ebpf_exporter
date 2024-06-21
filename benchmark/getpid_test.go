@@ -153,22 +153,22 @@ func benchmarkWithProbe(b *testing.B, file string, target string, fn func(), che
 func setupGetpidProbe(name string) (*libbpfgo.Module, *libbpfgo.BPFLink, error) {
 	module, err := libbpfgo.NewModuleFromFile(name)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating module from file %q: %v", name, err)
+		return nil, nil, fmt.Errorf("error creating module from file %q: %w", name, err)
 	}
 
 	err = module.BPFLoadObject()
 	if err != nil {
-		return nil, nil, fmt.Errorf("error loading bpf object from file %q: %v", name, err)
+		return nil, nil, fmt.Errorf("error loading bpf object from file %q: %w", name, err)
 	}
 
 	prog, err := module.GetProgram("probe")
 	if err != nil {
-		return nil, nil, fmt.Errorf("error loading program from file %q: %v", name, err)
+		return nil, nil, fmt.Errorf("error loading program from file %q: %w", name, err)
 	}
 
 	link, err := prog.AttachGeneric()
 	if err != nil {
-		return nil, nil, fmt.Errorf("error attaching probe from file %q: %v", name, err)
+		return nil, nil, fmt.Errorf("error attaching probe from file %q: %w", name, err)
 	}
 
 	return module, link, nil

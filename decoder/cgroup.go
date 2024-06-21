@@ -17,7 +17,7 @@ type CGroup struct {
 func NewCgroupDecoder() (*CGroup, error) {
 	monitor, err := cgroup.NewMonitor("/sys/fs/cgroup")
 	if err != nil {
-		return nil, fmt.Errorf("error creating cgroup monitor: %v", err)
+		return nil, fmt.Errorf("error creating cgroup monitor: %w", err)
 	}
 
 	return &CGroup{monitor}, nil

@@ -103,7 +103,7 @@ func New(configs []config.Config, tracingProvider tracing.Provider, btfPath stri
 
 	decoders, err := decoder.NewSet()
 	if err != nil {
-		return nil, fmt.Errorf("error creating decoder set: %v", err)
+		return nil, fmt.Errorf("error creating decoder set: %w", err)
 	}
 
 	return &Exporter{
@@ -136,12 +136,12 @@ func (e *Exporter) Attach() error {
 
 	err := registerHandlers()
 	if err != nil {
-		return fmt.Errorf("error registering libbpf handlers: %v", err)
+		return fmt.Errorf("error registering libbpf handlers: %w", err)
 	}
 
 	err = registerXDPHandler()
 	if err != nil {
-		return fmt.Errorf("error registering xdp handlers: %v", err)
+		return fmt.Errorf("error registering xdp handlers: %w", err)
 	}
 
 	registerHandlersSpan.End()
@@ -192,13 +192,13 @@ func (e *Exporter) attachConfig(ctx context.Context, cfg config.Config) error {
 		} else if errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("could not find BTF file %q", e.btfPath)
 		} else {
-			return fmt.Errorf("failed to retrieve file info for %q: %v", e.btfPath, err)
+			return fmt.Errorf("failed to retrieve file info for %q: %w", e.btfPath, err)
 		}
 	}
 
 	module, err := libbpfgo.NewModuleFromFileArgs(args)
 	if err != nil {
-		return fmt.Errorf("error creating module from %q for config %q: %v", cfg.BPFPath, cfg.Name, err)
+		return fmt.Errorf("error creating module from %q for config %q: %w", cfg.BPFPath, cfg.Name, err)
 	}
 
 	newModuleSpan.End()
@@ -206,7 +206,7 @@ func (e *Exporter) attachConfig(ctx context.Context, cfg config.Config) error {
 	if len(cfg.Kaddrs) > 0 {
 		err = e.passKaddrs(ctx, module, cfg)
 		if err != nil {
-			return fmt.Errorf("error passing kaddrs to config %q: %v", cfg.Name, err)
+			return fmt.Errorf("error passing kaddrs to config %q: %w", cfg.Name, err)
 		}
 	}
 
@@ -215,7 +215,7 @@ func (e *Exporter) attachConfig(ctx context.Context, cfg config.Config) error {
 
 	err = module.BPFLoadObject()
 	if err != nil {
-		return fmt.Errorf("error loading bpf object from %q for config %q: %v", cfg.BPFPath, cfg.Name, err)
+		return fmt.Errorf("error loading bpf object from %q for config %q: %w", cfg.BPFPath, cfg.Name, err)
 	}
 
 	bpfLoadObjectSpan.End()
@@ -228,7 +228,7 @@ func (e *Exporter) attachConfig(ctx context.Context, cfg config.Config) error {
 
 	err = validateMaps(module, cfg)
 	if err != nil {
-		return fmt.Errorf("error validating maps for config %q: %v", cfg.Name, err)
+		return fmt.Errorf("error validating maps for config %q: %w", cfg.Name, err)
 	}
 
 	e.attachedProgs[cfg.Name] = attachments
@@ -301,7 +301,7 @@ func (e *Exporter) passKaddrs(ctx context.Context, module *libbpfgo.Module, cfg 
 		_, populateKaddrsSpan := tracer.Start(passKaddrsCtx, "populate_kaddrs")
 
 		if err := e.populateKaddrs(); err != nil {
-			err = fmt.Errorf("error populating kaddrs: %v", err)
+			err = fmt.Errorf("error populating kaddrs: %w", err)
 			populateKaddrsSpan.SetStatus(codes.Error, err.Error())
 			populateKaddrsSpan.End()
 			return err
@@ -322,7 +322,7 @@ func (e *Exporter) passKaddrs(ctx context.Context, module *libbpfgo.Module, cfg 
 
 		name := "kaddr_" + kaddr
 		if err := module.InitGlobalVariable(name, addr); err != nil {
-			err = fmt.Errorf("error setting kaddr value for %q (const volatile %q) to 0x%x: %v", kaddr, name, addr, err)
+			err = fmt.Errorf("error setting kaddr value for %q (const volatile %q) to 0x%x: %w", kaddr, name, addr, err)
 			passKaddrsSpan.SetStatus(codes.Error, err.Error())
 			return err
 		}
@@ -349,7 +349,7 @@ func (e *Exporter) populateKaddrs() error {
 
 		addr, err := strconv.ParseUint(parts[0], 16, 64)
 		if err != nil {
-			return fmt.Errorf("error parsing addr %q from line %q: %s", parts[0], s.Text(), err)
+			return fmt.Errorf("error parsing addr %q from line %q: %w", parts[0], s.Text(), err)
 		}
 
 		e.kaddrs[parts[2]] = addr
@@ -471,7 +471,7 @@ func (e *Exporter) collectCounters(ch chan<- prometheus.Metric) {
 			mapValues, err := e.mapValues(e.modules[cfg.Name], counter.Name, counter.Labels)
 			if err != nil {
 				e.decoderErrorCount.WithLabelValues(cfg.Name).Inc()
-				log.Printf("Error getting map %q values for metric %q of config %q: %s", counter.Name, counter.Name, cfg.Name, err)
+				log.Printf("Error getting map %q values for metric %q of config %q: %v", counter.Name, counter.Name, cfg.Name, err)
 				continue
 			}
 
@@ -497,7 +497,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 			mapValues, err := e.mapValues(e.modules[cfg.Name], histogram.Name, histogram.Labels)
 			if err != nil {
 				e.decoderErrorCount.WithLabelValues(cfg.Name).Inc()
-				log.Printf("Error getting map %q values for metric %q of config %q: %s", histogram.Name, histogram.Name, cfg.Name, err)
+				log.Printf("Error getting map %q values for metric %q of config %q: %v", histogram.Name, histogram.Name, cfg.Name, err)
 				continue
 			}
 
@@ -526,7 +526,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 
 				leUint, err := strconv.ParseUint(metricValue.labels[len(metricValue.labels)-1], 0, 64)
 				if err != nil {
-					log.Printf("Error parsing float value for bucket %#v in map %q of config %q: %s", metricValue.labels, histogram.Name, cfg.Name, err)
+					log.Printf("Error parsing float value for bucket %#v in map %q of config %q: %v", metricValue.labels, histogram.Name, cfg.Name, err)
 					skip = true
 					break
 				}
@@ -543,7 +543,7 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 			for _, histogramSet := range histograms {
 				buckets, count, sum, err := transformHistogram(histogramSet.buckets, histogram)
 				if err != nil {
-					log.Printf("Error transforming histogram for metric %q in config %q: %s", histogram.Name, cfg.Name, err)
+					log.Printf("Error transforming histogram for metric %q in config %q: %v", histogram.Name, cfg.Name, err)
 					continue
 				}
 
@@ -557,12 +557,12 @@ func (e *Exporter) collectHistograms(ch chan<- prometheus.Metric) {
 func (e *Exporter) mapValues(module *libbpfgo.Module, name string, labels []config.Label) ([]metricValue, error) {
 	m, err := module.GetMap(name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve map %q: %v", name, err)
+		return nil, fmt.Errorf("failed to retrieve map %q: %w", name, err)
 	}
 
 	metricValues, err := readMapValues(m, labels)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve map %q: %v", name, err)
+		return nil, fmt.Errorf("failed to retrieve map %q: %w", name, err)
 	}
 
 	_, percpu := percpuMapTypes[m.Type()]
@@ -584,7 +584,7 @@ func (e *Exporter) mapValues(module *libbpfgo.Module, name string, labels []conf
 
 		metricValues[i].labels, err = e.decoders.DecodeLabelsForMetrics(raw, name, labels)
 		if err != nil {
-			if err == decoder.ErrSkipLabelSet {
+			if errors.Is(err, decoder.ErrSkipLabelSet) {
 				continue
 			}
 
@@ -626,7 +626,7 @@ func (e *Exporter) exportMaps() (map[string]map[string][]metricValue, error) {
 			metricValues, err := e.mapValues(e.modules[cfg.Name], name, labels)
 			if err != nil {
 				e.decoderErrorCount.WithLabelValues(cfg.Name).Inc()
-				return nil, fmt.Errorf("error getting values for map %q of config %q: %s", name, cfg.Name, err)
+				return nil, fmt.Errorf("error getting values for map %q of config %q: %w", name, cfg.Name, err)
 			}
 
 			maps[cfg.Name][name] = metricValues
@@ -643,7 +643,7 @@ func (e *Exporter) MapsHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Header().Add("Content-Type", "text/plain")
 		if _, err = fmt.Fprintf(w, "%s\n", err); err != nil {
-			log.Printf("Error returning error to client %q: %s", r.RemoteAddr, err)
+			log.Printf("Error returning error to client %q: %v", r.RemoteAddr, err)
 			return
 		}
 		return
@@ -668,7 +668,7 @@ func (e *Exporter) MapsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err = w.Write(buf); err != nil {
-		log.Printf("Error returning map contents to client %q: %s", r.RemoteAddr, err)
+		log.Printf("Error returning map contents to client %q: %v", r.RemoteAddr, err)
 	}
 }
 
@@ -690,7 +690,7 @@ func validateMaps(module *libbpfgo.Module, cfg config.Config) error {
 	for _, name := range maps {
 		m, err := module.GetMap(name)
 		if err != nil {
-			return fmt.Errorf("failed to get map %q: %v", name, err)
+			return fmt.Errorf("failed to get map %q: %w", name, err)
 		}
 
 		valueSize := m.ValueSize()

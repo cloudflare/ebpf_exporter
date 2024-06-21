@@ -5,7 +5,6 @@ linters:
     - depguard
     - dupword
     - err113
-    - errorlint
     - execinquery # deprecated
     - exhaustruct
     - funlen

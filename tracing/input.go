@@ -1,6 +1,7 @@
 package tracing
 
 import (
+	"errors"
 	"log"
 
 	"github.com/cloudflare/ebpf_exporter/v2/config"
@@ -9,12 +10,12 @@ import (
 )
 
 // HandleInput reads inputs from the input channel and turns them into spans
-func HandleInput(input <-chan []byte, provider Provider, decoders *decoder.Set, configName string, config config.Span, errors prometheus.Counter) {
+func HandleInput(input <-chan []byte, provider Provider, decoders *decoder.Set, configName string, config config.Span, errorCounter prometheus.Counter) {
 	for raw := range input {
 		err := handleRawBytes(raw, provider, decoders, configName, config)
 		if err != nil {
-			if err != decoder.ErrSkipLabelSet {
-				errors.Inc()
+			if !errors.Is(err, decoder.ErrSkipLabelSet) {
+				errorCounter.Inc()
 				log.Printf("Error handing raw span bytes: %v", err)
 			}
 
