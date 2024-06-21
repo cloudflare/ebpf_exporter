@@ -30,12 +30,12 @@ type Set struct {
 func NewSet() (*Set, error) {
 	cgroup, err := NewCgroupDecoder()
 	if err != nil {
-		return nil, fmt.Errorf("error creating cgroup decoder: %v", err)
+		return nil, fmt.Errorf("error creating cgroup decoder: %w", err)
 	}
 
 	ksym, err := kallsyms.NewDecoder("/proc/kallsyms")
 	if err != nil {
-		return nil, fmt.Errorf("error creating ksym decoder: %v", err)
+		return nil, fmt.Errorf("error creating ksym decoder: %w", err)
 	}
 
 	return &Set{
@@ -74,10 +74,11 @@ func (s *Set) decode(in []byte, label config.Label) ([]byte, error) {
 
 		decoded, err := s.decoders[decoder.Name].Decode(result, decoder)
 		if err != nil {
-			if err == ErrSkipLabelSet {
+			if errors.Is(err, ErrSkipLabelSet) {
 				return decoded, err
 			}
-			return decoded, fmt.Errorf("error decoding with decoder %q: %s", decoder.Name, err)
+
+			return decoded, fmt.Errorf("error decoding with decoder %q: %w", decoder.Name, err)
 		}
 
 		result = decoded

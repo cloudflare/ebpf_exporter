@@ -43,7 +43,7 @@ func (d *Decoder) refreshMapping() error {
 
 	fd, err := os.Open(d.path)
 	if err != nil {
-		return fmt.Errorf("error opening kallsyms at %q: %v", d.path, err)
+		return fmt.Errorf("error opening kallsyms at %q: %w", d.path, err)
 	}
 
 	defer fd.Close()
@@ -57,7 +57,7 @@ func (d *Decoder) refreshMapping() error {
 
 		ptr, err := strconv.ParseUint(parts[0], 16, 64)
 		if err != nil {
-			return fmt.Errorf("error parsing kallsyms addr %q: %v", parts[0], err)
+			return fmt.Errorf("error parsing kallsyms addr %q: %w", parts[0], err)
 		}
 
 		d.addrs = append(d.addrs, Addr{
@@ -68,7 +68,7 @@ func (d *Decoder) refreshMapping() error {
 
 	err = scanner.Err()
 	if err != nil {
-		return fmt.Errorf("error scanning kallsyms from %q: %v", d.path, scanner.Err())
+		return fmt.Errorf("error scanning kallsyms from %q: %w", d.path, scanner.Err())
 	}
 
 	sort.Slice(d.addrs, func(i, j int) bool {

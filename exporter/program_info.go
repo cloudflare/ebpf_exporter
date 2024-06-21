@@ -27,7 +27,7 @@ func extractProgramInfo(prog *libbpfgo.BPFProg) (programInfo, error) {
 
 	file, err := os.Open(name)
 	if err != nil {
-		return info, fmt.Errorf("can't open %s: %v", name, err)
+		return info, fmt.Errorf("can't open %s: %w", name, err)
 	}
 
 	defer file.Close()
@@ -43,24 +43,24 @@ func extractProgramInfo(prog *libbpfgo.BPFProg) (programInfo, error) {
 		case "prog_id:":
 			info.id, err = strconv.Atoi(fields[1])
 			if err != nil {
-				return info, fmt.Errorf("error parsing prog id %q as int: %v", fields[1], err)
+				return info, fmt.Errorf("error parsing prog id %q as int: %w", fields[1], err)
 			}
 		case "run_time_ns:":
 			runTimeNs, err := strconv.Atoi(fields[1])
 			if err != nil {
-				return info, fmt.Errorf("error parsing prog run time duration %q as int: %v", fields[1], err)
+				return info, fmt.Errorf("error parsing prog run time duration %q as int: %w", fields[1], err)
 			}
 			info.runTime = time.Nanosecond * time.Duration(runTimeNs)
 		case "run_cnt:":
 			info.runCount, err = strconv.Atoi(fields[1])
 			if err != nil {
-				return info, fmt.Errorf("error parsing prog run count %q as int: %v", fields[1], err)
+				return info, fmt.Errorf("error parsing prog run count %q as int: %w", fields[1], err)
 			}
 		}
 	}
 
 	if err = scanner.Err(); err != nil {
-		return info, fmt.Errorf("error scanning: %v", err)
+		return info, fmt.Errorf("error scanning: %w", err)
 	}
 
 	return info, nil
@@ -73,7 +73,7 @@ func bpfStatsEnabled() (bool, error) {
 			return false, nil
 		}
 
-		return false, fmt.Errorf("error opening %q: %v", bpfStatsFile, err)
+		return false, fmt.Errorf("error opening %q: %w", bpfStatsFile, err)
 	}
 
 	defer f.Close()
@@ -82,7 +82,7 @@ func bpfStatsEnabled() (bool, error) {
 
 	_, err = f.Read(buf)
 	if err != nil {
-		return false, fmt.Errorf("error reading %q: %v", bpfStatsFile, err)
+		return false, fmt.Errorf("error reading %q: %w", bpfStatsFile, err)
 	}
 
 	// 0x31 is '1' in ascii

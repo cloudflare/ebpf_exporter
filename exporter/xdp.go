@@ -52,12 +52,12 @@ func attachXDP(prog *C.struct_bpf_program) ([]*C.struct_bpf_link, error) {
 
 	iface, err := net.InterfaceByName(device)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find device %q for program %q: %v", device, name, err)
+		return nil, fmt.Errorf("failed to find device %q for program %q: %w", device, name, err)
 	}
 
 	link, err := C.bpf_program__attach_xdp(prog, C.int(iface.Index))
 	if link == nil {
-		return nil, fmt.Errorf("failed to attach xdp on device %q for program %s: %v", device, name, err)
+		return nil, fmt.Errorf("failed to attach xdp on device %q for program %s: %w", device, name, err)
 	}
 
 	return []*C.struct_bpf_link{link}, nil

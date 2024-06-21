@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -26,8 +27,8 @@ func extractLabels(raw []byte, decoders *decoder.Set, config config.Span) ([]str
 
 	decoded, err := decoders.DecodeLabelsForTracing(raw[:validDataSize], config.Labels)
 	if err != nil {
-		if err != decoder.ErrSkipLabelSet {
-			return nil, fmt.Errorf("failed to decode labels: %v", err)
+		if !errors.Is(err, decoder.ErrSkipLabelSet) {
+			return nil, fmt.Errorf("failed to decode labels: %w", err)
 		}
 
 		return nil, err
@@ -62,12 +63,12 @@ func extractSpan(labels []string, config config.Span) (string, time.Time, time.D
 
 			spanID, err = trace.SpanIDFromHex(value)
 			if err != nil {
-				err = fmt.Errorf("error parsing span_id %q: %v", value, err)
+				err = fmt.Errorf("error parsing span_id %q: %w", value, err)
 			}
 		case "trace_id":
 			traceID, err = trace.TraceIDFromHex(value)
 			if err != nil {
-				err = fmt.Errorf("error parsing trace_id %q: %v", value, err)
+				err = fmt.Errorf("error parsing trace_id %q: %w", value, err)
 			}
 		case "parent_span_id":
 			// parent spanID is optional, it is automatically generated if missing
@@ -77,18 +78,18 @@ func extractSpan(labels []string, config config.Span) (string, time.Time, time.D
 
 			parentID, err = trace.SpanIDFromHex(value)
 			if err != nil {
-				err = fmt.Errorf("error parsing parent_span_id %q: %v", value, err)
+				err = fmt.Errorf("error parsing parent_span_id %q: %w", value, err)
 			}
 		case "span_monotonic_timestamp_ns":
 			parsedUint64, err = strconv.ParseUint(value, 10, 64)
 			if err != nil {
-				err = fmt.Errorf("error decoding integer for span_monotonic_timestamp_ns from %q: %v", value, err)
+				err = fmt.Errorf("error decoding integer for span_monotonic_timestamp_ns from %q: %w", value, err)
 			}
 			timestamp = ktimeToTime(parsedUint64)
 		case "span_duration_ns":
 			parsedUint64, err = strconv.ParseUint(value, 10, 64)
 			if err != nil {
-				err = fmt.Errorf("error decoding integer for span_duration_ns from %q: %v", value, err)
+				err = fmt.Errorf("error decoding integer for span_duration_ns from %q: %w", value, err)
 			}
 			duration = time.Duration(parsedUint64)
 		case "span_name":
