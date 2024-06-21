@@ -9,7 +9,7 @@ import (
 func inode(path string) (int, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return 0, fmt.Errorf("error running stat(%q): %v", path, err)
+		return 0, fmt.Errorf("error running stat(%q): %w", path, err)
 	}
 
 	stat, ok := info.Sys().(*syscall.Stat_t)
