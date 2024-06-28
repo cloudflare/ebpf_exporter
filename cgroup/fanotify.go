@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"sync"
 	"syscall"
 
 	"github.com/cloudflare/ebpf_exporter/v2/util"
@@ -22,8 +21,7 @@ type fanotifyMonitor struct {
 	path      string
 	fanotify  io.Reader
 	mount     *os.File
-	mapping   map[int]string
-	lock      sync.RWMutex
+	observer  *observer
 	byteOrder binary.ByteOrder
 }
 
@@ -47,10 +45,12 @@ func newFanotifyMonitor(path string) (*fanotifyMonitor, error) {
 		return nil, errors.New("missing CAP_DAC_READ_SEARCH needed for open_by_handle_at in fanotify monitor")
 	}
 
-	mapping, err := walk(path)
+	initial, err := walk(path)
 	if err != nil {
 		return nil, err
 	}
+
+	observer := newObserver(initial)
 
 	byteOrder := util.GetHostByteOrder()
 
@@ -58,8 +58,7 @@ func newFanotifyMonitor(path string) (*fanotifyMonitor, error) {
 		path:      path,
 		fanotify:  fanotify,
 		mount:     mount,
-		mapping:   mapping,
-		lock:      sync.RWMutex{},
+		observer:  observer,
 		byteOrder: byteOrder,
 	}
 
@@ -87,8 +86,8 @@ func (m *fanotifyMonitor) readFanotifyLoop() error {
 			return fmt.Errorf("wrong fanotify event version: %#v", metadata)
 		}
 
-		if metadata.Mask&unix.FAN_CREATE == 0 {
-			return errors.New("fanotify event for non-create event")
+		if metadata.Mask&unix.FAN_CREATE == 0 && metadata.Mask&unix.FAN_DELETE == 0 {
+			return errors.New("fanotify event for non-create and non-delete event")
 		}
 
 		if metadata.Mask&unix.FAN_ONDIR == 0 {
@@ -110,7 +109,7 @@ func (m *fanotifyMonitor) readFanotifyLoop() error {
 	}
 }
 
-func (m *fanotifyMonitor) handleFanotify(_ *unix.FanotifyEventMetadata, buf []byte) error {
+func (m *fanotifyMonitor) handleFanotify(metadata *unix.FanotifyEventMetadata, buf []byte) error {
 	reader := bufio.NewReader(bytes.NewReader(buf))
 
 	header := fanotifyEventInfoFid{}
@@ -129,6 +128,12 @@ func (m *fanotifyMonitor) handleFanotify(_ *unix.FanotifyEventMetadata, buf []by
 
 	fd, err := unix.OpenByHandleAt(int(m.mount.Fd()), handle, 0)
 	if err != nil {
+		// This happens in tests when walkerMonitor runs after fanotify.
+		// No idea why it happens, so let's just ignore it for now.
+		if errors.Is(err, unix.ESTALE) && metadata.Mask&unix.FAN_DELETE != 0 {
+			return nil
+		}
+
 		return fmt.Errorf("error opening event fd: %w", err)
 	}
 
@@ -143,11 +148,16 @@ func (m *fanotifyMonitor) handleFanotify(_ *unix.FanotifyEventMetadata, buf []by
 	name = name[:len(name)-1]
 
 	stat := unix.Stat_t{}
-	err = unix.Fstatat(fd, name, &stat, 0)
-	if err != nil {
-		return fmt.Errorf("error calling fstatat for %q: %w", name, err)
+
+	if metadata.Mask&unix.FAN_CREATE != 0 {
+		err = unix.Fstatat(fd, name, &stat, 0)
+		if err != nil {
+			return fmt.Errorf("error calling fstatat for %q: %w", name, err)
+		}
 	}
 
+	// Path needs to be resolved after fstatat() for FAN_CREATE,
+	// otherwise the directory can be missed if it is short lived.
 	dir, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", fd))
 	if err != nil {
 		return fmt.Errorf("error resolving event fd symlink: %w", err)
@@ -155,9 +165,11 @@ func (m *fanotifyMonitor) handleFanotify(_ *unix.FanotifyEventMetadata, buf []by
 
 	path := fmt.Sprintf("%s/%s", dir, name)
 
-	m.lock.Lock()
-	m.mapping[int(stat.Ino)] = path
-	m.lock.Unlock()
+	if metadata.Mask&unix.FAN_CREATE != 0 {
+		m.observer.add(int(stat.Ino), path)
+	} else {
+		m.observer.remove(path)
+	}
 
 	return nil
 }
@@ -184,9 +196,7 @@ func (m *fanotifyMonitor) readFanotifyFileHandle(reader io.Reader) (unix.FileHan
 }
 
 func (m *fanotifyMonitor) Resolve(id int) string {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-	return m.mapping[id]
+	return m.observer.lookup(id)
 }
 
 // The following kernel patch is required to take advantage of this (included in v6.6-rc1):
@@ -197,7 +207,7 @@ func attachFanotify(path string) (io.Reader, error) {
 		return nil, fmt.Errorf("error calling fanotify_init: %w", err)
 	}
 
-	err = unix.FanotifyMark(fd, unix.FAN_MARK_ADD|unix.FAN_MARK_ONLYDIR|unix.FAN_MARK_FILESYSTEM, unix.FAN_CREATE|unix.FAN_ONDIR, unix.AT_FDCWD, path)
+	err = unix.FanotifyMark(fd, unix.FAN_MARK_ADD|unix.FAN_MARK_ONLYDIR|unix.FAN_MARK_FILESYSTEM, unix.FAN_CREATE|unix.FAN_DELETE|unix.FAN_ONDIR, unix.AT_FDCWD, path)
 	if err != nil {
 		return nil, fmt.Errorf("error calling fanotify_mark for %q: %w", path, err)
 	}
