@@ -35,14 +35,14 @@ func newObserver(initial map[int]string) *observer {
 	go func() {
 		for {
 			time.Sleep(gcInterval)
-			observer.gc()
+			observer.gc(false)
 		}
 	}()
 
 	return &observer
 }
 
-func (o *observer) gc() {
+func (o *observer) gc(force bool) {
 	o.lock.Lock()
 	defer o.lock.Unlock()
 
@@ -55,7 +55,7 @@ func (o *observer) gc() {
 			continue
 		}
 
-		if now.Sub(r.dead) > gcTTL {
+		if now.Sub(r.dead) > gcTTL || force {
 			remove = append(remove, inode)
 		}
 	}
@@ -74,6 +74,11 @@ func (o *observer) add(inode int, path string) {
 	r := &resolved{
 		dead: time.Time{},
 		path: path,
+	}
+
+	existing, ok := o.inodeToPath[inode]
+	if ok {
+		delete(o.pathToInode, existing.path)
 	}
 
 	o.inodeToPath[inode] = r
