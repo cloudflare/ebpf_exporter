@@ -8,7 +8,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/elastic/go-perf v0.0.0-20191212140718-9c656876f595
 	github.com/iovisor/gobpf v0.2.0
-	github.com/jaypipes/pcidb v1.0.0
+	github.com/jaypipes/pcidb v1.0.1
 	github.com/mdlayher/sdnotify v1.0.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/common v0.55.0
