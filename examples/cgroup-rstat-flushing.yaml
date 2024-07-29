@@ -1,0 +1,9 @@
+metrics:
+  counters:
+    - name: cgroup_rstat_flush_total
+      help: Total number of times cgroup rstat were flushed (recorded per level)
+      labels:
+        - name: level
+          size: 4
+          decoders:
+            - name: uint
