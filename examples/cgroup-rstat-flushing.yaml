@@ -7,7 +7,6 @@ metrics:
           size: 4
           decoders:
             - name: uint
-  counters:
     - name: cgroup_rstat_locked_state
       help: Total number of times rstat lock was obtainted and contended state
       labels:
@@ -15,7 +14,6 @@ metrics:
           size: 4
           decoders: # contended boolean converted to 0 and 1
             - name: uint
-  counters:
     - name: cgroup_rstat_locked_yield
       help: Number of times rstat lock was obtainted again after yield and contended state
       labels:
