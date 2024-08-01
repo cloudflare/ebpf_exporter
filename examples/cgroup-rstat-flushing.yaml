@@ -7,7 +7,7 @@ metrics:
           size: 4
           decoders:
             - name: uint
-    - name: cgroup_rstat_locked_state
+    - name: cgroup_rstat_locked_total
       help: Total number of times rstat lock was obtainted and contended state
       labels:
         - name: contended

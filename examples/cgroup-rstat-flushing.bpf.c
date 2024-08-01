@@ -30,7 +30,7 @@ struct {
 	__uint(max_entries, 2); /* contended state used as key */
 	__type(key, u32);
 	__type(value, u64);
-} cgroup_rstat_locked_state SEC(".maps");
+} cgroup_rstat_locked_total SEC(".maps");
 
 /* Counter for obtaining lock again after yield (and contended state).
  *
@@ -75,7 +75,7 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 	u32 key = contended;
 	u64 *cnt;
 
-	read_array_ptr(&cgroup_rstat_locked_state, &key, cnt);
+	read_array_ptr(&cgroup_rstat_locked_total, &key, cnt);
 	(*cnt)++;
 
 	if (cpu >= 0) {
