@@ -7,25 +7,12 @@ metrics:
           size: 4
           decoders:
             - name: uint
-# spans: // would work, but it seems related to ringbuf
   counters:
-    - name: cgroup_rstat_locked_total
-      help: Total number of times cgroup rstat lock was obtained
+    - name: cgroup_rstat_locked_state
+      help: Number of times rstat lock was obtainted and contended state
       labels:
-        - name: normal
-          size: 8
-          decoders:
-            - name: uint
-        - name: normal_contended
-          size: 8
-          decoders:
-            - name: uint
-        - name: yield
-          size: 8
-          decoders:
-            - name: uint
-        - name: yield_contended
-          size: 8
-          decoders:
+        - name: contended
+          size: 4
+          decoders: # contended boolean converted to 0 and 1
             - name: uint
 

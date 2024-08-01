@@ -20,33 +20,13 @@ struct {
 	__type(value, u64);
 } cgroup_rstat_flush_total SEC(".maps");
 
-//level
-// - type: normal or yield
-//   - two counters: based on contended state
-struct lock_cnt {
-#define LOCK_NOT_CONTENDED	0
-#define LOCK_CONTENDED		1
-	u64 state[2]; /* contended used as index */
-};
-
-struct lock_type_cnt {
-	struct lock_cnt normal;
-	struct lock_cnt yield;
-};
-
+/* Total counter for obtaining lock together with contended state */
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, MAX_CGRP_LEVELS + 1); /* One lock counter for each level */
+	__uint(max_entries, 2); /* contended state used as key */
 	__type(key, u32);
-	__type(value, struct lock_type_cnt);
-} cgroup_rstat_locked SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, 1); /* Total lock counters for all levels */
-	__type(key, u32);
-	__type(value, struct lock_type_cnt);
-} cgroup_rstat_locked_total SEC(".maps");
+	__type(value, u64);
+} cgroup_rstat_locked_state SEC(".maps");
 
 /** Measurement#1: lock rates
  *  =========================
@@ -67,22 +47,11 @@ struct {
 SEC("tp_btf/cgroup_rstat_locked")
 int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 {
-	// "type" : normal vs yield
-	// "contended": true vs false
-	// do we include level
+	u32 key = contended;
+	u64 *cnt;
 
-	struct lock_type_cnt *locked_cnt;
-
-	u64 level_key = 0; //cgrp->level;
-
-	//read_array_ptr(&cgroup_rstat_locked, &level_key, locked_cnt);
-	read_array_ptr(&cgroup_rstat_locked_total, &level_key, locked_cnt);
-
-	if (cpu == -1) {
-		locked_cnt->normal.state[contended]++;
-	} else {
-		locked_cnt->yield.state[contended]++;
-	}
+	read_array_ptr(&cgroup_rstat_locked_state, &key, cnt);
+	(*cnt)++;
 
 	return 0;
 }
