@@ -11,3 +11,7 @@ updates:
         applies-to: version-updates
         patterns:
           - go.opentelemetry.io/*
+      golang-x:
+        applies-to: version-updates
+        patterns:
+          - golang.org/x/*
