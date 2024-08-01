@@ -21,4 +21,11 @@ metrics:
           size: 4
           decoders: # contended boolean converted to 0 and 1
             - name: uint
+    - name: cgroup_rstat_lock_contended
+      help: Lock contention counters per cgroup level
+      labels:
+        - name: level
+          size: 4
+          decoders:
+            - name: uint
 
