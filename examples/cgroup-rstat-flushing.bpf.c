@@ -20,13 +20,31 @@ struct {
 	__type(value, u64);
 } cgroup_rstat_flush_total SEC(".maps");
 
-/* Total counter for obtaining lock together with contended state */
+/* Total counter for obtaining lock together with contended state
+ *
+ * This counter also contains "yield" case. To determine "normal" lock
+ * case subtract "yield" counter in prometheus query.
+ */
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 2); /* contended state used as key */
 	__type(key, u32);
 	__type(value, u64);
 } cgroup_rstat_locked_state SEC(".maps");
+
+/* Counter for obtaining lock again after yield (and contended state).
+ *
+ * Kernel can yield the rstat lock when walking individial CPU stats.
+ * This leads to "interresting" concurrency issues.  Thus, keep
+ * seperate counter for "yield" cases to help diagnose.
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 2); /* contended state used as key */
+	__type(key, u32);
+	__type(value, u64);
+} cgroup_rstat_locked_yield SEC(".maps");
+
 
 /** Measurement#1: lock rates
  *  =========================
@@ -52,6 +70,11 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 
 	read_array_ptr(&cgroup_rstat_locked_state, &key, cnt);
 	(*cnt)++;
+
+	if (cpu >= 0) {
+		read_array_ptr(&cgroup_rstat_locked_yield, &key, cnt);
+		(*cnt)++;
+	}
 
 	return 0;
 }
