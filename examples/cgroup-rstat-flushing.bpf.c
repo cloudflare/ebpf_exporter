@@ -4,7 +4,7 @@
  * Loosely based on bpftrace script cgroup_rstat_tracepoint.bt
  *  - https://github.com/xdp-project/xdp-project/blob/master/areas/latency/cgroup_rstat_tracepoint.bt
  *
- *
+ * Depends on tracepoints added in kernel v6.10
  */
 
 #include <vmlinux.h>
@@ -20,6 +20,33 @@ struct {
 	__type(value, u64);
 } cgroup_rstat_flush_total SEC(".maps");
 
+//level
+// - type: normal or yield
+//   - two counters: based on contended state
+struct lock_cnt {
+#define LOCK_NOT_CONTENDED	0
+#define LOCK_CONTENDED		1
+	u64 state[2]; /* contended used as index */
+};
+
+struct lock_type_cnt {
+	struct lock_cnt normal;
+	struct lock_cnt yield;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, MAX_CGRP_LEVELS + 1); /* One lock counter for each level */
+	__type(key, u32);
+	__type(value, struct lock_type_cnt);
+} cgroup_rstat_locked SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1); /* Total lock counters for all levels */
+	__type(key, u32);
+	__type(value, struct lock_type_cnt);
+} cgroup_rstat_locked_total SEC(".maps");
 
 /** Measurement#1: lock rates
  *  =========================
@@ -36,13 +63,30 @@ struct {
  Q: will lock "type=yield" be a good idea?
 
 */
-/* Depends on tracepoints added in kernel v6.10
-SEC("tp_btf/cgroup_rstat_locked")
-void BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
-{
 
+SEC("tp_btf/cgroup_rstat_locked")
+int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
+{
+	// "type" : normal vs yield
+	// "contended": true vs false
+	// do we include level
+
+	struct lock_type_cnt *locked_cnt;
+
+	u64 level_key = 0; //cgrp->level;
+
+	//read_array_ptr(&cgroup_rstat_locked, &level_key, locked_cnt);
+	read_array_ptr(&cgroup_rstat_locked_total, &level_key, locked_cnt);
+
+	if (cpu == -1) {
+		locked_cnt->normal.state[contended]++;
+	} else {
+		locked_cnt->yield.state[contended]++;
+	}
+
+	return 0;
 }
-*/
+
 
 /** Measurement#2: latency/delay caused by flush
  *  ============================================
