@@ -83,8 +83,8 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 		(*cnt)++;
 	}
 
-	/* What cgrp level is interesting, but I didn't manage to encode it in
-	 * above counters.  As contended case is the most interesting, have
+	/* What cgroup level is interesting, but I didn't manage to encode it
+	 * in above counters.  As contended case is the most interesting, have
 	 * level counter for contended.
 	 */
 	if (contended) {
