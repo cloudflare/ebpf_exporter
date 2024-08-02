@@ -73,15 +73,11 @@ SEC("tp_btf/cgroup_rstat_locked")
 int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 {
 	u32 key = contended;
-	u64 *cnt;
 
-	read_array_ptr(&cgroup_rstat_locked_total, &key, cnt);
-	(*cnt)++;
+	increment_map_nosync(&cgroup_rstat_locked_total, &key, 1);
 
-	if (cpu >= 0) {
-		read_array_ptr(&cgroup_rstat_locked_yield, &key, cnt);
-		(*cnt)++;
-	}
+	if (cpu >= 0)
+		increment_map_nosync(&cgroup_rstat_locked_yield, &key, 1);
 
 	/* What cgroup level is interesting, but I didn't manage to encode it
 	 * in above counters.  As contended case is the most interesting, have
@@ -93,8 +89,7 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 		if (level > MAX_CGROUP_LEVELS)
 			level = MAX_CGROUP_LEVELS;
 
-		read_array_ptr(&cgroup_rstat_lock_contended, &level, cnt);
-		(*cnt)++;
+		increment_map_nosync(&cgroup_rstat_lock_contended, &level, 1);
 	}
 
 	return 0;
