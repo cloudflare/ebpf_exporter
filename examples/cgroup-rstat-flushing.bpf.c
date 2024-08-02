@@ -126,7 +126,7 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 SEC("fentry/cgroup_rstat_flush_locked")
 int BPF_PROG(cgroup_rstat_flush_locked, struct cgroup *cgrp)
 {
-	u64 level_key = cgrp->level;
+	u32 level_key = cgrp->level;
 
 	if (level_key > MAX_CGRP_LEVELS)
 		level_key = MAX_CGRP_LEVELS;
