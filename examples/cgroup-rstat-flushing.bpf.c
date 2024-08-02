@@ -11,11 +11,11 @@
 #include <bpf/bpf_tracing.h>
 #include "maps.bpf.h"
 
-#define MAX_CGRP_LEVELS	5
+#define MAX_CGROUP_LEVELS	5
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, MAX_CGRP_LEVELS + 1);
+	__uint(max_entries, MAX_CGROUP_LEVELS + 1);
 	__type(key, u32);
 	__type(value, u64);
 } cgroup_rstat_flush_total SEC(".maps");
@@ -48,7 +48,7 @@ struct {
 /* Counter for lock contended case, recorded per cgroup level */
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, MAX_CGRP_LEVELS + 1);
+	__uint(max_entries, MAX_CGROUP_LEVELS + 1);
 	__type(key, u32);
 	__type(value, u64);
 } cgroup_rstat_lock_contended SEC(".maps");
@@ -90,8 +90,8 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 	if (contended) {
 		u32 level = cgrp->level;
 
-		if (level > MAX_CGRP_LEVELS)
-			level = MAX_CGRP_LEVELS;
+		if (level > MAX_CGROUP_LEVELS)
+			level = MAX_CGROUP_LEVELS;
 
 		read_array_ptr(&cgroup_rstat_lock_contended, &level, cnt);
 		(*cnt)++;
@@ -128,8 +128,8 @@ int BPF_PROG(cgroup_rstat_flush_locked, struct cgroup *cgrp)
 {
 	u32 level_key = cgrp->level;
 
-	if (level_key > MAX_CGRP_LEVELS)
-		level_key = MAX_CGRP_LEVELS;
+	if (level_key > MAX_CGROUP_LEVELS)
+		level_key = MAX_CGROUP_LEVELS;
 
 	increment_map_nosync(&cgroup_rstat_flush_total, &level_key, 1);
 
