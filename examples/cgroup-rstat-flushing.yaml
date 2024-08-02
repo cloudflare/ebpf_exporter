@@ -28,4 +28,3 @@ metrics:
           size: 4
           decoders:
             - name: uint
-
