@@ -20,15 +20,23 @@ struct {
 	__type(value, u64);
 } cgroup_rstat_flush_total SEC(".maps");
 
+/* Complex key for encoding lock properties */
+struct lock_key_t {
+	u8 contended;
+	u8 level;
+};
+#define MAX_LOCK_KEY_ENTRIES	64
+
 /* Total counter for obtaining lock together with contended state
  *
  * This counter also contains "yield" case. To determine "normal" lock
  * case subtract "yield" counter in prometheus query.
  */
 struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, 2); /* contended state used as key */
-	__type(key, u32);
+	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+	__uint(max_entries, MAX_LOCK_KEY_ENTRIES);
+	__type(key, struct lock_key_t);
+	//__type(key, u16);
 	__type(value, u64);
 } cgroup_rstat_locked_total SEC(".maps");
 
@@ -72,10 +80,18 @@ struct {
 SEC("tp_btf/cgroup_rstat_locked")
 int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 {
-	u32 key = contended;
+	struct lock_key_t lock_key = { 0 };
+	u32 level = cgrp->level;
+	u32 key;
 
-	increment_map_nosync(&cgroup_rstat_locked_total, &key, 1);
+	if (level > MAX_CGROUP_LEVELS)
+		level = MAX_CGROUP_LEVELS;
 
+	lock_key.contended = contended;
+	lock_key.level = (level & 0xF);
+	increment_map_nosync(&cgroup_rstat_locked_total, &lock_key, 1);
+
+	key = contended;
 	if (cpu >= 0)
 		increment_map_nosync(&cgroup_rstat_locked_yield, &key, 1);
 
@@ -84,12 +100,9 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 	 * level counter for contended.
 	 */
 	if (contended) {
-		u32 level = cgrp->level;
+		u32 lvl = cgrp->level;
 
-		if (level > MAX_CGROUP_LEVELS)
-			level = MAX_CGROUP_LEVELS;
-
-		increment_map_nosync(&cgroup_rstat_lock_contended, &level, 1);
+		increment_map_nosync(&cgroup_rstat_lock_contended, &lvl, 1);
 	}
 
 	return 0;
