@@ -59,10 +59,7 @@ struct {
  will not capture spikes. Especially given Prometheus capture intervals only
  happens every 53 seconds.
 
- Q: will lock "type=yield" be a good idea?
-
 */
-
 SEC("tp_btf/cgroup_rstat_locked")
 int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 {
