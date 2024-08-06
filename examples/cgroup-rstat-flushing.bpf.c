@@ -20,6 +20,28 @@ struct {
 	__type(value, u64);
 } cgroup_rstat_flush_total SEC(".maps");
 
+// 21 buckets for latency, max range is 1.0s .. 2.0s
+#define MAX_LATENCY_SLOT 21
+
+struct hist_key_t {
+    u32 bucket;
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __uint(max_entries, MAX_LATENCY_SLOT + 2);
+    __type(key, struct hist_key_t);
+    __type(value, u64);
+} cgroup_rstat_lock_wait_seconds SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 1024 * 128);
+    __type(key, u64);
+    __type(value, u64);
+} start_wait SEC(".maps");
+
+
 /* Complex key for encoding lock properties */
 struct lock_key_t {
 	u8  contended;
@@ -63,8 +85,11 @@ struct {
 SEC("tp_btf/cgroup_rstat_locked")
 int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 {
+	u64 now = bpf_ktime_get_ns();
+	u64 pid = bpf_get_current_pid_tgid();
 	struct lock_key_t lock_key = { 0 };
 	u32 level = cgrp->level;
+	u64 delta_usec;
 
 	if (level > MAX_CGROUP_LEVELS)
 		level = MAX_CGROUP_LEVELS;
@@ -76,6 +101,24 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 	lock_key.level = (level & 0xFF);
 
 	increment_map_nosync(&cgroup_rstat_locked_total, &lock_key, 1);
+
+	/* Lock contended event happened prior to obtaining this lock.
+	 * Get back start "wait" timestamp that was recorded.
+	 */
+	if (contended) {
+		u64 *start_wait_ts;
+		struct hist_key_t key;
+
+		read_array_ptr(&start_wait, &pid, start_wait_ts);
+		// TODO: validate LRU lookup success
+		delta_usec = (now - *start_wait_ts) / 1000;
+
+		increment_exp2_histogram_nosync(&cgroup_rstat_lock_wait_seconds,
+						key, delta_usec, MAX_LATENCY_SLOT);
+		// Should we reset timestamp?
+		*start_wait_ts = 0;
+	}
+
 	return 0;
 }
 
@@ -85,9 +128,21 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
  Measure both time waiting for the lock, and time spend holding the lock.
 
  This should be a histogram (for later latency heatmap).
-
  */
 
+SEC("tp_btf/cgroup_rstat_lock_contended")
+int BPF_PROG(rstat_lock_contended, struct cgroup *cgrp, int cpu, bool contended)
+{
+    u64 ts = bpf_ktime_get_ns();
+    u64 pid = bpf_get_current_pid_tgid();
+
+    /* TODO: Do more validation here.
+     * In patchset V8+V9, two contended events can happen due to races.
+     * Could add code that handles this and does some validation.
+     */
+    bpf_map_update_elem(&start_wait, &pid, &ts, BPF_ANY);
+    return 0;
+}
 
 /** Measurement#3: flush rate
  *  =========================
