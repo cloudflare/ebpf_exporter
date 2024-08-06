@@ -41,6 +41,19 @@ struct {
     __type(value, u64);
 } start_wait SEC(".maps");
 
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __uint(max_entries, MAX_LATENCY_SLOT + 2);
+    __type(key, struct hist_key_t);
+    __type(value, u64);
+} cgroup_rstat_lock_hold_seconds SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 1024 * 128);
+    __type(key, u64);
+    __type(value, u64);
+} start_hold SEC(".maps");
 
 /* Complex key for encoding lock properties */
 struct lock_key_t {
@@ -89,7 +102,6 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 	u64 pid = bpf_get_current_pid_tgid();
 	struct lock_key_t lock_key = { 0 };
 	u32 level = cgrp->level;
-	u64 delta_usec;
 
 	if (level > MAX_CGROUP_LEVELS)
 		level = MAX_CGROUP_LEVELS;
@@ -102,12 +114,17 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 
 	increment_map_nosync(&cgroup_rstat_locked_total, &lock_key, 1);
 
+	/* Lock hold time start */
+	bpf_map_update_elem(&start_hold, &pid, &now, BPF_ANY);
+	// TODO: Should we ignore yield and measure flush time instead?
+
 	/* Lock contended event happened prior to obtaining this lock.
 	 * Get back start "wait" timestamp that was recorded.
 	 */
 	if (contended) {
 		u64 *start_wait_ts;
 		struct hist_key_t key;
+		u64 delta_usec;
 
 		read_array_ptr(&start_wait, &pid, start_wait_ts);
 		// TODO: validate LRU lookup success
@@ -122,6 +139,26 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 	return 0;
 }
 
+SEC("tp_btf/cgroup_rstat_unlock")
+int BPF_PROG(rstat_unlock, struct cgroup *cgrp, int cpu, bool contended)
+{
+    u64 now = bpf_ktime_get_ns();
+    u64 pid = bpf_get_current_pid_tgid();
+    u64 *start_hold_ts;
+    struct hist_key_t key;
+    u64 delta_usec;
+
+    /* Lock hold time */
+    read_array_ptr(&start_hold, &pid, start_hold_ts);
+    // TODO: validate LRU lookup success
+    delta_usec = (now - *start_hold_ts) / 1000;
+
+    increment_exp2_histogram_nosync(&cgroup_rstat_lock_hold_seconds, key, delta_usec, MAX_LATENCY_SLOT);
+    // Should we reset timestamp?
+    *start_hold_ts = 0;
+
+    return 0;
+}
 
 /** Measurement#2: latency/delay caused by flush
  *  ============================================
