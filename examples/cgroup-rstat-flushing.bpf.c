@@ -20,8 +20,8 @@ struct {
 	__type(value, u64);
 } cgroup_rstat_flush_total SEC(".maps");
 
-// 21 buckets for latency, max range is 1.0s .. 2.0s
-#define MAX_LATENCY_SLOT 21
+// 24 buckets for latency, max range is 0.83s .. 1.67s
+#define MAX_LATENCY_SLOT 24
 
 struct hist_key_t {
     u32 bucket;
@@ -29,7 +29,7 @@ struct hist_key_t {
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __uint(max_entries, MAX_LATENCY_SLOT + 2);
+    __uint(max_entries, MAX_LATENCY_SLOT + 1);
     __type(key, struct hist_key_t);
     __type(value, u64);
 } cgroup_rstat_lock_wait_seconds SEC(".maps");
@@ -43,7 +43,7 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __uint(max_entries, MAX_LATENCY_SLOT + 2);
+    __uint(max_entries, MAX_LATENCY_SLOT + 1);
     __type(key, struct hist_key_t);
     __type(value, u64);
 } cgroup_rstat_lock_hold_seconds SEC(".maps");
@@ -128,7 +128,7 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 
 		read_array_ptr(&start_wait, &pid, start_wait_ts);
 		// TODO: validate LRU lookup success
-		delta_usec = (now - *start_wait_ts) / 1000;
+		delta_usec = (now - *start_wait_ts) / 100; /* 0.1 usec */
 
 		increment_exp2_histogram_nosync(&cgroup_rstat_lock_wait_seconds,
 						key, delta_usec, MAX_LATENCY_SLOT);
@@ -151,7 +151,7 @@ int BPF_PROG(rstat_unlock, struct cgroup *cgrp, int cpu, bool contended)
     /* Lock hold time */
     read_array_ptr(&start_hold, &pid, start_hold_ts);
     // TODO: validate LRU lookup success
-    delta_usec = (now - *start_hold_ts) / 1000;
+    delta_usec = (now - *start_hold_ts) / 100; /* 0.1 usec */
 
     increment_exp2_histogram_nosync(&cgroup_rstat_lock_hold_seconds, key, delta_usec, MAX_LATENCY_SLOT);
     // Should we reset timestamp?

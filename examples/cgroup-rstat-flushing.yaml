@@ -27,8 +27,8 @@ metrics:
       help: Latency histogram for lock contention associated wait time to obtain lock
       bucket_type: exp2
       bucket_min: 0
-      bucket_max: 21
-      bucket_multiplier: 0.000001 # microseconds to seconds
+      bucket_max: 24
+      bucket_multiplier: 0.0000001 # 0.1 microseconds to seconds
       labels:
         - name: bucket
           size: 4
@@ -38,8 +38,8 @@ metrics:
       help: Latency histogram for lock hold time
       bucket_type: exp2
       bucket_min: 0
-      bucket_max: 21
-      bucket_multiplier: 0.000001 # microseconds to seconds
+      bucket_max: 24
+      bucket_multiplier: 0.0000001 # 0.1 microseconds to seconds
       labels:
         - name: bucket
           size: 4
