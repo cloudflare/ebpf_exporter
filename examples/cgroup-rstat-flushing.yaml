@@ -8,27 +8,17 @@ metrics:
           decoders:
             - name: uint
     - name: cgroup_rstat_locked_total
-      help: Times rstat lock was obtainted plus contended state and cgroup level
+      help: Times rstat lock was obtainted with state for cgroup level, contended and yield
       labels:
         - name: contended
           size: 1
           decoders: # contended boolean converted to 0 and 1
             - name: uint
-        - name: level
+        - name: yield
           size: 1
-          decoders:
+          decoders: # was this a yielded lock case
             - name: uint
-    - name: cgroup_rstat_locked_yield
-      help: Number of times rstat lock was obtainted again after yield and contended state
-      labels:
-        - name: contended
-          size: 4
-          decoders: # contended boolean converted to 0 and 1
-            - name: uint
-    - name: cgroup_rstat_lock_contended
-      help: Lock contention counters per cgroup level
-      labels:
         - name: level
-          size: 4
+          size: 2
           decoders:
             - name: uint

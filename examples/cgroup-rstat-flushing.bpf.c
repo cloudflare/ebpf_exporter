@@ -22,44 +22,30 @@ struct {
 
 /* Complex key for encoding lock properties */
 struct lock_key_t {
-	u8 contended;
-	u8 level;
+	u8  contended;
+	u8  yield;
+	u16 level;
 };
-#define MAX_LOCK_KEY_ENTRIES	64
+#define MAX_LOCK_KEY_ENTRIES	128
 
-/* Total counter for obtaining lock together with contended state
+/* Total counter for obtaining lock together with state (prometheus labels)
  *
- * This counter also contains "yield" case. To determine "normal" lock
- * case subtract "yield" counter in prometheus query.
+ * State for cgroup level, contended and yield case.
+ *
+ * The problematic/interesting case is when the lock was contended (prior to
+ * obtaining the lock).  This "contended" label is key in analyzing locking
+ * issues.
+ *
+ * Kernel can yield the rstat lock when walking individial CPU stats.  This
+ * leads to "interresting" concurrency issues.  Thus, having a label "yield"
+ * can help diagnose.
  */
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
 	__uint(max_entries, MAX_LOCK_KEY_ENTRIES);
 	__type(key, struct lock_key_t);
-	//__type(key, u16);
 	__type(value, u64);
 } cgroup_rstat_locked_total SEC(".maps");
-
-/* Counter for obtaining lock again after yield (and contended state).
- *
- * Kernel can yield the rstat lock when walking individial CPU stats.
- * This leads to "interresting" concurrency issues.  Thus, keep
- * seperate counter for "yield" cases to help diagnose.
- */
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, 2); /* contended state used as key */
-	__type(key, u32);
-	__type(value, u64);
-} cgroup_rstat_locked_yield SEC(".maps");
-
-/* Counter for lock contended case, recorded per cgroup level */
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, MAX_CGROUP_LEVELS + 1);
-	__type(key, u32);
-	__type(value, u64);
-} cgroup_rstat_lock_contended SEC(".maps");
 
 /** Measurement#1: lock rates
  *  =========================
@@ -82,29 +68,17 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 {
 	struct lock_key_t lock_key = { 0 };
 	u32 level = cgrp->level;
-	u32 key;
 
 	if (level > MAX_CGROUP_LEVELS)
 		level = MAX_CGROUP_LEVELS;
 
-	lock_key.contended = contended;
-	lock_key.level = (level & 0xF);
-	increment_map_nosync(&cgroup_rstat_locked_total, &lock_key, 1);
-
-	key = contended;
 	if (cpu >= 0)
-		increment_map_nosync(&cgroup_rstat_locked_yield, &key, 1);
+		lock_key.yield = 1;
 
-	/* What cgroup level is interesting, but I didn't manage to encode it
-	 * in above counters.  As contended case is the most interesting, have
-	 * level counter for contended.
-	 */
-	if (contended) {
-		u32 lvl = cgrp->level;
+	lock_key.contended = contended;
+	lock_key.level = (level & 0xFF);
 
-		increment_map_nosync(&cgroup_rstat_lock_contended, &lvl, 1);
-	}
-
+	increment_map_nosync(&cgroup_rstat_locked_total, &lock_key, 1);
 	return 0;
 }
 
