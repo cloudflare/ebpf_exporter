@@ -11,13 +11,13 @@
 #include <bpf/bpf_tracing.h>
 #include "maps.bpf.h"
 
-#define MAX_CGROUP_LEVELS	5
+#define MAX_CGROUP_LEVELS 5
 
 struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, MAX_CGROUP_LEVELS + 1);
-	__type(key, u32);
-	__type(value, u64);
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __uint(max_entries, MAX_CGROUP_LEVELS + 1);
+    __type(key, u32);
+    __type(value, u64);
 } cgroup_rstat_flush_total SEC(".maps");
 
 // 24 buckets for latency, max range is 0.83s .. 1.67s
@@ -57,11 +57,11 @@ struct {
 
 /* Complex key for encoding lock properties */
 struct lock_key_t {
-	u8  contended;
-	u8  yield;
-	u16 level;
+    u8 contended;
+    u8 yield;
+    u16 level;
 };
-#define MAX_LOCK_KEY_ENTRIES	128
+#define MAX_LOCK_KEY_ENTRIES 128
 
 /* Total counter for obtaining lock together with state (prometheus labels)
  *
@@ -76,10 +76,10 @@ struct lock_key_t {
  * can help diagnose.
  */
 struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
-	__uint(max_entries, MAX_LOCK_KEY_ENTRIES);
-	__type(key, struct lock_key_t);
-	__type(value, u64);
+    __uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+    __uint(max_entries, MAX_LOCK_KEY_ENTRIES);
+    __type(key, struct lock_key_t);
+    __type(value, u64);
 } cgroup_rstat_locked_total SEC(".maps");
 
 /** Measurement#1: lock rates
@@ -98,45 +98,44 @@ struct {
 SEC("tp_btf/cgroup_rstat_locked")
 int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 {
-	u64 now = bpf_ktime_get_ns();
-	u64 pid = bpf_get_current_pid_tgid();
-	struct lock_key_t lock_key = { 0 };
-	u32 level = cgrp->level;
+    u64 now = bpf_ktime_get_ns();
+    u64 pid = bpf_get_current_pid_tgid();
+    struct lock_key_t lock_key = { 0 };
+    u32 level = cgrp->level;
 
-	if (level > MAX_CGROUP_LEVELS)
-		level = MAX_CGROUP_LEVELS;
+    if (level > MAX_CGROUP_LEVELS)
+        level = MAX_CGROUP_LEVELS;
 
-	if (cpu >= 0)
-		lock_key.yield = 1;
+    if (cpu >= 0)
+        lock_key.yield = 1;
 
-	lock_key.contended = contended;
-	lock_key.level = (level & 0xFF);
+    lock_key.contended = contended;
+    lock_key.level = (level & 0xFF);
 
-	increment_map_nosync(&cgroup_rstat_locked_total, &lock_key, 1);
+    increment_map_nosync(&cgroup_rstat_locked_total, &lock_key, 1);
 
-	/* Lock hold time start */
-	bpf_map_update_elem(&start_hold, &pid, &now, BPF_ANY);
-	// TODO: Should we ignore yield and measure flush time instead?
+    /* Lock hold time start */
+    bpf_map_update_elem(&start_hold, &pid, &now, BPF_ANY);
+    // TODO: Should we ignore yield and measure flush time instead?
 
-	/* Lock contended event happened prior to obtaining this lock.
-	 * Get back start "wait" timestamp that was recorded.
-	 */
-	if (contended) {
-		u64 *start_wait_ts;
-		struct hist_key_t key;
-		u64 delta;
+    /* Lock contended event happened prior to obtaining this lock.
+     * Get back start "wait" timestamp that was recorded.
+     */
+    if (contended) {
+        u64 *start_wait_ts;
+        struct hist_key_t key;
+        u64 delta;
 
-		read_array_ptr(&start_wait, &pid, start_wait_ts);
-		// TODO: validate LRU lookup success
-		delta = (now - *start_wait_ts) / 100; /* 0.1 usec */
+        read_array_ptr(&start_wait, &pid, start_wait_ts);
+        // TODO: validate LRU lookup success
+        delta = (now - *start_wait_ts) / 100; /* 0.1 usec */
 
-		increment_exp2_histogram_nosync(&cgroup_rstat_lock_wait_seconds,
-						key, delta, MAX_LATENCY_SLOT);
-		// Should we reset timestamp?
-		*start_wait_ts = 0;
-	}
+        increment_exp2_histogram_nosync(&cgroup_rstat_lock_wait_seconds, key, delta, MAX_LATENCY_SLOT);
+        // Should we reset timestamp?
+        *start_wait_ts = 0;
+    }
 
-	return 0;
+    return 0;
 }
 
 SEC("tp_btf/cgroup_rstat_unlock")
@@ -197,14 +196,14 @@ int BPF_PROG(rstat_lock_contended, struct cgroup *cgrp, int cpu, bool contended)
 SEC("fentry/cgroup_rstat_flush_locked")
 int BPF_PROG(cgroup_rstat_flush_locked, struct cgroup *cgrp)
 {
-	u32 level_key = cgrp->level;
+    u32 level_key = cgrp->level;
 
-	if (level_key > MAX_CGROUP_LEVELS)
-		level_key = MAX_CGROUP_LEVELS;
+    if (level_key > MAX_CGROUP_LEVELS)
+        level_key = MAX_CGROUP_LEVELS;
 
-	increment_map_nosync(&cgroup_rstat_flush_total, &level_key, 1);
+    increment_map_nosync(&cgroup_rstat_flush_total, &level_key, 1);
 
-	return 0;
+    return 0;
 }
 
 char LICENSE[] SEC("license") = "GPL";
