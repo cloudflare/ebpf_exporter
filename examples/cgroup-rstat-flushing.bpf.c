@@ -124,14 +124,14 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 	if (contended) {
 		u64 *start_wait_ts;
 		struct hist_key_t key;
-		u64 delta_usec;
+		u64 delta;
 
 		read_array_ptr(&start_wait, &pid, start_wait_ts);
 		// TODO: validate LRU lookup success
-		delta_usec = (now - *start_wait_ts) / 100; /* 0.1 usec */
+		delta = (now - *start_wait_ts) / 100; /* 0.1 usec */
 
 		increment_exp2_histogram_nosync(&cgroup_rstat_lock_wait_seconds,
-						key, delta_usec, MAX_LATENCY_SLOT);
+						key, delta, MAX_LATENCY_SLOT);
 		// Should we reset timestamp?
 		*start_wait_ts = 0;
 	}
@@ -146,14 +146,14 @@ int BPF_PROG(rstat_unlock, struct cgroup *cgrp, int cpu, bool contended)
     u64 pid = bpf_get_current_pid_tgid();
     u64 *start_hold_ts;
     struct hist_key_t key;
-    u64 delta_usec;
+    u64 delta;
 
     /* Lock hold time */
     read_array_ptr(&start_hold, &pid, start_hold_ts);
     // TODO: validate LRU lookup success
-    delta_usec = (now - *start_hold_ts) / 100; /* 0.1 usec */
+    delta = (now - *start_hold_ts) / 100; /* 0.1 usec */
 
-    increment_exp2_histogram_nosync(&cgroup_rstat_lock_hold_seconds, key, delta_usec, MAX_LATENCY_SLOT);
+    increment_exp2_histogram_nosync(&cgroup_rstat_lock_hold_seconds, key, delta, MAX_LATENCY_SLOT);
     // Should we reset timestamp?
     *start_hold_ts = 0;
 
