@@ -45,3 +45,14 @@ metrics:
           size: 4
           decoders:
             - name: uint
+    - name: cgroup_rstat_flush_latency_seconds
+      help: Latency histogram for flush time
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 24
+      bucket_multiplier: 0.0000001 # 0.1 microseconds to seconds
+      labels:
+        - name: bucket
+          size: 4
+          decoders:
+            - name: uint

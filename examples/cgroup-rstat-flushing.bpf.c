@@ -13,6 +13,12 @@
 
 #define MAX_CGROUP_LEVELS 5
 
+/* From: linux/include/linux/cgroup.h */
+static inline u64 cgroup_id(const struct cgroup *cgrp)
+{
+    return cgrp->kn->id;
+}
+
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __uint(max_entries, MAX_CGROUP_LEVELS + 1);
@@ -54,6 +60,25 @@ struct {
     __type(key, u64);
     __type(value, u64);
 } start_hold SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __uint(max_entries, MAX_LATENCY_SLOT + 1);
+    __type(key, struct hist_key_t);
+    __type(value, u64);
+} cgroup_rstat_flush_latency_seconds SEC(".maps");
+
+struct start_time_key_t {
+    u64 pid_tgid;
+    u64 cgrp_id;
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 1024 * 128);
+    __type(key, struct start_time_key_t);
+    __type(value, u64);
+} start_flush SEC(".maps");
 
 /* Complex key for encoding lock properties */
 struct lock_key_t {
@@ -116,7 +141,6 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 
     /* Lock hold time start */
     bpf_map_update_elem(&start_hold, &pid, &now, BPF_ANY);
-    // TODO: Should we ignore yield and measure flush time instead?
 
     /* Lock contended event happened prior to obtaining this lock.
      * Get back start "wait" timestamp that was recorded.
@@ -128,6 +152,7 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 
         read_array_ptr(&start_wait, &pid, start_wait_ts);
         // TODO: validate LRU lookup success
+	/* Lock wait time */
         delta = (now - *start_wait_ts) / 100; /* 0.1 usec */
 
         increment_exp2_histogram_nosync(&cgroup_rstat_lock_wait_seconds, key, delta, MAX_LATENCY_SLOT);
@@ -147,9 +172,9 @@ int BPF_PROG(rstat_unlock, struct cgroup *cgrp, int cpu, bool contended)
     struct hist_key_t key;
     u64 delta;
 
-    /* Lock hold time */
     read_array_ptr(&start_hold, &pid, start_hold_ts);
     // TODO: validate LRU lookup success
+    /* Lock hold time */
     delta = (now - *start_hold_ts) / 100; /* 0.1 usec */
 
     increment_exp2_histogram_nosync(&cgroup_rstat_lock_hold_seconds, key, delta, MAX_LATENCY_SLOT);
@@ -176,6 +201,7 @@ int BPF_PROG(rstat_lock_contended, struct cgroup *cgrp, int cpu, bool contended)
      * In patchset V8+V9, two contended events can happen due to races.
      * Could add code that handles this and does some validation.
      */
+    /* Lock wait time start */
     bpf_map_update_elem(&start_wait, &pid, &ts, BPF_ANY);
     return 0;
 }
@@ -196,6 +222,7 @@ int BPF_PROG(rstat_lock_contended, struct cgroup *cgrp, int cpu, bool contended)
 SEC("fentry/cgroup_rstat_flush_locked")
 int BPF_PROG(cgroup_rstat_flush_locked, struct cgroup *cgrp)
 {
+    u64 now = bpf_ktime_get_ns();
     u32 level_key = cgrp->level;
 
     if (level_key > MAX_CGROUP_LEVELS)
@@ -203,6 +230,35 @@ int BPF_PROG(cgroup_rstat_flush_locked, struct cgroup *cgrp)
 
     increment_map_nosync(&cgroup_rstat_flush_total, &level_key, 1);
 
+    /* Flush time latency start */
+    struct start_time_key_t key_ts;
+    key_ts.pid_tgid = bpf_get_current_pid_tgid();
+    key_ts.cgrp_id = cgroup_id(cgrp);
+    bpf_map_update_elem(&start_flush, &key_ts, &now, BPF_ANY);
+
+    return 0;
+}
+
+SEC("fexit/cgroup_rstat_flush_locked")
+int BPF_PROG(cgroup_rstat_flush_locked_exit, struct cgroup *cgrp)
+{
+    u64 now = bpf_ktime_get_ns();
+    struct start_time_key_t key_ts;
+    u64 *start_flush_ts;
+    u64 delta;
+
+    key_ts.pid_tgid = bpf_get_current_pid_tgid();
+    key_ts.cgrp_id = cgroup_id(cgrp);
+    read_array_ptr(&start_flush, &key_ts, start_flush_ts);
+    // TODO: validate LRU lookup success
+    /* Flush time latency */
+    delta = (now - *start_flush_ts) / 100; /* 0.1 usec */
+    *start_flush_ts = 0;
+
+    struct hist_key_t key;
+    increment_exp2_histogram_nosync(&cgroup_rstat_flush_latency_seconds, key, delta, MAX_LATENCY_SLOT);
+
+    // IDEA: cgroup_rstat_flush_seconds_total with label cgroup_id ?
     return 0;
 }
 
