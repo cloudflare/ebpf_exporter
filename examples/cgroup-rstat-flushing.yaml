@@ -22,6 +22,30 @@ metrics:
           size: 2
           decoders:
             - name: uint
+    - name: cgroup_rstat_flush_seconds_sum
+      help: Sum amount of time spent for flushes per cgroup
+      labels:
+        - name: cgroup
+          size: 8
+          decoders:
+            - name: uint
+            - name: cgroup
+        - name: level
+          size: 4
+          decoders:
+            - name: uint
+    - name: cgroup_rstat_flush_seconds_count
+      help: Number of flush calls related to cgroup_rstat_flush_seconds_sum
+      labels:
+        - name: cgroup
+          size: 8
+          decoders:
+            - name: uint
+            - name: cgroup
+        - name: level
+          size: 4
+          decoders:
+            - name: uint
   histograms:
     - name: cgroup_rstat_lock_wait_seconds
       help: Latency histogram for lock contention associated wait time to obtain lock

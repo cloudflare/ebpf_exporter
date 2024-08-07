@@ -80,6 +80,26 @@ struct {
     __type(value, u64);
 } start_flush SEC(".maps");
 
+
+struct flush_key_t {
+	u64 cgrp_id;
+	u32 level;
+} __attribute__((packed));
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+    __uint(max_entries, 10000);
+    __type(key, struct flush_key_t);
+    __type(value, u64);
+} cgroup_rstat_flush_seconds_sum SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+    __uint(max_entries, 10000);
+    __type(key, struct flush_key_t);
+    __type(value, u64);
+} cgroup_rstat_flush_seconds_count SEC(".maps");
+
 /* Complex key for encoding lock properties */
 struct lock_key_t {
     u8 contended;
@@ -257,8 +277,33 @@ int BPF_PROG(cgroup_rstat_flush_locked_exit, struct cgroup *cgrp)
 
     struct hist_key_t key;
     increment_exp2_histogram_nosync(&cgroup_rstat_flush_latency_seconds, key, delta, MAX_LATENCY_SLOT);
+    /*
+     * ebpf_exporter will also have:
+     *  ebpf_exporter_cgroup_rstat_flush_latency_seconds_sum and
+     *  ebpf_exporter_cgroup_rstat_flush_latency_seconds_count
+     *
+     * Unfortunately _sum isn't getting updated.
+     *
+     * The Prometheus idea behind having _seconds_count and _seconds_sum
+     * =================================================================
+     * The _seconds_count is number of observed flush calls that have been made, so
+     * rate(_seconds_count[1m]) in query returns per-second rate of flushes.
+     *
+     * The _seconds_sum is the sum of the delta values, so rate(flush_seconds_sum[1m])
+     * is the amount of time spent for flushes per second.
+     *
+     * Divide these two expressions to get the average latency over the last minute.
+     * The full expression for average latency would be:
+     *   rate(_seconds_sum[1m]) / rate(_seconds_count[1m])
+     */
 
-    // IDEA: cgroup_rstat_flush_seconds_total with label cgroup_id ?
+    /* Per cgroup record average latency via _seconds_count and _seconds_sum */
+    struct flush_key_t flush_key;
+    flush_key.cgrp_id = cgroup_id(cgrp);
+    flush_key.level = cgrp->level;
+    increment_map_nosync(&cgroup_rstat_flush_seconds_sum, &flush_key, delta);
+    increment_map_nosync(&cgroup_rstat_flush_seconds_count, &flush_key, 1);
+
     return 0;
 }
 
