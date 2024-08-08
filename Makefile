@@ -25,6 +25,8 @@ CLANG_FORMAT_FILES = ${wildcard examples/*.c examples/*.h benchmark/probes/*.c b
 # * cachestat-pre-kernel-5.16 fails to attach in newer kernels (see code)
 # * llcstat requires real hardware to attach perf events, which is not present in ci
 CONFIGS_TO_IGNORE_IN_CHECK := cachestat-pre-kernel-5.16 llcstat
+# * cgroup-rstat-flushing depend on kernel v6.10, which is not yet on CI system
+CONFIGS_TO_IGNORE_IN_CHECK += cgroup-rstat-flushing
 CONFIGS_TO_CHECK := $(filter-out $(CONFIGS_TO_IGNORE_IN_CHECK), ${patsubst examples/%.yaml, %, ${wildcard examples/*.yaml}})
 
 CGO_LDFLAGS_DYNAMIC = -l bpf

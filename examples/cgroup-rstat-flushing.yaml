@@ -1,0 +1,82 @@
+metrics:
+  counters:
+    - name: cgroup_rstat_flush_total
+      help: Total number of times cgroup rstat were flushed (recorded per level)
+      labels:
+        - name: level
+          size: 4
+          decoders:
+            - name: uint
+    - name: cgroup_rstat_locked_total
+      help: Times rstat lock was obtainted with state for cgroup level, contended and yield
+      labels:
+        - name: contended
+          size: 1
+          decoders: # contended boolean converted to 0 and 1
+            - name: uint
+        - name: yield
+          size: 1
+          decoders: # was this a yielded lock case
+            - name: uint
+        - name: level
+          size: 2
+          decoders:
+            - name: uint
+    - name: cgroup_rstat_flush_seconds_sum
+      help: Sum amount of time spent for flushes per cgroup
+      labels:
+        - name: cgroup
+          size: 8
+          decoders:
+            - name: uint
+            - name: cgroup
+        - name: level
+          size: 4
+          decoders:
+            - name: uint
+    - name: cgroup_rstat_flush_seconds_count
+      help: Number of flush calls related to cgroup_rstat_flush_seconds_sum
+      labels:
+        - name: cgroup
+          size: 8
+          decoders:
+            - name: uint
+            - name: cgroup
+        - name: level
+          size: 4
+          decoders:
+            - name: uint
+  histograms:
+    - name: cgroup_rstat_lock_wait_seconds
+      help: Latency histogram for lock contention associated wait time to obtain lock
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 24
+      bucket_multiplier: 0.0000001 # 0.1 microseconds to seconds
+      labels:
+        - name: bucket
+          size: 4
+          decoders:
+            - name: uint
+    - name: cgroup_rstat_lock_hold_seconds
+      help: Latency histogram for lock hold time
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 24
+      bucket_multiplier: 0.0000001 # 0.1 microseconds to seconds
+      labels:
+        - name: bucket
+          size: 4
+          decoders:
+            - name: uint
+    - name: cgroup_rstat_flush_latency_seconds
+      help: Latency histogram for flush time
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 24
+      bucket_multiplier: 0.0000001 # 0.1 microseconds to seconds
+      labels:
+        - name: bucket
+          size: 4
+          decoders:
+            - name: uint
