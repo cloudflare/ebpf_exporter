@@ -80,10 +80,9 @@ struct {
     __type(value, u64);
 } start_flush SEC(".maps");
 
-
 struct flush_key_t {
-	u64 cgrp_id;
-	u32 level;
+    u64 cgrp_id;
+    u32 level;
 } __attribute__((packed));
 
 struct {
@@ -172,7 +171,7 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 
         read_array_ptr(&start_wait, &pid, start_wait_ts);
         // TODO: validate LRU lookup success
-	/* Lock wait time */
+        /* Lock wait time */
         delta = (now - *start_wait_ts) / 100; /* 0.1 usec */
 
         increment_exp2_histogram_nosync(&cgroup_rstat_lock_wait_seconds, key, delta, MAX_LATENCY_SLOT);
