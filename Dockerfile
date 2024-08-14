@@ -10,7 +10,7 @@ RUN make -j $(nproc) -C /build/ebpf_exporter libbpf.a && \
     tar -C /build/ebpf_exporter/libbpf/dest -czf /build/libbpf.tar.gz .
 
 # ebpf_exporter binary
-FROM golang:1.22-bookworm as ebpf_exporter_builder
+FROM golang:1.23-bookworm as ebpf_exporter_builder
 
 RUN apt-get update && \
     apt-get install -y libelf-dev pci.ids
