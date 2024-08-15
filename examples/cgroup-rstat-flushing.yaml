@@ -22,8 +22,8 @@ metrics:
           size: 2
           decoders:
             - name: uint
-    - name: cgroup_rstat_flush_seconds_sum
-      help: Sum amount of time spent for flushes per cgroup
+    - name: cgroup_rstat_flush_nanoseconds_sum
+      help: Sum amount of time (in nanoseconds) spent for flushes per cgroup
       labels:
         - name: cgroup
           size: 8
@@ -34,8 +34,8 @@ metrics:
           size: 4
           decoders:
             - name: uint
-    - name: cgroup_rstat_flush_seconds_count
-      help: Number of flush calls related to cgroup_rstat_flush_seconds_sum
+    - name: cgroup_rstat_flush_nanoseconds_count
+      help: Number of flush calls related to cgroup_rstat_flush_nanoseconds_sum
       labels:
         - name: cgroup
           size: 8

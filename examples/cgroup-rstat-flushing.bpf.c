@@ -90,14 +90,14 @@ struct {
     __uint(max_entries, 10000);
     __type(key, struct flush_key_t);
     __type(value, u64);
-} cgroup_rstat_flush_seconds_sum SEC(".maps");
+} cgroup_rstat_flush_nanoseconds_sum SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_HASH);
     __uint(max_entries, 10000);
     __type(key, struct flush_key_t);
     __type(value, u64);
-} cgroup_rstat_flush_seconds_count SEC(".maps");
+} cgroup_rstat_flush_nanoseconds_count SEC(".maps");
 
 /* Complex key for encoding lock properties */
 struct lock_key_t {
@@ -264,14 +264,15 @@ int BPF_PROG(cgroup_rstat_flush_locked_exit, struct cgroup *cgrp)
     u64 now = bpf_ktime_get_ns();
     struct start_time_key_t key_ts;
     u64 *start_flush_ts;
-    u64 delta;
+    u64 delta, delta_ns;
 
     key_ts.pid_tgid = bpf_get_current_pid_tgid();
     key_ts.cgrp_id = cgroup_id(cgrp);
     read_array_ptr(&start_flush, &key_ts, start_flush_ts);
     // TODO: validate LRU lookup success
     /* Flush time latency */
-    delta = (now - *start_flush_ts) / 100; /* 0.1 usec */
+    delta_ns = now - *start_flush_ts;
+    delta = delta_ns / 100; /* 0.1 usec */
     *start_flush_ts = 0;
 
     struct hist_key_t key;
@@ -296,12 +297,12 @@ int BPF_PROG(cgroup_rstat_flush_locked_exit, struct cgroup *cgrp)
      *   rate(_seconds_sum[1m]) / rate(_seconds_count[1m])
      */
 
-    /* Per cgroup record average latency via _seconds_count and _seconds_sum */
+    /* Per cgroup record average latency via nanoseconds_count and nanoseconds_sum */
     struct flush_key_t flush_key;
     flush_key.cgrp_id = cgroup_id(cgrp);
     flush_key.level = cgrp->level;
-    increment_map_nosync(&cgroup_rstat_flush_seconds_sum, &flush_key, delta);
-    increment_map_nosync(&cgroup_rstat_flush_seconds_count, &flush_key, 1);
+    increment_map_nosync(&cgroup_rstat_flush_nanoseconds_sum, &flush_key, delta_ns);
+    increment_map_nosync(&cgroup_rstat_flush_nanoseconds_count, &flush_key, 1);
 
     return 0;
 }
