@@ -35,7 +35,7 @@ struct hist_key_t {
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __uint(max_entries, MAX_LATENCY_SLOT + 1);
+    __uint(max_entries, MAX_LATENCY_SLOT + 2);
     __type(key, struct hist_key_t);
     __type(value, u64);
 } cgroup_rstat_lock_wait_seconds SEC(".maps");
@@ -49,7 +49,7 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __uint(max_entries, MAX_LATENCY_SLOT + 1);
+    __uint(max_entries, MAX_LATENCY_SLOT + 2);
     __type(key, struct hist_key_t);
     __type(value, u64);
 } cgroup_rstat_lock_hold_seconds SEC(".maps");
@@ -63,7 +63,7 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __uint(max_entries, MAX_LATENCY_SLOT + 1);
+    __uint(max_entries, MAX_LATENCY_SLOT + 2);
     __type(key, struct hist_key_t);
     __type(value, u64);
 } cgroup_rstat_flush_latency_seconds SEC(".maps");
@@ -281,8 +281,6 @@ int BPF_PROG(cgroup_rstat_flush_locked_exit, struct cgroup *cgrp)
      * ebpf_exporter will also have:
      *  ebpf_exporter_cgroup_rstat_flush_latency_seconds_sum and
      *  ebpf_exporter_cgroup_rstat_flush_latency_seconds_count
-     *
-     * Unfortunately _sum isn't getting updated.
      *
      * The Prometheus idea behind having _seconds_count and _seconds_sum
      * =================================================================
