@@ -157,15 +157,14 @@ void record_map_errors(int err)
 }
 
 /* Record timestamp in LRU map */
-static __always_inline int record_timestamp(u64 ts, void *map)
+static __always_inline int record_timestamp_map_key(u64 ts, void *map, void *key)
 {
-    u64 key = bpf_get_current_pid_tgid();
     u64 *ts_val;
     int err = 0;
 
-    ts_val = bpf_map_lookup_elem(map, &key);
+    ts_val = bpf_map_lookup_elem(map, key);
     if (!ts_val) {
-        err = bpf_map_update_elem(map, &key, &ts, BPF_NOEXIST);
+        err = bpf_map_update_elem(map, key, &ts, BPF_NOEXIST);
         if (err)
             record_map_errors(err);
     } else {
@@ -175,14 +174,19 @@ static __always_inline int record_timestamp(u64 ts, void *map)
     return err;
 }
 
-/* Get timestamp from LRU map */
-static __always_inline u64 get_timestamp(void *map)
+static __always_inline int record_timestamp(u64 ts, void *map)
 {
     u64 key = bpf_get_current_pid_tgid();
+    return record_timestamp_map_key(ts, map, &key);
+}
+
+/* Get timestamp from LRU map */
+static __always_inline u64 get_timestamp_map_key(void *map, void *key)
+{
     u64 *ts_val;
     u64 ts;
 
-    ts_val = bpf_map_lookup_elem(map, &key);
+    ts_val = bpf_map_lookup_elem(map, key);
     if (!ts_val) {
         record_map_errors(-ENODATA);
         return 0;
@@ -194,7 +198,13 @@ static __always_inline u64 get_timestamp(void *map)
     if (ts == 0)
         record_map_errors(-ERANGE);
 
-    return *ts_val;
+    return ts;
+}
+
+static __always_inline u64 get_timestamp(void *map)
+{
+    u64 key = bpf_get_current_pid_tgid();
+    return get_timestamp_map_key(map, &key);
 }
 
 /* Total counter for obtaining lock together with state (prometheus labels)
@@ -329,8 +339,7 @@ int BPF_PROG(cgroup_rstat_flush_locked, struct cgroup *cgrp)
     struct start_time_key_t key_ts;
     key_ts.pid_tgid = bpf_get_current_pid_tgid();
     key_ts.cgrp_id = cgroup_id(cgrp);
-    bpf_map_update_elem(&start_flush, &key_ts, &now, BPF_ANY);
-
+    record_timestamp_map_key(now, &start_flush, &key_ts);
     return 0;
 }
 
@@ -339,17 +348,15 @@ int BPF_PROG(cgroup_rstat_flush_locked_exit, struct cgroup *cgrp)
 {
     u64 now = bpf_ktime_get_ns();
     struct start_time_key_t key_ts;
-    u64 *start_flush_ts;
+    u64 start_flush_ts;
     u64 delta, delta_ns;
 
     key_ts.pid_tgid = bpf_get_current_pid_tgid();
     key_ts.cgrp_id = cgroup_id(cgrp);
-    read_array_ptr(&start_flush, &key_ts, start_flush_ts);
-    // TODO: validate LRU lookup success
+    start_flush_ts = get_timestamp_map_key(&start_flush, &key_ts);
     /* Flush time latency */
-    delta_ns = now - *start_flush_ts;
+    delta_ns = now - start_flush_ts;
     delta = delta_ns / 100; /* 0.1 usec */
-    *start_flush_ts = 0;
 
     struct hist_key_t key;
     increment_exp2_histogram_nosync(&cgroup_rstat_flush_latency_seconds, key, delta, MAX_LATENCY_SLOT);
