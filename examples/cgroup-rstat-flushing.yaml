@@ -46,6 +46,21 @@ metrics:
           size: 4
           decoders:
             - name: uint
+    - name: cgroup_rstat_map_errors_total
+      help: Map related errors
+      labels:
+        - name: type
+          size: 4
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: unknown
+                1: no_memory
+                2: busy
+                3: already_exists
+                4: no_elem
+                5: timestamp_zero
   histograms:
     - name: cgroup_rstat_lock_wait_seconds
       help: Latency histogram for lock contention associated wait time to obtain lock

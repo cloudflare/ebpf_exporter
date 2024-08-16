@@ -10,6 +10,7 @@
 #include <vmlinux.h>
 #include <bpf/bpf_tracing.h>
 #include "maps.bpf.h"
+#include "errno.h"
 
 #define MAX_CGROUP_LEVELS 5
 
@@ -107,6 +108,95 @@ struct lock_key_t {
 };
 #define MAX_LOCK_KEY_ENTRIES 128
 
+#define MAX_ERROR_TYPES 3
+enum error_types {
+    ERR_UNKNOWN = 0,
+    ERR_NOMEM = 1,
+    ERR_BUSY = 2,
+    ERR_EXIST = 3, /* elem already exists */
+    ERR_NO_ELEM = 4,
+    ERR_TS_RANGE = 5, /* timestamp zero (out of range) */
+};
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __uint(max_entries, MAX_ERROR_TYPES);
+    __type(key, u32);
+    __type(value, u64);
+} cgroup_rstat_map_errors_total SEC(".maps");
+
+/* This provide easy way to disable recording map errors.
+ * Disabling this reduces BPF code size.
+ */
+#define CONFIG_TRACK_MAP_ERRORS 1
+// #undef CONFIG_TRACK_MAP_ERRORS
+
+void record_map_errors(int err)
+{
+#ifdef CONFIG_TRACK_MAP_ERRORS
+    u32 key = ERR_UNKNOWN;
+
+    switch (err) {
+    case -ENOMEM:
+        key = ERR_NOMEM;
+        break;
+    case -EBUSY:
+        key = ERR_BUSY;
+        break;
+    case -EEXIST:
+        key = ERR_EXIST;
+        break;
+    case -ENODATA:
+        key = ERR_NO_ELEM;
+        break;
+    case -ERANGE:
+        key = ERR_TS_RANGE;
+        break;
+    }
+    increment_map_nosync(&cgroup_rstat_map_errors_total, &key, 1);
+#endif /* CONFIG_TRACK_MAP_ERRORS */
+}
+
+/* Record timestamp in LRU map */
+static __always_inline int record_timestamp(u64 ts, void *map)
+{
+    u64 key = bpf_get_current_pid_tgid();
+    u64 *ts_val;
+    int err = 0;
+
+    ts_val = bpf_map_lookup_elem(map, &key);
+    if (!ts_val) {
+        err = bpf_map_update_elem(map, &key, &ts, BPF_NOEXIST);
+        if (err)
+            record_map_errors(err);
+    } else {
+        *ts_val = ts;
+    }
+
+    return err;
+}
+
+/* Get timestamp from LRU map */
+static __always_inline u64 get_timestamp(void *map)
+{
+    u64 key = bpf_get_current_pid_tgid();
+    u64 *ts_val;
+    u64 ts;
+
+    ts_val = bpf_map_lookup_elem(map, &key);
+    if (!ts_val) {
+        record_map_errors(-ENODATA);
+        return 0;
+    }
+
+    ts = *ts_val;
+    *ts_val = 0; /* reset timestamp */
+
+    if (ts == 0)
+        record_map_errors(-ERANGE);
+
+    return *ts_val;
+}
+
 /* Total counter for obtaining lock together with state (prometheus labels)
  *
  * State for cgroup level, contended and yield case.
@@ -143,9 +233,9 @@ SEC("tp_btf/cgroup_rstat_locked")
 int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
 {
     u64 now = bpf_ktime_get_ns();
-    u64 pid = bpf_get_current_pid_tgid();
     struct lock_key_t lock_key = { 0 };
     u32 level = cgrp->level;
+    // int err;
 
     if (level > MAX_CGROUP_LEVELS)
         level = MAX_CGROUP_LEVELS;
@@ -159,24 +249,21 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
     increment_map_nosync(&cgroup_rstat_locked_total, &lock_key, 1);
 
     /* Lock hold time start */
-    bpf_map_update_elem(&start_hold, &pid, &now, BPF_ANY);
+    record_timestamp(now, &start_hold);
 
     /* Lock contended event happened prior to obtaining this lock.
      * Get back start "wait" timestamp that was recorded.
      */
     if (contended) {
-        u64 *start_wait_ts;
+        u64 start_wait_ts;
         struct hist_key_t key;
         u64 delta;
 
-        read_array_ptr(&start_wait, &pid, start_wait_ts);
-        // TODO: validate LRU lookup success
         /* Lock wait time */
-        delta = (now - *start_wait_ts) / 100; /* 0.1 usec */
+	start_wait_ts = get_timestamp(&start_wait);
+        delta = (now - start_wait_ts) / 100; /* 0.1 usec */
 
         increment_exp2_histogram_nosync(&cgroup_rstat_lock_wait_seconds, key, delta, MAX_LATENCY_SLOT);
-        // Should we reset timestamp?
-        *start_wait_ts = 0;
     }
 
     return 0;
@@ -186,19 +273,14 @@ SEC("tp_btf/cgroup_rstat_unlock")
 int BPF_PROG(rstat_unlock, struct cgroup *cgrp, int cpu, bool contended)
 {
     u64 now = bpf_ktime_get_ns();
-    u64 pid = bpf_get_current_pid_tgid();
-    u64 *start_hold_ts;
     struct hist_key_t key;
+    u64 start_hold_ts;
     u64 delta;
 
-    read_array_ptr(&start_hold, &pid, start_hold_ts);
-    // TODO: validate LRU lookup success
     /* Lock hold time */
-    delta = (now - *start_hold_ts) / 100; /* 0.1 usec */
-
+    start_hold_ts = get_timestamp(&start_hold);
+    delta = (now - start_hold_ts) / 100; /* 0.1 usec */
     increment_exp2_histogram_nosync(&cgroup_rstat_lock_hold_seconds, key, delta, MAX_LATENCY_SLOT);
-    // Should we reset timestamp?
-    *start_hold_ts = 0;
 
     return 0;
 }
@@ -213,15 +295,9 @@ int BPF_PROG(rstat_unlock, struct cgroup *cgrp, int cpu, bool contended)
 SEC("tp_btf/cgroup_rstat_lock_contended")
 int BPF_PROG(rstat_lock_contended, struct cgroup *cgrp, int cpu, bool contended)
 {
-    u64 ts = bpf_ktime_get_ns();
-    u64 pid = bpf_get_current_pid_tgid();
+    u64 now = bpf_ktime_get_ns();
 
-    /* TODO: Do more validation here.
-     * In patchset V8+V9, two contended events can happen due to races.
-     * Could add code that handles this and does some validation.
-     */
-    /* Lock wait time start */
-    bpf_map_update_elem(&start_wait, &pid, &ts, BPF_ANY);
+    record_timestamp(now, &start_wait);
     return 0;
 }
 
