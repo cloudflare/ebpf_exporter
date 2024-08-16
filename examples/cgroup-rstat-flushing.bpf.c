@@ -108,7 +108,7 @@ struct lock_key_t {
 };
 #define MAX_LOCK_KEY_ENTRIES 128
 
-#define MAX_ERROR_TYPES 3
+#define MAX_ERROR_TYPES 6
 enum error_types {
     ERR_UNKNOWN = 0,
     ERR_NOMEM = 1,
