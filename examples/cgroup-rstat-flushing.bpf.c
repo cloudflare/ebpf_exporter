@@ -188,6 +188,9 @@ static __always_inline u64 get_timestamp_map_key(void *map, void *key)
 
     ts_val = bpf_map_lookup_elem(map, key);
     if (!ts_val) {
+        /* Can happen due to reload on a live system, where tracepoints using
+         * get_timestamp() gets activiated before those creating timestamps via
+         * record_timestamp */
         record_map_errors(-ENODATA);
         return 0;
     }
@@ -270,10 +273,11 @@ int BPF_PROG(rstat_locked, struct cgroup *cgrp, int cpu, bool contended)
         u64 delta;
 
         /* Lock wait time */
-	start_wait_ts = get_timestamp(&start_wait);
-        delta = (now - start_wait_ts) / 100; /* 0.1 usec */
-
-        increment_exp2_histogram_nosync(&cgroup_rstat_lock_wait_seconds, key, delta, MAX_LATENCY_SLOT);
+        start_wait_ts = get_timestamp(&start_wait);
+        if (start_wait_ts) {
+            delta = (now - start_wait_ts) / 100; /* 0.1 usec */
+            increment_exp2_histogram_nosync(&cgroup_rstat_lock_wait_seconds, key, delta, MAX_LATENCY_SLOT);
+        }
     }
 
     return 0;
@@ -289,9 +293,10 @@ int BPF_PROG(rstat_unlock, struct cgroup *cgrp, int cpu, bool contended)
 
     /* Lock hold time */
     start_hold_ts = get_timestamp(&start_hold);
-    delta = (now - start_hold_ts) / 100; /* 0.1 usec */
-    increment_exp2_histogram_nosync(&cgroup_rstat_lock_hold_seconds, key, delta, MAX_LATENCY_SLOT);
-
+    if (start_hold_ts) {
+        delta = (now - start_hold_ts) / 100; /* 0.1 usec */
+        increment_exp2_histogram_nosync(&cgroup_rstat_lock_hold_seconds, key, delta, MAX_LATENCY_SLOT);
+    }
     return 0;
 }
 
@@ -354,6 +359,9 @@ int BPF_PROG(cgroup_rstat_flush_locked_exit, struct cgroup *cgrp)
     key_ts.pid_tgid = bpf_get_current_pid_tgid();
     key_ts.cgrp_id = cgroup_id(cgrp);
     start_flush_ts = get_timestamp_map_key(&start_flush, &key_ts);
+    if (start_flush_ts == 0)
+        return 0;
+
     /* Flush time latency */
     delta_ns = now - start_flush_ts;
     delta = delta_ns / 100; /* 0.1 usec */
