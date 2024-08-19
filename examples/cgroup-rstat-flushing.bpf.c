@@ -34,6 +34,11 @@ struct hist_key_t {
     u32 bucket;
 };
 
+struct hist_lvl_key_t {
+    u16 level;
+    u16 bucket;
+};
+
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __uint(max_entries, MAX_LATENCY_SLOT + 2);
@@ -63,9 +68,9 @@ struct {
 } start_hold SEC(".maps");
 
 struct {
-    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __uint(max_entries, MAX_LATENCY_SLOT + 2);
-    __type(key, struct hist_key_t);
+    __uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+    __uint(max_entries, (MAX_LATENCY_SLOT + 2) * MAX_CGROUP_LEVELS);
+    __type(key, struct hist_lvl_key_t);
     __type(value, u64);
 } cgroup_rstat_flush_latency_seconds SEC(".maps");
 
@@ -373,7 +378,7 @@ int BPF_PROG(cgroup_rstat_flush_locked_exit, struct cgroup *cgrp)
     delta_ns = now - start_flush_ts;
     delta = delta_ns / 100; /* 0.1 usec */
 
-    struct hist_key_t key;
+    struct hist_lvl_key_t key = { .level = (u16) cgrp->level };
     increment_exp2_histogram_nosync(&cgroup_rstat_flush_latency_seconds, key, delta, MAX_LATENCY_SLOT);
     /*
      * ebpf_exporter will also have:

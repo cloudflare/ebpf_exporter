@@ -93,7 +93,11 @@ metrics:
       bucket_max: 24
       bucket_multiplier: 0.0000001 # 0.1 microseconds to seconds
       labels:
+        - name: level
+          size: 2
+          decoders:
+            - name: uint
         - name: bucket
-          size: 4
+          size: 2
           decoders:
             - name: uint
