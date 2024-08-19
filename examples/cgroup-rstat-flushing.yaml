@@ -1,0 +1,103 @@
+metrics:
+  counters:
+    - name: cgroup_rstat_flush_total
+      help: Total number of times cgroup rstat were flushed (recorded per level)
+      labels:
+        - name: level
+          size: 4
+          decoders:
+            - name: uint
+    - name: cgroup_rstat_locked_total
+      help: Times rstat lock was obtainted with state for cgroup level, contended and yield
+      labels:
+        - name: contended
+          size: 1
+          decoders: # contended boolean converted to 0 and 1
+            - name: uint
+        - name: yield
+          size: 1
+          decoders: # was this a yielded lock case
+            - name: uint
+        - name: level
+          size: 2
+          decoders:
+            - name: uint
+# --- See: CONFIG_TRACK_PER_CGROUP_FLUSH
+#    - name: cgroup_rstat_flush_nanoseconds_sum
+#      help: Sum amount of time (in nanoseconds) spent for flushes per cgroup
+#      labels:
+#        - name: cgroup
+#          size: 8
+#          decoders:
+#            - name: uint
+#            - name: cgroup
+#        - name: level
+#          size: 4
+#          decoders:
+#            - name: uint
+#    - name: cgroup_rstat_flush_nanoseconds_count
+#      help: Number of flush calls related to cgroup_rstat_flush_nanoseconds_sum
+#      labels:
+#        - name: cgroup
+#          size: 8
+#          decoders:
+#            - name: uint
+#            - name: cgroup
+#        - name: level
+#          size: 4
+#          decoders:
+#            - name: uint
+# ---
+    - name: cgroup_rstat_map_errors_total
+      help: Map related errors
+      labels:
+        - name: type
+          size: 4
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: unknown
+                1: no_memory
+                2: busy
+                3: already_exists
+                4: no_elem
+                5: timestamp_zero
+  histograms:
+    - name: cgroup_rstat_lock_wait_seconds
+      help: Latency histogram for lock contention associated wait time to obtain lock
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 24
+      bucket_multiplier: 0.0000001 # 0.1 microseconds to seconds
+      labels:
+        - name: bucket
+          size: 4
+          decoders:
+            - name: uint
+    - name: cgroup_rstat_lock_hold_seconds
+      help: Latency histogram for lock hold time
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 24
+      bucket_multiplier: 0.0000001 # 0.1 microseconds to seconds
+      labels:
+        - name: bucket
+          size: 4
+          decoders:
+            - name: uint
+    - name: cgroup_rstat_flush_latency_seconds
+      help: Latency histogram for flush time
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 24
+      bucket_multiplier: 0.0000001 # 0.1 microseconds to seconds
+      labels:
+        - name: level
+          size: 2
+          decoders:
+            - name: uint
+        - name: bucket
+          size: 2
+          decoders:
+            - name: uint
