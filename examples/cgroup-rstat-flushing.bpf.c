@@ -10,7 +10,7 @@
 #include <vmlinux.h>
 #include <bpf/bpf_tracing.h>
 #include "maps.bpf.h"
-#include "errno.h"
+#include <linux/errno.h>
 
 #define MAX_CGROUP_LEVELS 5
 
