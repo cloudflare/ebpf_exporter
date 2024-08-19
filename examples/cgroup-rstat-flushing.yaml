@@ -22,30 +22,32 @@ metrics:
           size: 2
           decoders:
             - name: uint
-    - name: cgroup_rstat_flush_nanoseconds_sum
-      help: Sum amount of time (in nanoseconds) spent for flushes per cgroup
-      labels:
-        - name: cgroup
-          size: 8
-          decoders:
-            - name: uint
-            - name: cgroup
-        - name: level
-          size: 4
-          decoders:
-            - name: uint
-    - name: cgroup_rstat_flush_nanoseconds_count
-      help: Number of flush calls related to cgroup_rstat_flush_nanoseconds_sum
-      labels:
-        - name: cgroup
-          size: 8
-          decoders:
-            - name: uint
-            - name: cgroup
-        - name: level
-          size: 4
-          decoders:
-            - name: uint
+# --- See: CONFIG_TRACK_PER_CGROUP_FLUSH
+#    - name: cgroup_rstat_flush_nanoseconds_sum
+#      help: Sum amount of time (in nanoseconds) spent for flushes per cgroup
+#      labels:
+#        - name: cgroup
+#          size: 8
+#          decoders:
+#            - name: uint
+#            - name: cgroup
+#        - name: level
+#          size: 4
+#          decoders:
+#            - name: uint
+#    - name: cgroup_rstat_flush_nanoseconds_count
+#      help: Number of flush calls related to cgroup_rstat_flush_nanoseconds_sum
+#      labels:
+#        - name: cgroup
+#          size: 8
+#          decoders:
+#            - name: uint
+#            - name: cgroup
+#        - name: level
+#          size: 4
+#          decoders:
+#            - name: uint
+# ---
     - name: cgroup_rstat_map_errors_total
       help: Map related errors
       labels:

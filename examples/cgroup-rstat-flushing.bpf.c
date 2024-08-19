@@ -86,6 +86,12 @@ struct flush_key_t {
     u32 level;
 } __attribute__((packed));
 
+/* This provide easy way to enable per cgroup flush recording
+ *  Default this is disabled, as it generates too much data.
+ *  For troubleshooting purposes this can be enabled on some servers.
+ */
+#undef CONFIG_TRACK_PER_CGROUP_FLUSH
+#ifdef CONFIG_TRACK_PER_CGROUP_FLUSH
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_HASH);
     __uint(max_entries, 10000);
@@ -99,6 +105,7 @@ struct {
     __type(key, struct flush_key_t);
     __type(value, u64);
 } cgroup_rstat_flush_nanoseconds_count SEC(".maps");
+#endif /* CONFIG_TRACK_PER_CGROUP_FLUSH */
 
 /* Complex key for encoding lock properties */
 struct lock_key_t {
@@ -386,12 +393,14 @@ int BPF_PROG(cgroup_rstat_flush_locked_exit, struct cgroup *cgrp)
      *   rate(_seconds_sum[1m]) / rate(_seconds_count[1m])
      */
 
+#ifdef CONFIG_TRACK_PER_CGROUP_FLUSH
     /* Per cgroup record average latency via nanoseconds_count and nanoseconds_sum */
     struct flush_key_t flush_key;
     flush_key.cgrp_id = cgroup_id(cgrp);
     flush_key.level = cgrp->level;
     increment_map_nosync(&cgroup_rstat_flush_nanoseconds_sum, &flush_key, delta_ns);
     increment_map_nosync(&cgroup_rstat_flush_nanoseconds_count, &flush_key, 1);
+#endif
 
     return 0;
 }
