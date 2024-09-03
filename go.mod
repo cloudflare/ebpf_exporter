@@ -11,7 +11,7 @@ require (
 	github.com/jaypipes/pcidb v1.0.1
 	github.com/mdlayher/sdnotify v1.0.0
 	github.com/prometheus/client_golang v1.20.1
-	github.com/prometheus/common v0.55.0
+	github.com/prometheus/common v0.58.0
 	go.opentelemetry.io/contrib/exporters/autoexport v0.54.0
 	go.opentelemetry.io/otel v1.29.0
 	go.opentelemetry.io/otel/sdk v1.29.0
