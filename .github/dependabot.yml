@@ -15,3 +15,7 @@ updates:
         applies-to: version-updates
         patterns:
           - golang.org/x/*
+      prometheus:
+        applies-to: version-updates
+        patterns:
+          - github.com/prometheus/*
