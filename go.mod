@@ -1,6 +1,7 @@
 module github.com/cloudflare/ebpf_exporter/v2
 
 go 1.21
+toolchain go1.22.5
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
@@ -12,10 +13,10 @@ require (
 	github.com/mdlayher/sdnotify v1.0.0
 	github.com/prometheus/client_golang v1.20.4
 	github.com/prometheus/common v0.60.0
-	go.opentelemetry.io/contrib/exporters/autoexport v0.54.0
-	go.opentelemetry.io/otel v1.29.0
-	go.opentelemetry.io/otel/sdk v1.29.0
-	go.opentelemetry.io/otel/trace v1.29.0
+	go.opentelemetry.io/contrib/exporters/autoexport v0.55.0
+	go.opentelemetry.io/otel v1.30.0
+	go.opentelemetry.io/otel/sdk v1.30.0
+	go.opentelemetry.io/otel/trace v1.30.0
 	golang.org/x/sys v0.25.0
 	gopkg.in/yaml.v2 v2.4.0
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.70
@@ -36,26 +37,27 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
-	go.opentelemetry.io/contrib/bridges/prometheus v0.54.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.5.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.29.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.29.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.29.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.29.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.29.0 // indirect
-	go.opentelemetry.io/otel/exporters/prometheus v0.51.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.5.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.29.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.29.0 // indirect
-	go.opentelemetry.io/otel/log v0.5.0 // indirect
-	go.opentelemetry.io/otel/metric v1.29.0 // indirect
-	go.opentelemetry.io/otel/sdk/log v0.5.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.29.0 // indirect
+	go.opentelemetry.io/contrib/bridges/prometheus v0.55.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.6.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.6.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.30.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.30.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.30.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.30.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.30.0 // indirect
+	go.opentelemetry.io/otel/exporters/prometheus v0.52.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.6.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.30.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.30.0 // indirect
+	go.opentelemetry.io/otel/log v0.6.0 // indirect
+	go.opentelemetry.io/otel/metric v1.30.0 // indirect
+	go.opentelemetry.io/otel/sdk/log v0.6.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.30.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
 	golang.org/x/net v0.29.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240822170219-fc7c04adadcd // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240822170219-fc7c04adadcd // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/grpc v1.67.1 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	kernel.org/pub/linux/libs/security/libcap/psx v1.2.70 // indirect
