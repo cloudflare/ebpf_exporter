@@ -1,4 +1,14 @@
 {
+    "httpHeaders": [
+        {
+            "urls": [
+                "https://"
+            ],
+            "headers": {
+                "user-agent": "pls let me in"
+            }
+        }
+    ],
     "ignorePatterns": [
         {
             "pattern": "http://localhost:16686/"
