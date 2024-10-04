@@ -713,6 +713,10 @@ func aggregateMapValues(values []metricValue) []aggregatedMetricValue {
 	mapping := map[string]*aggregatedMetricValue{}
 
 	for _, value := range values {
+		// labels can be empty if they are filtered away by decoders
+		if len(value.labels) == 0 {
+			continue
+		}
 		key := strings.Join(value.labels, "|")
 
 		if existing, ok := mapping[key]; !ok {
