@@ -567,12 +567,15 @@ func (e *Exporter) mapValues(module *libbpfgo.Module, name string, labels []conf
 
 	_, percpu := percpuMapTypes[m.Type()]
 
+	retainedMetricValues := []metricValue{}
+
 	for i, mv := range metricValues {
 		raw := mv.raw
 
 		// If there are no labels, assume a single key of uint32(0)
 		if len(labels) == 0 && bytes.Equal(mv.raw, []byte{0x0, 0x0, 0x0, 0x0}) {
 			metricValues[i].labels = []string{}
+			retainedMetricValues = append(retainedMetricValues, metricValues[i])
 			continue
 		}
 
@@ -590,9 +593,11 @@ func (e *Exporter) mapValues(module *libbpfgo.Module, name string, labels []conf
 
 			return nil, err
 		}
+
+		retainedMetricValues = append(retainedMetricValues, metricValues[i])
 	}
 
-	return metricValues, nil
+	return retainedMetricValues, nil
 }
 
 func (e *Exporter) exportMaps() (map[string]map[string][]metricValue, error) {
