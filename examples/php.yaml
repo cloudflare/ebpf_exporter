@@ -7,3 +7,6 @@ metrics:
           size: 128
           decoders:
             - name: string
+            - name: regexp
+              regexps:
+                - ^(.+)/[^/]+\.php$

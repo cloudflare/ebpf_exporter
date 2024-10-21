@@ -9,7 +9,7 @@ struct call_t {
 
 struct {
     __uint(type, BPF_MAP_TYPE_LRU_HASH);
-    __uint(max_entries, 1024);
+    __uint(max_entries, 65536);
     __type(key, struct call_t);
     __type(value, u64);
 } php_compile_file_total SEC(".maps");
