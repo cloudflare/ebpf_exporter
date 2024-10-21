@@ -1,0 +1,9 @@
+metrics:
+  counters:
+    - name: php_compile_file_total
+      help: Number of php:compile__file__entry USDT calls per module
+      labels:
+        - name: filename
+          size: 128
+          decoders:
+            - name: string
