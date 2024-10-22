@@ -4,6 +4,6 @@ metrics:
       help: Number of php:compile__file__entry USDT calls per filepath
       labels:
         - name: filename
-          size: 128
+          size: 256
           decoders:
             - name: string
