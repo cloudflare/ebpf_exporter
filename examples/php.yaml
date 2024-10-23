@@ -7,3 +7,11 @@ metrics:
           size: 256
           decoders:
             - name: string
+    - name: php_exception_thrown_total
+      help: Number of php:exception__thrown USDT calls per class
+      labels:
+        - name: class
+          size: 128
+          decoders:
+            - name: string
+
