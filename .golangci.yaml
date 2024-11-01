@@ -7,6 +7,7 @@ linters:
     - err113
     - execinquery # deprecated
     - exhaustruct
+    - exportloopref # deprecated
     - funlen
     - gci
     - gochecknoglobals

@@ -86,7 +86,7 @@ func testMonitor(t *testing.T, m monitor, path, preExistingPath string) {
 	}
 
 	// Check addition one by one
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		dir := fmt.Sprintf("%s/lol-%d", path, i)
 
 		err = os.Mkdir(dir, 0755)
@@ -109,8 +109,8 @@ func testMonitor(t *testing.T, m monitor, path, preExistingPath string) {
 	}
 
 	// Check burst addition
-	for i := 20; i < 40; i++ {
-		dir := fmt.Sprintf("%s/lol-%d", path, i)
+	for i := range 20 {
+		dir := fmt.Sprintf("%s/lol-%d", path, 20+i)
 
 		err = os.Mkdir(dir, 0755)
 		if err != nil {
@@ -122,8 +122,8 @@ func testMonitor(t *testing.T, m monitor, path, preExistingPath string) {
 	time.Sleep(sleepDuration)
 
 	// Continue checking burst addition
-	for i := 20; i < 40; i++ {
-		dir := fmt.Sprintf("%s/lol-%d", path, i)
+	for i := range 20 {
+		dir := fmt.Sprintf("%s/lol-%d", path, 20+i)
 
 		id, err := inode(dir)
 		if err != nil {

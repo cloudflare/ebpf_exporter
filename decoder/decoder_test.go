@@ -219,7 +219,7 @@ func TestDecoderSetConcurrency(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(count)
 
-	for i := 0; i < count; i++ {
+	for range count {
 		go func() {
 			defer wg.Done()
 

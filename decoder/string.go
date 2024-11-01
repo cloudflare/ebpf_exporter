@@ -15,7 +15,7 @@ func (s *String) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 // clen returns position of the fist null byte in a byte slice or byte slice
 // length if there is no null byte in the slice
 func clen(n []byte) int {
-	for i := 0; i < len(n); i++ {
+	for i := range n {
 		if n[i] == 0 {
 			return i
 		}
