@@ -102,7 +102,7 @@ func transformHistogramFixed(buckets map[float64]uint64, histogram config.Histog
 
 	transformed = make(map[float64]uint64, size)
 
-	for i := 0; i < len(histogram.BucketKeys); i++ {
+	for i := range len(histogram.BucketKeys) {
 		key := histogram.BucketKeys[i]
 
 		// Prometheus expects cumulative buckets with bucket being
