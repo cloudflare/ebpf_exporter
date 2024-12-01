@@ -133,5 +133,5 @@ gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 kernel.org/pub/linux/libs/security/libcap/cap v1.2.70 h1:QnLPkuDWWbD5C+3DUA2IUXai5TK6w2zff+MAGccqdsw=
 kernel.org/pub/linux/libs/security/libcap/cap v1.2.70/go.mod h1:/iBwcj9nbLejQitYvUm9caurITQ6WyNHibJk6Q9fiS4=
 kernel.org/pub/linux/libs/security/libcap/psx v1.2.70/go.mod h1:+l6Ee2F59XiJ2I6WR5ObpC1utCQJZ/VLsEbQCD8RG24=
-kernel.org/pub/linux/libs/security/libcap/psx v1.2.71 h1:i19+O6oaKRqgflRO4o7WKdU8LJ7vKNSFLDDqHB6CvQ8=
-kernel.org/pub/linux/libs/security/libcap/psx v1.2.71/go.mod h1:+l6Ee2F59XiJ2I6WR5ObpC1utCQJZ/VLsEbQCD8RG24=
+kernel.org/pub/linux/libs/security/libcap/psx v1.2.72 h1:Lnu8woGlvNdwCbBa5urxGO+L5gp647lIZMg0vP+upuU=
+kernel.org/pub/linux/libs/security/libcap/psx v1.2.72/go.mod h1:+l6Ee2F59XiJ2I6WR5ObpC1utCQJZ/VLsEbQCD8RG24=
