@@ -19,3 +19,7 @@ updates:
         applies-to: version-updates
         patterns:
           - github.com/prometheus/*
+      libcap:
+        applies-to: version-updates
+        patterns:
+          - kernel.org/pub/linux/libs/security/libcap/*
