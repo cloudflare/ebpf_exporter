@@ -25,7 +25,7 @@ func getpid() {
 
 func BenchmarkGetpidWithoutAnyProbes(b *testing.B) {
 	b.Run("getpid", func(b *testing.B) {
-		for n := 0; n < b.N; n++ {
+		for range b.N {
 			getpid()
 		}
 	})
@@ -69,13 +69,13 @@ func BenchmarkGetpidKprobeWithComplexMap(b *testing.B) {
 
 func BenchmarkUprobeTargetWithoutAnyProbes(b *testing.B) {
 	b.Run("go", func(b *testing.B) {
-		for n := 0; n < b.N; n++ {
+		for range b.N {
 			uprobeGo()
 		}
 	})
 
 	b.Run("cgo", func(b *testing.B) {
-		for n := 0; n < b.N; n++ {
+		for range b.N {
 			uprobeCgo()
 		}
 	})
@@ -111,7 +111,7 @@ func benchmarkWithProbe(b *testing.B, file string, target string, fn func(), che
 	defer m.Close()
 
 	b.Run(target, func(b *testing.B) {
-		for n := 0; n < b.N; n++ {
+		for range b.N {
 			fn()
 		}
 	})

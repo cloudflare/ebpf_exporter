@@ -58,7 +58,7 @@ func TestKStackDecoder(t *testing.T) {
 		},
 	}
 
-	fd, err := os.CreateTemp("", "kallsyms")
+	fd, err := os.CreateTemp(t.TempDir(), "kallsyms")
 	if err != nil {
 		t.Fatalf("Error creating temporary file for kallsyms: %v", err)
 	}

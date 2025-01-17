@@ -351,7 +351,7 @@ func BenchmarkCache(b *testing.B) {
 	}
 
 	b.Run("direct", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, err := s.decodeLabels(in, labels)
 			if err != nil {
 				b.Fatal(err)
@@ -360,7 +360,7 @@ func BenchmarkCache(b *testing.B) {
 	})
 
 	b.Run("cached", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, err := s.DecodeLabelsForMetrics(in, "test", labels)
 			if err != nil {
 				b.Fatal(err)
