@@ -9,9 +9,16 @@ on:
   pull_request:
 
 jobs:
-  build-libbpf-docker-x86_64:
-    name: Build libbpf in Docker (x86_64)
-    runs-on: ubuntu-24.04
+  build-libbpf:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
+    name: Build libbpf in Docker (${{ matrix.arch.name }})
+    runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -19,42 +26,25 @@ jobs:
         run: |
           docker buildx build --progress plain --tag libbpf --target libbpf_builder .
           id=$(docker create libbpf)
-          docker cp $id:/build/libbpf.tar.gz libbpf.x86_64.tar.gz
+          docker cp $id:/build/libbpf.tar.gz libbpf.${{ matrix.arch.name }}.tar.gz
 
       - name: Upload libbpf.tar.gz
         uses: actions/upload-artifact@v4
         with:
-          name: libbpf.x86_64.tar.gz
-          path: libbpf.x86_64.tar.gz
+          name: libbpf.${{ matrix.arch.name }}.tar.gz
+          path: libbpf.${{ matrix.arch.name }}.tar.gz
           if-no-files-found: error
 
-  build-libbpf-docker-aarch64:
-    name: Build libbpf in Docker (aarch64, emulated)
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - uses: actions/checkout@v4
-
-      - name: Build libbpf
-        run: |
-          docker buildx build --progress plain --tag libbpf --target libbpf_builder --platform linux/arm64 .
-          id=$(docker create libbpf)
-          docker cp $id:/build/libbpf.tar.gz libbpf.aarch64.tar.gz
-
-      - name: Upload libbpf.tar.gz
-        uses: actions/upload-artifact@v4
-        with:
-          name: libbpf.aarch64.tar.gz
-          path: libbpf.aarch64.tar.gz
-          if-no-files-found: error
-
-  build-ebpf-exporter-docker-x86_64:
-    name: Build ebpf_exporter in Docker (x86_64, built-in libbpf)
-    runs-on: ubuntu-24.04
+  build-ebpf-exporter-docker:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
+    name: Build ebpf_exporter in Docker (${{ matrix.arch.name }}, built-in libbpf)
+    runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -65,96 +55,51 @@ jobs:
           docker buildx build --progress plain --tag ebpf_exporter .
           docker create --name ebpf_exporter ebpf_exporter
 
-      - name: Extract ebpf_exporter.x86_64
+      - name: Extract ebpf_exporter.${{ matrix.arch.name }}
         run: |
           docker cp ebpf_exporter:/ebpf_exporter ebpf_exporter
 
       - name: Upload ebpf_exporter
         uses: actions/upload-artifact@v4
         with:
-          name: ebpf_exporter.x86_64
+          name: ebpf_exporter.${{ matrix.arch.name }}
           path: ebpf_exporter
           if-no-files-found: error
 
-      - name: Extract examples.x86_64.tar.gz
+      - name: Extract examples.${{ matrix.arch.name }}.tar.gz
         run: |
           docker cp ebpf_exporter:/examples ./
-          tar -cvzf examples.x86_64.tar.gz -T <(find examples | grep -E "\.(yaml|bpf.o)$")
+          tar -cvzf examples.${{ matrix.arch.name }}.tar.gz -T <(find examples | grep -E "\.(yaml|bpf.o)$")
 
-      - name: Upload examples.x86_64.tar.gz
+      - name: Upload examples.${{ matrix.arch.name }}.tar.gz
         uses: actions/upload-artifact@v4
         with:
-          name: examples.x86_64.tar.gz
-          path: examples.x86_64.tar.gz
+          name: examples.${{ matrix.arch.name }}.tar.gz
+          path: examples.${{ matrix.arch.name }}.tar.gz
           if-no-files-found: error
 
-      - name: Extract ebpf_exporter_with_examples.x86_64.tar.gz
+      - name: Extract ebpf_exporter_with_examples.${{ matrix.arch.name }}.tar.gz
         run: |
-          tar -cvzf ebpf_exporter_with_examples.x86_64.tar.gz --transform "s,\(.*\),ebpf_exporter-$(git describe --tags)/\1," -T <(echo ebpf_exporter; find examples | grep -E "\.(yaml|bpf.o)$" | sort)
+          tar -cvzf ebpf_exporter_with_examples.${{ matrix.arch.name }}.tar.gz --transform "s,\(.*\),ebpf_exporter-$(git describe --tags)/\1," -T <(echo ebpf_exporter; find examples | grep -E "\.(yaml|bpf.o)$" | sort)
 
-      - name: Upload ebpf_exporter_with_examples.x86_64.tar.gz
+      - name: Upload ebpf_exporter_with_examples.${{ matrix.arch.name }}.tar.gz
         uses: actions/upload-artifact@v4
         with:
-          name: ebpf_exporter_with_examples.x86_64.tar.gz
-          path: ebpf_exporter_with_examples.x86_64.tar.gz
+          name: ebpf_exporter_with_examples.${{ matrix.arch.name }}.tar.gz
+          path: ebpf_exporter_with_examples.${{ matrix.arch.name }}.tar.gz
           if-no-files-found: error
 
-  build-ebpf-exporter-docker-aarch64:
-    name: Build ebpf_exporter in Docker (aarch64, emulated, built-in libbpf)
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Fetch with tags to have the build version attached
-
-      - name: Build ebpf_exporter and examples
-        run: |
-          docker buildx build --progress plain --tag ebpf_exporter --platform linux/arm64 .
-          docker create --name ebpf_exporter ebpf_exporter
-
-      - name: Extract ebpf_exporter.aarch64
-        run: |
-          docker cp ebpf_exporter:/ebpf_exporter ebpf_exporter
-
-      - name: Upload ebpf_exporter
-        uses: actions/upload-artifact@v4
-        with:
-          name: ebpf_exporter.aarch64
-          path: ebpf_exporter
-          if-no-files-found: error
-
-      - name: Extract examples.aarch64.tar.gz
-        run: |
-          docker cp ebpf_exporter:/examples ./
-          tar -cvzf examples.aarch64.tar.gz -T <(find examples | grep -E "\.(yaml|bpf.o)$")
-
-      - name: Upload examples.aarch64.tar.gz
-        uses: actions/upload-artifact@v4
-        with:
-          name: examples.aarch64.tar.gz
-          path: examples.aarch64.tar.gz
-          if-no-files-found: error
-
-      - name: Extract ebpf_exporter_with_examples.aarch64.tar.gz
-        run: |
-          tar -cvzf ebpf_exporter_with_examples.aarch64.tar.gz --transform "s,\(.*\),ebpf_exporter-$(git describe --tags)/\1," -T <(echo ebpf_exporter; find examples | grep -E "\.(yaml|bpf.o)$" | sort)
-
-      - name: Upload ebpf_exporter_with_examples.aarch64.tar.gz
-        uses: actions/upload-artifact@v4
-        with:
-          name: ebpf_exporter_with_examples.aarch64.tar.gz
-          path: ebpf_exporter_with_examples.aarch64.tar.gz
-          if-no-files-found: error
-
-  build-ebpf-exporter-static-x86_64-system-libbpf:
-    name: Build ebpf_exporter (x86_64, statically linked, system libbpf)
-    needs: build-libbpf-docker-x86_64
-    runs-on: ubuntu-24.04
+  build-ebpf-exporter-static-system-libbpf:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
+    name: Build ebpf_exporter (${{ matrix.arch.name }}, statically linked, system libbpf)
+    needs: build-libbpf
+    runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -165,10 +110,10 @@ jobs:
       - name: Download libbpf.tar.gz
         uses: actions/download-artifact@v4
         with:
-          name: libbpf.x86_64.tar.gz
+          name: libbpf.${{ matrix.arch.name }}.tar.gz
 
       - name: Install libbpf
-        run: sudo tar -C / -xvvf libbpf.x86_64.tar.gz
+        run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
 
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
@@ -185,9 +130,16 @@ jobs:
       - name: Check that it runs
         run: ./ebpf_exporter --version
 
-  build-ebpf-exporter-static-x86_64-built-in-libbpf:
-    name: Build ebpf_exporter (x86_64, statically linked, built-in libbpf)
-    runs-on: ubuntu-24.04
+  build-ebpf-exporter-static-built-in-libbpf:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
+    name: Build ebpf_exporter (${{ matrix.arch.name }}, statically linked, built-in libbpf)
+    runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -210,10 +162,17 @@ jobs:
       - name: Check that it runs
         run: ./ebpf_exporter --version
 
-  build-ebpf-exporter-dynamic-x86_64-system-libbpf:
-    name: Build ebpf_exporter (x86_64, dynamically linked, system libbpf)
-    needs: build-libbpf-docker-x86_64
-    runs-on: ubuntu-24.04
+  build-ebpf-exporter-dynamic-system-libbpf:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
+    name: Build ebpf_exporter (${{ matrix.arch.name }}, dynamically linked, system libbpf)
+    needs: build-libbpf
+    runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -224,10 +183,10 @@ jobs:
       - name: Download libbpf.tar.gz
         uses: actions/download-artifact@v4
         with:
-          name: libbpf.x86_64.tar.gz
+          name: libbpf.${{ matrix.arch.name }}.tar.gz
 
       - name: Install libbpf
-        run: sudo tar -C / -xvvf libbpf.x86_64.tar.gz
+        run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
 
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
@@ -241,9 +200,16 @@ jobs:
       - name: Check that it runs
         run: ./ebpf_exporter --version
 
-  build-ebpf-exporter-dynamic-x86_64-built-in-libbpf:
-    name: Build ebpf_exporter (x86_64, dynamically linked, built-in libbpf)
-    runs-on: ubuntu-24.04
+  build-ebpf-exporter-dynamic-built-in-libbpf:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
+    name: Build ebpf_exporter (${{ matrix.arch.name }}, dynamically linked, built-in libbpf)
+    runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -263,10 +229,17 @@ jobs:
       - name: Check that it runs
         run: LD_LIBRARY_PATH=libbpf/dest/usr/lib ./ebpf_exporter --version
 
-  test-ebpf-exporter-x86_64-system-libbpf:
+  test-ebpf-exporter-system-libbpf:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
     name: Test ebpf_exporter (x86_64, system libbpf)
-    needs: build-libbpf-docker-x86_64
-    runs-on: ubuntu-24.04
+    needs: build-libbpf
+    runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -280,10 +253,10 @@ jobs:
       - name: Download libbpf.tar.gz
         uses: actions/download-artifact@v4
         with:
-          name: libbpf.x86_64.tar.gz
+          name: libbpf.${{ matrix.arch.name }}.tar.gz
 
       - name: Install libbpf
-        run: sudo tar -C / -xvvf libbpf.x86_64.tar.gz
+        run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
 
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
@@ -299,9 +272,16 @@ jobs:
       - name: Test privileged
         run: make -j $(nproc) test-privileged BUILD_LIBBPF=0
 
-  test-ebpf-exporter-x86_64-built-in-libbpf:
-    name: Test ebpf_exporter (x86_64, built-in libbpf)
-    runs-on: ubuntu-24.04
+  test-ebpf-exporter-built-in-libbpf:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
+    name: Test ebpf_exporter (${{ matrix.arch.name }}, built-in libbpf)
+    runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -326,9 +306,16 @@ jobs:
       - name: Test privileged
         run: make -j $(nproc) test-privileged
 
-  lint-ebpf-exporter-x86_64-built-in-libbpf:
-    name: Lint ebpf_exporter (x86_64, built-in libbpf)
-    runs-on: ubuntu-24.04
+  lint-ebpf-exporter-built-in-libbpf:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
+    name: Lint ebpf_exporter (${{ matrix.arch.name }}, built-in libbpf)
+    runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -356,20 +343,27 @@ jobs:
         env:
           CGO_CFLAGS: "-I${{ github.workspace }}/libbpf/dest/usr/include"
 
-  build-examples-x86_64-system-libbpf:
-    name: Build examples (x86_64, system libbpf)
-    needs: build-libbpf-docker-x86_64
-    runs-on: ubuntu-24.04
+  build-examples-system-libbpf:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
+    name: Build examples (${{ matrix.arch.name }}, system libbpf)
+    needs: build-libbpf
+    runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Download libbpf.tar.gz
         uses: actions/download-artifact@v4
         with:
-          name: libbpf.x86_64.tar.gz
+          name: libbpf.${{ matrix.arch.name }}.tar.gz
 
       - name: Install libbpf
-        run: sudo tar -C / -xvvf libbpf.x86_64.tar.gz
+        run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
 
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
@@ -383,9 +377,16 @@ jobs:
       - name: Build example bpf probes
         run: make -j $(nproc) -C examples build BUILD_LIBBPF=0
 
-  build-examples-x86_64-built-in-libbpf:
-    name: Build examples (x86_64, built-in libbpf)
-    runs-on: ubuntu-24.04
+  build-examples-built-in-libbpf:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
+    name: Build examples (${{ matrix.arch.name }}, built-in libbpf)
+    runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -401,9 +402,16 @@ jobs:
       - name: Build example bpf probes
         run: make -j $(nproc) -C examples build
 
-  build-tracing-demos-x86_64:
-    name: Build tracing demos (x86_64)
-    runs-on: ubuntu-24.04
+  build-tracing-demos:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
+    name: Build tracing demos (${{ matrix.arch.name }})
+    runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -417,41 +425,48 @@ jobs:
       - name: Build
         run: make -j $(nproc) tracing-demos
 
-      - name: Extract tracing-demos.x86_64.tar.gz
+      - name: Extract tracing-demos.${{ matrix.arch.name }}.tar.gz
         run: |
-          tar -cvzf tracing-demos.x86_64.tar.gz tracing/demos/*/demo
+          tar -cvzf tracing-demos.${{ matrix.arch.name }}.tar.gz tracing/demos/*/demo
 
-      - name: Upload tracing-demos.x86_64.tar.gz
+      - name: Upload tracing-demos.${{ matrix.arch.name }}.tar.gz
         uses: actions/upload-artifact@v4
         with:
-          name: tracing-demos.x86_64.tar.gz
-          path: tracing-demos.x86_64.tar.gz
+          name: tracing-demos.${{ matrix.arch.name }}.tar.gz
+          path: tracing-demos.${{ matrix.arch.name }}.tar.gz
           if-no-files-found: error
 
-  check-configs-x86_64:
-    name: Check examples
-    runs-on: ubuntu-24.04
+  check-configs:
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+          - name: aarch64
+            image: ubuntu-24.04-arm
+    name: Check examples (${{ matrix.arch.name }})
+    runs-on: ${{ matrix.arch.image }}
     needs:
-      - build-ebpf-exporter-docker-x86_64
-      - build-tracing-demos-x86_64
+      - build-ebpf-exporter-docker
+      - build-tracing-demos
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download ebpf_exporter_with_examples.x86_64.tar.gz
+      - name: Download ebpf_exporter_with_examples.${{ matrix.arch.name }}.tar.gz
         uses: actions/download-artifact@v4
         with:
-          name: ebpf_exporter_with_examples.x86_64.tar.gz
+          name: ebpf_exporter_with_examples.${{ matrix.arch.name }}.tar.gz
 
-      - name: Extract ebpf_exporter_with_examples.x86_64.tar.gz
-        run: tar --strip-components 1 -xzvf ebpf_exporter_with_examples.x86_64.tar.gz
+      - name: Extract ebpf_exporter_with_examples.${{ matrix.arch.name }}.tar.gz
+        run: tar --strip-components 1 -xzvf ebpf_exporter_with_examples.${{ matrix.arch.name }}.tar.gz
 
-      - name: Download tracing-demos.x86_64.tar.gz
+      - name: Download tracing-demos.${{ matrix.arch.name }}.tar.gz
         uses: actions/download-artifact@v4
         with:
-          name: tracing-demos.x86_64.tar.gz
+          name: tracing-demos.${{ matrix.arch.name }}.tar.gz
 
-      - name: Extract tracing-demos.x86_64.tar.gz
-        run: tar -xzvf tracing-demos.x86_64.tar.gz
+      - name: Extract tracing-demos.${{ matrix.arch.name }}.tar.gz
+        run: tar -xzvf tracing-demos.${{ matrix.arch.name }}.tar.gz
 
       - name: Print kernel version
         run: uname -a
@@ -500,17 +515,21 @@ jobs:
         run: make jsonschema
 
   publish-docker-images:
-    name: Publish Docker images (x86_64, aarch64)
-    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        arch:
+          - name: x86_64
+            image: ubuntu-24.04
+            docker_platform: linux/amd64
+          - name: aarch64
+            image: ubuntu-24.04-arm
+            docker_platform: linux/arm64
+    name: Publish Docker images (${{ matrix.arch.name }})
+    runs-on: ${{ matrix.arch.image }}
     permissions:
       contents: read
       packages: write
     steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Fetch with tags to have the build version attached
@@ -544,15 +563,14 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.arch.docker_platform }}
           provenance: false # https://github.com/docker/build-push-action/issues/755
 
   release-archive:
     name: Release archive
     runs-on: ubuntu-24.04
     needs:
-      - build-ebpf-exporter-docker-aarch64
-      - build-ebpf-exporter-docker-x86_64
+      - build-ebpf-exporter-docker
     steps:
       - name: Download ebpf_exporter.aarch64
         uses: actions/download-artifact@v4
