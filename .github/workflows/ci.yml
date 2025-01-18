@@ -554,9 +554,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: .
           platforms: ${{ matrix.arch.docker_platform }}
-          outputs: type=image,"name=ghcr.io/${{ github.repository }}",push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,"name=ghcr.io/${{ github.repository }}",push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
 
       - name: Export digest
         run: |
@@ -614,10 +613,12 @@ jobs:
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
+        if: github.event_name != 'pull_request'
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") $(printf 'ghcr.io/${{ github.repository }}@sha256:%s ' *)
 
       - name: Inspect image
+        if: github.event_name != 'pull_request'
         run: |
           docker buildx imagetools inspect ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}
 
