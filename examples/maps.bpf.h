@@ -1,5 +1,22 @@
 #include "bits.bpf.h"
 
+// Produce values that are usable for prometheus. See:
+// * https://github.com/cloudflare/ebpf_exporter/issues/488
+static __always_inline u64 log2l_histogram(u64 v)
+{
+    u64 rounded = log2l(v);
+
+    if (rounded == 0) {
+        return 0;
+    }
+
+    if (2ULL << (rounded - 1) == v) {
+        return rounded;
+    } else {
+        return rounded + 1;
+    }
+}
+
 #define lookup_or_zero_init_key(map, key, into)                                                                        \
     u64 zero = 0;                                                                                                      \
                                                                                                                        \
@@ -51,7 +68,7 @@ static inline int increment_map_nosync(void *map, void *key, u64 increment)
     }
 
 #define _increment_ex2_histogram(map, key, increment, max_bucket, increment_fn)                                        \
-    key.bucket = log2l(increment);                                                                                     \
+    key.bucket = log2l_histogram(increment);                                                                           \
                                                                                                                        \
     if (key.bucket > max_bucket) {                                                                                     \
         key.bucket = max_bucket;                                                                                       \
@@ -69,7 +86,7 @@ static inline int increment_map_nosync(void *map, void *key, u64 increment)
     if (increment == 0) {                                                                                              \
         key.bucket = 0;                                                                                                \
     } else {                                                                                                           \
-        key.bucket = log2l(increment) + 1;                                                                             \
+        key.bucket = log2l_histogram(increment) + 1;                                                                   \
     }                                                                                                                  \
                                                                                                                        \
     _increment_histogram(map, key, increment, max_bucket, increment_fn);
