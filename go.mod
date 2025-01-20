@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
-	github.com/aquasecurity/libbpfgo v0.7.0-libbpf-1.4
+	github.com/aquasecurity/libbpfgo v0.8.0-libbpf-1.5
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/elastic/go-perf v0.0.0-20191212140718-9c656876f595
 	github.com/iovisor/gobpf v0.2.0
