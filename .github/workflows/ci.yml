@@ -105,7 +105,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: ^1.23
+          go-version: ^1.24
 
       - name: Download libbpf.tar.gz
         uses: actions/download-artifact@v4
@@ -145,7 +145,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: ^1.23
+          go-version: ^1.24
 
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
@@ -178,7 +178,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: ^1.23
+          go-version: ^1.24
 
       - name: Download libbpf.tar.gz
         uses: actions/download-artifact@v4
@@ -215,7 +215,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: ^1.23
+          go-version: ^1.24
 
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
@@ -245,7 +245,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: ^1.23
+          go-version: ^1.24
 
       - name: Install systemtap-sdt-dev
         run: sudo apt-get install -y systemtap-sdt-dev
@@ -287,7 +287,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: ^1.23
+          go-version: ^1.24
 
       - name: Install systemtap-sdt-dev
         run: sudo apt-get install -y systemtap-sdt-dev
@@ -321,7 +321,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: ^1.23
+          go-version: ^1.24
           cache: false # https://github.com/golangci/golangci-lint-action/issues/807
 
       - name: Install systemtap-sdt-dev
@@ -417,7 +417,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: ^1.23
+          go-version: ^1.24
 
       - name: Install systemtap-sdt-dev
         run: sudo apt-get install -y systemtap-sdt-dev
