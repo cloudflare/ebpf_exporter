@@ -56,7 +56,7 @@ type Exporter struct {
 }
 
 // New creates a new exporter with the provided config
-func New(configs []config.Config, tracingProvider tracing.Provider, btfPath string) (*Exporter, error) {
+func New(configs []config.Config, skipCacheSize int, tracingProvider tracing.Provider, btfPath string) (*Exporter, error) {
 	enabledConfigsDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(prometheusNamespace, "", "enabled_configs"),
 		"The set of enabled configs",
@@ -101,7 +101,7 @@ func New(configs []config.Config, tracingProvider tracing.Provider, btfPath stri
 		decoderErrorCount.WithLabelValues(config.Name).Add(0.0)
 	}
 
-	decoders, err := decoder.NewSet()
+	decoders, err := decoder.NewSet(skipCacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("error creating decoder set: %w", err)
 	}
