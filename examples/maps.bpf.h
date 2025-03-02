@@ -53,10 +53,6 @@ static inline int increment_map_nosync(void *map, void *key, u64 increment)
 #define _increment_ex2_histogram(map, key, increment, max_bucket, increment_fn)                                        \
     key.bucket = log2l(increment);                                                                                     \
                                                                                                                        \
-    if (key.bucket > max_bucket) {                                                                                     \
-        key.bucket = max_bucket;                                                                                       \
-    }                                                                                                                  \
-                                                                                                                       \
     _increment_histogram(map, key, increment, max_bucket, increment_fn);
 
 #define increment_exp2_histogram(map, key, increment, max_bucket)                                                      \
