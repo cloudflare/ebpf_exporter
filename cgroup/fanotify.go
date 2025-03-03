@@ -199,6 +199,10 @@ func (m *fanotifyMonitor) Resolve(id int) string {
 	return m.observer.lookup(id)
 }
 
+func (m *fanotifyMonitor) SubscribeCgroupChange(ch chan<- CgroupChange) error {
+	return m.observer.subscribeCgroupChange(ch)
+}
+
 // The following kernel patch is required to take advantage of this (included in v6.6-rc1):
 // * https://git.kernel.org/torvalds/c/0ce7c12e88cf ("kernfs: attach uuid for every kernfs and report it in fsid")
 func attachFanotify(path string) (io.Reader, error) {
