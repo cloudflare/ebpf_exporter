@@ -19,7 +19,7 @@ type observer struct {
 	lock        sync.Mutex
 	inodeToPath map[int]*resolved
 	pathToInode map[string]int
-	cgroupChans []chan<- CgroupChange
+	cgroupChans []chan<- ChangeNotification
 }
 
 func newObserver(initial map[int]string) *observer {
@@ -27,7 +27,7 @@ func newObserver(initial map[int]string) *observer {
 		lock:        sync.Mutex{},
 		inodeToPath: map[int]*resolved{},
 		pathToInode: map[string]int{},
-		cgroupChans: []chan<- CgroupChange{},
+		cgroupChans: []chan<- ChangeNotification{},
 	}
 
 	for inode, name := range initial {
@@ -86,7 +86,7 @@ func (o *observer) add(inode int, path string) {
 	o.inodeToPath[inode] = r
 	o.pathToInode[path] = inode
 	for _, ch := range o.cgroupChans {
-		ch <- CgroupChange{
+		ch <- ChangeNotification{
 			ID:   inode,
 			Path: path,
 		}
@@ -105,7 +105,7 @@ func (o *observer) remove(path string) {
 	r := o.inodeToPath[inode]
 	r.dead = time.Now()
 	for _, ch := range o.cgroupChans {
-		ch <- CgroupChange{
+		ch <- ChangeNotification{
 			ID:     inode,
 			Path:   path,
 			Remove: true,
@@ -129,12 +129,12 @@ func (o *observer) lookup(inode int) string {
 	return r.path
 }
 
-func (o *observer) subscribeCgroupChange(ch chan<- CgroupChange) error {
+func (o *observer) subscribeCgroupChange(ch chan<- ChangeNotification) error {
 	o.cgroupChans = append(o.cgroupChans, ch)
 	// send the initial cgroup mapping
 	go func() {
 		for path, inode := range o.pathToInode {
-			ch <- CgroupChange{
+			ch <- ChangeNotification{
 				ID:   inode,
 				Path: path,
 			}

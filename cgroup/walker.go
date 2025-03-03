@@ -45,7 +45,7 @@ func (m *walkerMonitor) Resolve(id int) string {
 	return m.mapping[id]
 }
 
-func (m *walkerMonitor) SubscribeCgroupChange(_ chan<- CgroupChange) error {
+func (m *walkerMonitor) SubscribeCgroupChange(_ chan<- ChangeNotification) error {
 	return ErrCgroupIDMapUnsupported
 }
 

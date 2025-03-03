@@ -15,6 +15,7 @@ import (
 	"unsafe"
 
 	"github.com/aquasecurity/libbpfgo"
+	"github.com/cloudflare/ebpf_exporter/v2/cgroup"
 	"github.com/cloudflare/ebpf_exporter/v2/config"
 	"github.com/cloudflare/ebpf_exporter/v2/decoder"
 	"github.com/cloudflare/ebpf_exporter/v2/tracing"
@@ -36,8 +37,9 @@ var percpuMapTypes = map[libbpfgo.MapType]struct{}{
 
 // Exporter is a ebpf_exporter instance implementing prometheus.Collector
 type Exporter struct {
-	configs                  []config.Config
-	modules                  map[string]*libbpfgo.Module
+	configs []config.Config
+	modules map[string]*libbpfgo.Module
+
 	perfEventArrayCollectors []*perfEventArraySink
 	kaddrs                   map[string]uint64
 	enabledConfigsDesc       *prometheus.Desc
@@ -238,9 +240,28 @@ func (e *Exporter) attachConfig(ctx context.Context, cfg config.Config) error {
 		return fmt.Errorf("error validating maps for config %q: %w", cfg.Name, err)
 	}
 
+	// attach cgroup id map if exists
+	if len(cfg.CgroupIDMap.Name) > 0 {
+		if err := e.attachCgroupIDMap(module, cfg); err != nil {
+			return err
+		}
+	}
+
 	e.attachedProgs[cfg.Name] = attachments
 	e.modules[cfg.Name] = module
 
+	return nil
+}
+
+func (e *Exporter) attachCgroupIDMap(module *libbpfgo.Module, cfg config.Config) error {
+	cgMap, err := newCgroupIDMap(module, cfg)
+	if err != nil {
+		return err
+	}
+	if err := cgMap.subscribe(e.cgroupMonitor); err != nil {
+		return err
+	}
+	go cgMap.runLoop()
 	return nil
 }
 
