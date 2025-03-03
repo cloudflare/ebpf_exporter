@@ -53,6 +53,7 @@ type Exporter struct {
 	tracingProvider          tracing.Provider
 	active                   bool
 	activeMutex              sync.Mutex
+	cgroupMonitor            *cgroup.Monitor
 }
 
 // New creates a new exporter with the provided config
@@ -101,7 +102,12 @@ func New(configs []config.Config, skipCacheSize int, tracingProvider tracing.Pro
 		decoderErrorCount.WithLabelValues(config.Name).Add(0.0)
 	}
 
-	decoders, err := decoder.NewSet(skipCacheSize)
+	monitor, err := cgroup.NewMonitor("/sys/fs/cgroup")
+	if err != nil {
+		return nil, fmt.Errorf("error creating cgroup monitor: %w", err)
+	}
+
+	decoders, err := decoder.NewSet(skipCacheSize, monitor)
 	if err != nil {
 		return nil, fmt.Errorf("error creating decoder set: %w", err)
 	}
@@ -121,6 +127,7 @@ func New(configs []config.Config, skipCacheSize int, tracingProvider tracing.Pro
 		decoders:            decoders,
 		btfPath:             btfPath,
 		tracingProvider:     tracingProvider,
+		cgroupMonitor:       monitor,
 	}, nil
 }
 
