@@ -13,16 +13,6 @@ type CGroup struct {
 	monitor *cgroup.Monitor
 }
 
-// NewCgroupDecoder creates a new cgroup decoder
-func NewCgroupDecoder() (*CGroup, error) {
-	monitor, err := cgroup.NewMonitor("/sys/fs/cgroup")
-	if err != nil {
-		return nil, fmt.Errorf("error creating cgroup monitor: %w", err)
-	}
-
-	return &CGroup{monitor}, nil
-}
-
 // Decode transforms cgroup id to path in cgroupfs
 func (c *CGroup) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 	cgroupID, err := strconv.Atoi(string(in))
