@@ -5,17 +5,20 @@ import (
 	"log"
 )
 
-var ErrCgroupIdMapUnsupported = errors.New("cgroup change subscription failed (fanotify not available)")
+// ErrCgroupIDMapUnsupported is returned when cgroup id map is not available
+var ErrCgroupIDMapUnsupported = errors.New("cgroup change subscription failed (fanotify not available)")
 
-type CgroupChange struct {
-	Id     int
+// ChangeNotification is the notification returned by cgroup monitor when a subscribed
+// cgroup has been added or removed
+type ChangeNotification struct {
+	ID     int
 	Path   string
 	Remove bool
 }
 
 type monitor interface {
 	Resolve(id int) string
-	SubscribeCgroupChange(chan<- CgroupChange) error
+	SubscribeCgroupChange(ch chan<- ChangeNotification) error
 }
 
 // Monitor resolves cgroup ids into their respective paths
@@ -45,6 +48,8 @@ func (m *Monitor) Resolve(id int) string {
 	return m.inner.Resolve(id)
 }
 
-func (m *Monitor) SubscribeCgroupChange(ch chan<- CgroupChange) error {
+// SubscribeCgroupChange receives cgroup change notifications. This requires
+// kernel with fanotify support for cgroup
+func (m *Monitor) SubscribeCgroupChange(ch chan<- ChangeNotification) error {
 	return m.inner.SubscribeCgroupChange(ch)
 }
