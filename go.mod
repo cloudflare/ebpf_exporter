@@ -7,6 +7,7 @@ require (
 	github.com/aquasecurity/libbpfgo v0.8.0-libbpf-1.5
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/elastic/go-perf v0.0.0-20191212140718-9c656876f595
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/iovisor/gobpf v0.2.0
 	github.com/jaypipes/pcidb v1.0.1
 	github.com/mdlayher/sdnotify v1.0.0

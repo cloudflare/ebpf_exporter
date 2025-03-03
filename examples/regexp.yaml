@@ -8,6 +8,7 @@ metrics:
           decoders:
             - name: string
             - name: regexp
+              skip_cache_size: 100
               regexps:
                 - ^(kswapd).*$ # anything matching kswapd prefix, mapping to one kswapd bucket
                 - ^(systemd.*)$ # anything matching systemd prefix, mapping to one systemd bucket

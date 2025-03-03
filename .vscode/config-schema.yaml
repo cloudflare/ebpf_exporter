@@ -145,7 +145,10 @@ definitions:
                 type: object
               allow_unknown:
                 type: boolean
+              skip_cache_size:
+                type: number
               regexps:
                 type: array
                 items:
                   type: string
+

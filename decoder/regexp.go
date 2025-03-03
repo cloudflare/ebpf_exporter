@@ -6,11 +6,13 @@ import (
 	"regexp"
 
 	"github.com/cloudflare/ebpf_exporter/v2/config"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 // Regexp is a decoder that only allows inputs matching regexp
 type Regexp struct {
-	cache map[string]*regexp.Regexp
+	cache     map[string]*regexp.Regexp
+	skipCache *lru.Cache[string, struct{}]
 }
 
 // Decode only allows inputs matching regexp
@@ -18,9 +20,17 @@ func (r *Regexp) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 	if conf.Regexps == nil {
 		return nil, errors.New("no regexps defined in config")
 	}
+	inputStr := string(in)
 
 	if r.cache == nil {
 		r.cache = map[string]*regexp.Regexp{}
+	}
+	if conf.SkipCacheSize > 0 && r.skipCache == nil {
+		skipCache, err := lru.New[string, struct{}](int(conf.SkipCacheSize))
+		if err != nil {
+			return nil, err
+		}
+		r.skipCache = skipCache
 	}
 
 	for _, expr := range conf.Regexps {
@@ -31,6 +41,12 @@ func (r *Regexp) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 			}
 
 			r.cache[expr] = compiled
+		}
+
+		if r.skipCache != nil {
+			if _, ok := r.skipCache.Get(inputStr); ok {
+				return nil, ErrSkipLabelSet
+			}
 		}
 
 		matches := r.cache[expr].FindSubmatch(in)
@@ -44,6 +60,10 @@ func (r *Regexp) Decode(in []byte, conf config.Decoder) ([]byte, error) {
 		if len(matches) == 1 {
 			return matches[0], nil
 		}
+	}
+
+	if r.skipCache != nil {
+		r.skipCache.Add(inputStr, struct{}{})
 	}
 
 	return nil, ErrSkipLabelSet
