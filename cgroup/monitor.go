@@ -1,11 +1,21 @@
 package cgroup
 
 import (
+	"errors"
 	"log"
 )
 
+var ErrCgroupIdMapUnsupported = errors.New("cgroup change subscription failed (fanotify not available)")
+
+type CgroupChange struct {
+	Id     int
+	Path   string
+	Remove bool
+}
+
 type monitor interface {
 	Resolve(id int) string
+	SubscribeCgroupChange(chan<- CgroupChange) error
 }
 
 // Monitor resolves cgroup ids into their respective paths
@@ -33,4 +43,8 @@ func NewMonitor(path string) (*Monitor, error) {
 // Resolve resolves an id to a path for a cgroup
 func (m *Monitor) Resolve(id int) string {
 	return m.inner.Resolve(id)
+}
+
+func (m *Monitor) SubscribeCgroupChange(ch chan<- CgroupChange) error {
+	return m.inner.SubscribeCgroupChange(ch)
 }
