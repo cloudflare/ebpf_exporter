@@ -73,6 +73,8 @@ type Decoder struct {
 	StaticMap    map[string]string `yaml:"static_map"`
 	Regexps      []string          `yaml:"regexps"`
 	AllowUnknown bool              `yaml:"allow_unknown"`
+	// SkipCacheSize is size of a cache that stores label value matches ErrSkipLabelSet
+	SkipCacheSize uint `yaml:"skip_cache_size"`
 }
 
 // HistogramBucketType is an enum to define how to interpret histogram

@@ -54,3 +54,15 @@ func TestRegexpDecoder(t *testing.T) {
 		}
 	}
 }
+
+func TestRegexpDecoderWithSkipCache(t *testing.T) {
+	d := &Regexp{}
+	input := []byte("whatever")
+	_, err := d.Decode(input, config.Decoder{Regexps: []string{"^(systemd).*$", "^syslog-ng$"}, SkipCacheSize: 100})
+	if !errors.Is(err, ErrSkipLabelSet) {
+		t.Errorf("Error decoding %s: %v", input, err)
+	}
+	if !d.skipCache.Contains("whatever") {
+		t.Errorf("failed to add to skipcache %s: kets=%v", input, d.skipCache.Keys())
+	}
+}
