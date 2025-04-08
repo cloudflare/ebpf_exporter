@@ -115,6 +115,9 @@ jobs:
       - name: Install libbpf
         run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
 
+      - name: Run apt-get update
+        run: sudo apt-get update
+
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
 
@@ -146,6 +149,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ^1.24
+
+      - name: Run apt-get update
+        run: sudo apt-get update
 
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
@@ -188,6 +194,9 @@ jobs:
       - name: Install libbpf
         run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
 
+      - name: Run apt-get update
+        run: sudo apt-get update
+
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
 
@@ -216,6 +225,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ^1.24
+
+      - name: Run apt-get update
+        run: sudo apt-get update
 
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
@@ -247,8 +259,14 @@ jobs:
         with:
           go-version: ^1.24
 
+      - name: Run apt-get update
+        run: sudo apt-get update
+
       - name: Install systemtap-sdt-dev
         run: sudo apt-get install -y systemtap-sdt-dev
+
+      - name: Install libelf-dev
+        run: sudo apt-get install -y libelf-dev
 
       - name: Download libbpf.tar.gz
         uses: actions/download-artifact@v4
@@ -257,9 +275,6 @@ jobs:
 
       - name: Install libbpf
         run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
-
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
 
       - name: Update pci.ids
         run: |
@@ -288,6 +303,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ^1.24
+
+      - name: Run apt-get update
+        run: sudo apt-get update
 
       - name: Install systemtap-sdt-dev
         run: sudo apt-get install -y systemtap-sdt-dev
@@ -323,6 +341,9 @@ jobs:
         with:
           go-version: ^1.24
           cache: false # https://github.com/golangci/golangci-lint-action/issues/807
+
+      - name: Run apt-get update
+        run: sudo apt-get update
 
       - name: Install systemtap-sdt-dev
         run: sudo apt-get install -y systemtap-sdt-dev
@@ -365,6 +386,9 @@ jobs:
       - name: Install libbpf
         run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
 
+      - name: Run apt-get update
+        run: sudo apt-get update
+
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
 
@@ -389,6 +413,9 @@ jobs:
     runs-on: ${{ matrix.arch.image }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Run apt-get update
+        run: sudo apt-get update
 
       - name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
@@ -418,6 +445,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ^1.24
+
+      - name: Run apt-get update
+        run: sudo apt-get update
 
       - name: Install systemtap-sdt-dev
         run: sudo apt-get install -y systemtap-sdt-dev
@@ -484,6 +514,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Run apt-get update
+        run: sudo apt-get update
+
       - name: Install clang-format
         run: sudo apt-get install -y clang-format make
 
@@ -504,6 +537,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+
+      - name: Run apt-get update
+        run: sudo apt-get update
 
       - name: Install jsonschema dependencies
         run: sudo apt-get install -y python3-jsonschema make
