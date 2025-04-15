@@ -11,11 +11,12 @@ import (
 
 // Config describes how to configure and extract metrics
 type Config struct {
-	Name    string   `yaml:"name"`
-	Metrics Metrics  `yaml:"metrics"`
-	Tracing Tracing  `yaml:"tracing"`
-	Kaddrs  []string `yaml:"kaddrs"`
-	BPFPath string
+	Name        string      `yaml:"name"`
+	Metrics     Metrics     `yaml:"metrics"`
+	Tracing     Tracing     `yaml:"tracing"`
+	Kaddrs      []string    `yaml:"kaddrs"`
+	CgroupIdMap CgroupIdMap `yaml:"cgroup_id_map"`
+	BPFPath     string
 }
 
 // Metrics is a collection of metrics attached to a program
@@ -43,6 +44,11 @@ type Histogram struct {
 	BucketMax        int                 `yaml:"bucket_max"`
 	BucketKeys       []float64           `yaml:"bucket_keys"`
 	Labels           []Label             `yaml:"labels"`
+}
+
+type CgroupIdMap struct {
+	Name    string   `yaml:"name"`
+	Regexps []string `yaml:"regexps"`
 }
 
 // Tracing is a collection of spans attached to a program
