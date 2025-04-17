@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/go-systemd/activation"
 	"github.com/mdlayher/sdnotify"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	version_collector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
@@ -128,6 +129,16 @@ func main() {
 	err = prometheus.Register(version_collector.NewCollector("ebpf_exporter"))
 	if err != nil {
 		log.Fatalf("Error registering version collector: %s", err)
+	}
+
+	err = prometheus.MustRegister(
+		// expose process metrics like CPU, Memory, file descriptor usage etc.
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+		// expose all Go runtime metrics like GC stats, memory stats etc.
+		collectors.NewGoCollector(collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll)),
+	)
+	if err != nil {
+		log.Fatalf("Error registering process metrics or go runtime metric: %s", err)
 	}
 
 	err = prometheus.Register(e)
