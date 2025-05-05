@@ -148,7 +148,7 @@ func TestDecodeLabels(t *testing.T) {
 	}
 
 	for i, c := range cases {
-		s, err := NewSet()
+		s, err := NewSet(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -209,7 +209,7 @@ func TestDecoderSetConcurrency(t *testing.T) {
 		},
 	}
 
-	s, err := NewSet()
+	s, err := NewSet(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,7 +274,7 @@ func TestDecoderSetCache(t *testing.T) {
 		},
 	}
 
-	s, err := NewSet()
+	s, err := NewSet(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +345,7 @@ func BenchmarkCache(b *testing.B) {
 		},
 	}
 
-	s, err := NewSet()
+	s, err := NewSet(nil)
 	if err != nil {
 		b.Fatal(err)
 	}
