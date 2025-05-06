@@ -501,9 +501,16 @@ jobs:
       - name: Print kernel version
         run: uname -a
 
-      # Some programs expect to attach to symbols in modules
+      - name: Install dependencies for ceph fs exporter
+        run: |
+          sudo apt update
+          sudo apt install -y ceph-common
+
+        # Some programs expect to attach to symbols in modules
       - name: Load expected kernel modules
-        run: sudo modprobe xfs
+        run: |
+          sudo modprobe xfs
+          sudo modprobe ceph
 
       - name: Run configuration check
         run: make config-check
