@@ -45,6 +45,10 @@ func (m *walkerMonitor) Resolve(id int) string {
 	return m.mapping[id]
 }
 
+func (m *walkerMonitor) SubscribeCgroupChange(ch chan<- CgroupChange) error {
+	return ErrCgroupIdMapUnsupported
+}
+
 func walk(dir string) (map[int]string, error) {
 	mapping := map[int]string{}
 
