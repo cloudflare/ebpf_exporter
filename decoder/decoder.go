@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/cloudflare/ebpf_exporter/v2/cgroup"
 	"github.com/cloudflare/ebpf_exporter/v2/config"
 	"github.com/cloudflare/ebpf_exporter/v2/kallsyms"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 // ErrSkipLabelSet instructs exporter to skip label set
@@ -21,26 +23,22 @@ type Decoder interface {
 
 // Set is a set of Decoders that may be applied to produce a label
 type Set struct {
-	mu       sync.Mutex
-	decoders map[string]Decoder
-	cache    map[string]map[string][]string
+	mu        sync.Mutex
+	decoders  map[string]Decoder
+	cache     map[string]map[string][]string
+	skipCache *lru.Cache[string, struct{}]
 }
 
 // NewSet creates a Set with all known decoders
-func NewSet() (*Set, error) {
-	cgroup, err := NewCgroupDecoder()
-	if err != nil {
-		return nil, fmt.Errorf("error creating cgroup decoder: %w", err)
-	}
-
+func NewSet(skipCacheSize int, monitor *cgroup.Monitor) (*Set, error) {
 	ksym, err := kallsyms.NewDecoder("/proc/kallsyms")
 	if err != nil {
 		return nil, fmt.Errorf("error creating ksym decoder: %w", err)
 	}
 
-	return &Set{
+	s := &Set{
 		decoders: map[string]Decoder{
-			"cgroup":       cgroup,
+			"cgroup":       &CGroup{monitor},
 			"dname":        &Dname{},
 			"errno":        &Errno{},
 			"hex":          &Hex{},
@@ -60,7 +58,16 @@ func NewSet() (*Set, error) {
 			"uint":         &UInt{},
 		},
 		cache: map[string]map[string][]string{},
-	}, nil
+	}
+
+	if skipCacheSize > 0 {
+		skipCache, err := lru.New[string, struct{}](skipCacheSize)
+		if err != nil {
+			return nil, err
+		}
+		s.skipCache = skipCache
+	}
+	return s, nil
 }
 
 // decode transforms input byte field into a string according to configuration
@@ -75,6 +82,9 @@ func (s *Set) decode(in []byte, label config.Label) ([]byte, error) {
 		decoded, err := s.decoders[decoder.Name].Decode(result, decoder)
 		if err != nil {
 			if errors.Is(err, ErrSkipLabelSet) {
+				if s.skipCache != nil {
+					s.skipCache.Add(string(in), struct{}{})
+				}
 				return decoded, err
 			}
 
@@ -104,6 +114,14 @@ func (s *Set) DecodeLabelsForMetrics(in []byte, name string, labels []config.Lab
 	// * https://github.com/golang/go/commit/f5f5a8b6209f8
 	if cached, ok := cache[string(in)]; ok {
 		return cached, nil
+	}
+
+	// Also check the skip cache if the input would have return ErrSkipLabelSet
+	// and return the error early.
+	if s.skipCache != nil {
+		if _, ok := s.skipCache.Get(string(in)); ok {
+			return nil, ErrSkipLabelSet
+		}
 	}
 
 	values, err := s.decodeLabels(in, labels)

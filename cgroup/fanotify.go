@@ -63,9 +63,8 @@ func newFanotifyMonitor(path string) (*fanotifyMonitor, error) {
 	}
 
 	go func() {
-		if err := m.readFanotifyLoop(); err != nil {
-			log.Fatalf("Error running fanotify loop: %v", err)
-		}
+		err := m.readFanotifyLoop()
+		log.Fatalf("Fanotify loop terminated with err:%v", err)
 	}()
 
 	return m, nil
@@ -197,6 +196,10 @@ func (m *fanotifyMonitor) readFanotifyFileHandle(reader io.Reader) (unix.FileHan
 
 func (m *fanotifyMonitor) Resolve(id int) string {
 	return m.observer.lookup(id)
+}
+
+func (m *fanotifyMonitor) SubscribeCgroupChange(ch chan<- ChangeNotification) error {
+	return m.observer.subscribeCgroupChange(ch)
 }
 
 // The following kernel patch is required to take advantage of this (included in v6.6-rc1):
