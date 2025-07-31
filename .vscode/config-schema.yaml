@@ -71,6 +71,16 @@ properties:
                 type: number
             labels:
               $ref: "#/definitions/labels"
+  cgroup_id_map:
+    type: object
+    additionalProperties: false
+    properties:
+      name:
+        type: string
+      regexps:
+        type: array
+        items:
+          type: string
   tracing:
     type: object
     additionalProperties: false

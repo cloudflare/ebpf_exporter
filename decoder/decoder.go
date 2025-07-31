@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/cloudflare/ebpf_exporter/v2/cgroup"
 	"github.com/cloudflare/ebpf_exporter/v2/config"
 	"github.com/cloudflare/ebpf_exporter/v2/kallsyms"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -29,12 +30,7 @@ type Set struct {
 }
 
 // NewSet creates a Set with all known decoders
-func NewSet(skipCacheSize int) (*Set, error) {
-	cgroup, err := NewCgroupDecoder()
-	if err != nil {
-		return nil, fmt.Errorf("error creating cgroup decoder: %w", err)
-	}
-
+func NewSet(skipCacheSize int, monitor *cgroup.Monitor) (*Set, error) {
 	ksym, err := kallsyms.NewDecoder("/proc/kallsyms")
 	if err != nil {
 		return nil, fmt.Errorf("error creating ksym decoder: %w", err)
@@ -42,7 +38,7 @@ func NewSet(skipCacheSize int) (*Set, error) {
 
 	s := &Set{
 		decoders: map[string]Decoder{
-			"cgroup":       cgroup,
+			"cgroup":       &CGroup{monitor},
 			"dname":        &Dname{},
 			"errno":        &Errno{},
 			"hex":          &Hex{},

@@ -1,0 +1,24 @@
+metrics:
+  counters:
+    - name: cgroup_sched_migrations_total
+      help: Number of sched:sched_migrate_task events per cgroup
+      labels:
+        - name: cgroup
+          size: 8
+          decoders:
+            - name: uint
+            - name: cgroup
+
+    - name: cgroup_sched_migrations_not_match_total
+      help: Number of sched:sched_migrate_task events per cgroup not match cgroup id map
+      labels:
+        - name: cgroup
+          size: 8
+          decoders:
+            - name: uint
+            - name: cgroup
+
+cgroup_id_map:
+  name: cgroup_id_map
+  regexps:
+    - ^.*(system.slice/.*)$
