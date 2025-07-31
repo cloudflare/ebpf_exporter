@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -148,7 +149,7 @@ func TestDecodeLabels(t *testing.T) {
 	}
 
 	for i, c := range cases {
-		s, err := NewSet()
+		s, err := NewSet(0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -157,6 +158,118 @@ func TestDecodeLabels(t *testing.T) {
 		if c.err {
 			if err == nil {
 				t.Errorf("Expected error for input %#v and labels %#v, but did not receive it", c.in, c.labels)
+			}
+
+			continue
+		}
+
+		if err != nil {
+			t.Errorf("Error decoding %#v with labels set to %#v: %s", c.in, c.labels, err)
+		}
+
+		if len(c.out) != len(out) {
+			t.Errorf("Expected %d outputs (%v), received %d (%v)", len(c.out), c.out, len(out), out)
+		}
+
+		for i := 0; i < len(c.out) && i < len(out); i++ {
+			if c.out[i] != out[i] {
+				t.Errorf("Output label %d for input %#v is wrong: expected %s, but received %s", i, c.in, c.out[i], out[i])
+			}
+		}
+	}
+}
+
+func TestDecodeSkipLabels(t *testing.T) {
+	cases := []struct {
+		in          []byte
+		skipCacheIn string
+		labels      []config.Label
+		out         []string
+		err         bool
+	}{
+		{
+			in:          append([]byte{0x8, 0x0, 0x0, 0x0}, zeroPaddedString("bananas", 32)...),
+			skipCacheIn: "",
+			labels: []config.Label{
+				{
+					Name: "number",
+					Size: 4,
+					Decoders: []config.Decoder{
+						{
+							Name: "uint",
+						},
+					},
+				},
+				{
+					Name: "fruit",
+					Size: 32,
+					Decoders: []config.Decoder{
+						{
+							Name: "string",
+						},
+						{
+							Name: "regexp",
+							Regexps: []string{
+								"^bananas$",
+								"$is-banana-even-fruit$",
+							},
+						},
+					},
+				},
+			},
+			out: []string{"8", "bananas"},
+			err: false,
+		},
+		{
+			in:          append([]byte{0x8, 0x0, 0x0, 0x0}, zeroPaddedString("bananas", 32)...),
+			skipCacheIn: string(zeroPaddedString("bananas", 32)),
+			labels: []config.Label{
+				{
+					Name: "number",
+					Size: 4,
+					Decoders: []config.Decoder{
+						{
+							Name: "uint",
+						},
+					},
+				},
+				{
+					Name: "fruit",
+					Size: 32,
+					Decoders: []config.Decoder{
+						{
+							Name: "string",
+						},
+						{
+							Name: "regexp",
+							Regexps: []string{
+								"^tomato$",
+							},
+						},
+					},
+				},
+			},
+			out: []string{"8", "bananas"},
+			err: true, // this label should be skipped, only tomatoes allowed
+		},
+	}
+
+	for i, c := range cases {
+		s, err := NewSet(100)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		out, err := s.DecodeLabelsForMetrics(c.in, fmt.Sprintf("test:%d", i), c.labels)
+		if c.err {
+			if err == nil {
+				t.Errorf("Expected error for input %#v and labels %#v, but did not receive it", c.in, c.labels)
+			}
+
+			if errors.Is(err, ErrSkipLabelSet) {
+				if !s.skipCache.Contains(c.skipCacheIn) {
+					t.Errorf("Expected skipCache to have input %#v", c.skipCacheIn)
+				}
 			}
 
 			continue
@@ -209,7 +322,7 @@ func TestDecoderSetConcurrency(t *testing.T) {
 		},
 	}
 
-	s, err := NewSet()
+	s, err := NewSet(0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,7 +387,7 @@ func TestDecoderSetCache(t *testing.T) {
 		},
 	}
 
-	s, err := NewSet()
+	s, err := NewSet(0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +458,7 @@ func BenchmarkCache(b *testing.B) {
 		},
 	}
 
-	s, err := NewSet()
+	s, err := NewSet(0)
 	if err != nil {
 		b.Fatal(err)
 	}
