@@ -742,9 +742,12 @@ perf_event_array: <whether map is a BPF_MAP_TYPE_PERF_EVENT_ARRAY map: bool>
 flush_interval: <how often should we flush metrics from the perf_event_array: time.Duration>
 labels:
   [ - label ]
+[ values: { name: "...", help: "..."}]
 ```
 
 An example of `perf_map` can be found [here](examples/oomkill.yaml).
+
+An example of `values` can be found [here](examples/complex-value.yaml).
 
 #### `histogram`
 
