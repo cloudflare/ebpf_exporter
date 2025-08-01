@@ -1,5 +1,5 @@
 # libbpf
-FROM debian:bookworm as libbpf_builder
+FROM debian:bookworm AS libbpf_builder
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git ca-certificates gcc make pkg-config libelf-dev
@@ -10,7 +10,7 @@ RUN make -j $(nproc) -C /build/ebpf_exporter libbpf.a && \
     tar -C /build/ebpf_exporter/libbpf/dest -czf /build/libbpf.tar.gz .
 
 # ebpf_exporter binary
-FROM golang:1.24-bookworm as ebpf_exporter_builder
+FROM golang:1.24-bookworm AS ebpf_exporter_builder
 
 RUN apt-get update && \
     apt-get install -y libelf-dev pci.ids
@@ -24,7 +24,7 @@ RUN make -j $(nproc) -C /build/ebpf_exporter build && \
 
 
 # examples
-FROM debian:bookworm as examples_builder
+FROM debian:bookworm AS examples_builder
 
 RUN apt-get update && \
     apt-get install -y clang-16 make
@@ -37,7 +37,7 @@ RUN make -j $(nproc) -C /build/ebpf_exporter/examples CC=clang-16
 
 
 # ebpf_exporter release image
-FROM gcr.io/distroless/static-debian11 as ebpf_exporter
+FROM gcr.io/distroless/static-debian11 AS ebpf_exporter
 
 COPY --from=ebpf_exporter_builder /build/ebpf_exporter/ebpf_exporter /ebpf_exporter
 COPY --from=ebpf_exporter_builder /usr/share/misc/pci.ids /usr/share/misc/pci.ids
@@ -46,7 +46,7 @@ ENTRYPOINT ["/ebpf_exporter"]
 
 
 # ebpf_exporter release image with examples bundled
-FROM gcr.io/distroless/static-debian11 as ebpf_exporter_with_examples
+FROM gcr.io/distroless/static-debian11 AS ebpf_exporter_with_examples
 
 COPY --from=ebpf_exporter_builder /build/ebpf_exporter/ebpf_exporter /ebpf_exporter
 COPY --from=ebpf_exporter_builder /usr/share/misc/pci.ids /usr/share/misc/pci.ids
