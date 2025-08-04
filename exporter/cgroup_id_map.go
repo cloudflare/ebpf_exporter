@@ -3,6 +3,7 @@ package exporter
 import (
 	"fmt"
 	"log"
+	"os"
 	"regexp"
 	"unsafe"
 
@@ -13,9 +14,10 @@ import (
 
 // CgroupIDMap synchronises cgroup changes with the shared bpf map.
 type CgroupIDMap struct {
-	bpfMap *libbpfgo.BPFMap
-	ch     chan cgroup.ChangeNotification
-	cache  map[string]*regexp.Regexp
+	bpfMap     *libbpfgo.BPFMap
+	bpfMapType config.CgroupIdMapType
+	ch         chan cgroup.ChangeNotification
+	cache      map[string]*regexp.Regexp
 }
 
 func newCgroupIDMap(module *libbpfgo.Module, cfg config.Config) (*CgroupIDMap, error) {
@@ -25,8 +27,15 @@ func newCgroupIDMap(module *libbpfgo.Module, cfg config.Config) (*CgroupIDMap, e
 	}
 
 	keySize := m.KeySize()
-	if keySize != 8 {
-		return nil, fmt.Errorf("key size for map %q is not expected 8 bytes (u64), it is %d bytes", cfg.CgroupIDMap.Name, keySize)
+	var expectedKeySize int
+	switch cfg.CgroupIDMap.Type {
+	case config.CgroupIDMapHashType:
+		expectedKeySize = 8
+	case config.CgroupIDMapCgrpStorageType:
+		expectedKeySize = 4
+	}
+	if keySize != expectedKeySize {
+		return nil, fmt.Errorf("key size for map %q is not expected %d bytes for map type %s, it is %d bytes", cfg.CgroupIDMap.Name, expectedKeySize, cfg.CgroupIDMap.Type, keySize)
 	}
 	valueSize := m.ValueSize()
 	if valueSize != 8 {
@@ -34,9 +43,10 @@ func newCgroupIDMap(module *libbpfgo.Module, cfg config.Config) (*CgroupIDMap, e
 	}
 
 	c := &CgroupIDMap{
-		bpfMap: m,
-		ch:     make(chan cgroup.ChangeNotification, 10),
-		cache:  map[string]*regexp.Regexp{},
+		bpfMap:     m,
+		bpfMapType: cfg.CgroupIDMap.Type,
+		ch:         make(chan cgroup.ChangeNotification, 10),
+		cache:      map[string]*regexp.Regexp{},
 	}
 
 	for _, expr := range cfg.CgroupIDMap.Regexps {
@@ -59,15 +69,35 @@ func (c *CgroupIDMap) subscribe(m *cgroup.Monitor) error {
 func (c *CgroupIDMap) runLoop() {
 	for update := range c.ch {
 		if update.Remove {
-			key := uint64(update.ID)
-			err := c.bpfMap.DeleteKey(unsafe.Pointer(&key))
-			log.Printf("Error deleting key from CgroupIDMap: %v", err)
+			// we only need to delete cgroup id for normal hash map
+			if c.bpfMapType == config.CgroupIDMapHashType {
+				key := uint64(update.ID)
+				err := c.bpfMap.DeleteKey(unsafe.Pointer(&key))
+				if err != nil {
+					log.Printf("Error deleting key from CgroupIDMap %s: %v", c.bpfMap.Name(), err)
+				}
+			}
 		} else {
-			key := uint64(update.ID)
 			value := uint64(1)
 			if c.checkMatch(update.Path) {
-				err := c.bpfMap.Update(unsafe.Pointer(&key), unsafe.Pointer(&value))
-				log.Printf("Error updating CgroupIDMap: %v", err)
+				var err error
+				switch c.bpfMapType {
+				case config.CgroupIDMapHashType:
+					key := uint64(update.ID)
+					err = c.bpfMap.Update(unsafe.Pointer(&key), unsafe.Pointer(&value))
+				case config.CgroupIDMapCgrpStorageType:
+					cgroupFile, err := os.Open(update.Path)
+					if err != nil {
+						log.Printf("Error opening cgroup path %s", update.Path, err)
+					} else {
+						fd := cgroupFile.Fd()
+						err = c.bpfMap.Update(unsafe.Pointer(&fd), unsafe.Pointer(&value))
+						cgroupFile.Close()
+					}
+				}
+				if err != nil {
+					log.Printf("Error updating CgroupIDMap: %v", err)
+				}
 			}
 		}
 	}
