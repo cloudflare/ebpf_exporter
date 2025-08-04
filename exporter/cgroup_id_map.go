@@ -1,7 +1,9 @@
 package exporter
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"regexp"
@@ -15,7 +17,7 @@ import (
 // CgroupIDMap synchronises cgroup changes with the shared bpf map.
 type CgroupIDMap struct {
 	bpfMap     *libbpfgo.BPFMap
-	bpfMapType config.CgroupIdMapType
+	bpfMapType config.CgroupIDMapType
 	ch         chan cgroup.ChangeNotification
 	cache      map[string]*regexp.Regexp
 }
@@ -69,38 +71,55 @@ func (c *CgroupIDMap) subscribe(m *cgroup.Monitor) error {
 func (c *CgroupIDMap) runLoop() {
 	for update := range c.ch {
 		if update.Remove {
-			// we only need to delete cgroup id for normal hash map
-			if c.bpfMapType == config.CgroupIDMapHashType {
-				key := uint64(update.ID)
-				err := c.bpfMap.DeleteKey(unsafe.Pointer(&key))
-				if err != nil {
-					log.Printf("Error deleting key from CgroupIDMap %s: %v", c.bpfMap.Name(), err)
-				}
+			err := c.removeCgroup(uint64(update.ID))
+			if err != nil {
+				log.Printf("Error deleting key from CgroupIDMap %s: %v", c.bpfMap.Name(), err)
 			}
 		} else {
-			value := uint64(1)
-			if c.checkMatch(update.Path) {
-				var err error
-				switch c.bpfMapType {
-				case config.CgroupIDMapHashType:
-					key := uint64(update.ID)
-					err = c.bpfMap.Update(unsafe.Pointer(&key), unsafe.Pointer(&value))
-				case config.CgroupIDMapCgrpStorageType:
-					cgroupFile, err := os.Open(update.Path)
-					if err != nil {
-						log.Printf("Error opening cgroup path %s", update.Path, err)
-					} else {
-						fd := cgroupFile.Fd()
-						err = c.bpfMap.Update(unsafe.Pointer(&fd), unsafe.Pointer(&value))
-						cgroupFile.Close()
-					}
-				}
-				if err != nil {
-					log.Printf("Error updating CgroupIDMap: %v", err)
-				}
+			err := c.updateCgroup(uint64(update.ID), update.Path)
+			if err != nil {
+				log.Printf("Error updating CgroupIDMap: %v", err)
 			}
 		}
 	}
+}
+
+func (c *CgroupIDMap) removeCgroup(id uint64) error {
+	// we only need to delete cgroup id for normal hash map
+	if c.bpfMapType == config.CgroupIDMapCgrpStorageType {
+		return nil
+	}
+	err := c.bpfMap.DeleteKey(unsafe.Pointer(&id))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	return err
+}
+
+func (c *CgroupIDMap) updateCgroup(id uint64, cgroupPath string) error {
+	if !c.checkMatch(cgroupPath) {
+		return nil
+	}
+	value := uint64(1)
+	var err error
+	switch c.bpfMapType {
+	case config.CgroupIDMapHashType:
+		err = c.bpfMap.Update(unsafe.Pointer(&id), unsafe.Pointer(&value))
+	case config.CgroupIDMapCgrpStorageType:
+		var cgroupFile *os.File
+		// https://docs.kernel.org/bpf/map_cgrp_storage.html
+		// we need an open cgroup fd to update cgroup map
+		cgroupFile, err = os.Open(cgroupPath)
+		if err != nil {
+			log.Printf("Error opening cgroup path %s: %v", cgroupPath, err)
+		} else {
+			fd := cgroupFile.Fd()
+			err = c.bpfMap.Update(unsafe.Pointer(&fd), unsafe.Pointer(&value))
+			cgroupFile.Close()
+		}
+	}
+
+	return err
 }
 
 func (c *CgroupIDMap) checkMatch(path string) bool {

@@ -24,7 +24,6 @@ struct {
     __type(value, u64);
 } cgroup_id_map_cgrp_storage SEC(".maps");
 
-
 SEC("tp_btf/sched_migrate_task")
 int BPF_PROG(sched_migrate_task, struct task_struct *task, int dest_cpu)
 {
