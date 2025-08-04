@@ -50,9 +50,23 @@ type Histogram struct {
 // The cgroups that match the provided regexps will be available to the bpf program
 // as a shared map with provided name.
 type CgroupIDMap struct {
-	Name    string   `yaml:"name"`
-	Regexps []string `yaml:"regexps"`
+	Name    string          `yaml:"name"`
+	Type    CgroupIDMapType `yaml:"type"`
+	Regexps []string        `yaml:"regexps"`
 }
+
+// CgroupIDMapType describes the map type that stores the cgroups that the bpf
+// programs are interested in.
+type CgroupIDMapType string
+
+const (
+	// CgroupIDMapHashType is normal hash map such as BPF_MAP_TYPE_LRU_HASH
+	CgroupIDMapHashType CgroupIDMapType = "hash"
+	// CgroupIDMapCgrpStorageType is specialized BPF_MAP_TYPE_CGRP_STORAGE map
+	// with data keyed on a cgroup. When a group is deleted, data is automatically
+	// removed.
+	CgroupIDMapCgrpStorageType CgroupIDMapType = "cgrp_storage"
+)
 
 // Tracing is a collection of spans attached to a program
 type Tracing struct {

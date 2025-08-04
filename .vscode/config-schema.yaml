@@ -77,6 +77,10 @@ properties:
     properties:
       name:
         type: string
+      type:
+        enum:
+          - hash
+          - cgrp_storage
       regexps:
         type: array
         items:
