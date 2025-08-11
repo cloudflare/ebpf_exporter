@@ -27,10 +27,16 @@ func newCgroupIDMap(module *libbpfgo.Module, cfg config.Config) (*CgroupIDMap, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to get map %q: %w", cfg.CgroupIDMap.Name, err)
 	}
+	idMapType := cfg.CgroupIDMap.Type
+	if idMapType == "" {
+		// default to CgroupIDMapHashType to accommodate legacy hash-type maps before
+		// the addition of CgroupIDMapCgrpStorageType
+		idMapType = config.CgroupIDMapHashType
+	}
 
 	keySize := m.KeySize()
 	var expectedKeySize int
-	switch cfg.CgroupIDMap.Type {
+	switch idMapType {
 	case config.CgroupIDMapHashType:
 		expectedKeySize = 8
 	case config.CgroupIDMapCgrpStorageType:
@@ -46,7 +52,7 @@ func newCgroupIDMap(module *libbpfgo.Module, cfg config.Config) (*CgroupIDMap, e
 
 	c := &CgroupIDMap{
 		bpfMap:     m,
-		bpfMapType: cfg.CgroupIDMap.Type,
+		bpfMapType: idMapType,
 		ch:         make(chan cgroup.ChangeNotification, 10),
 		cache:      map[string]*regexp.Regexp{},
 	}
