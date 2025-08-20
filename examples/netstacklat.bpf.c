@@ -30,9 +30,13 @@ volatile const struct netstacklat_bpf_config user_config = {
 #undef		CONFIG_HOOKS_ENQUEUE
 #define CONFIG_HOOKS_DEQUEUE	1
 
-/* Allows to compile-time disable ifindex map as it is large */
+/* Allows to compile-time disable ifindex map as YAML cannot conf this */
 //#define	CONFIG_IFINDEX_FILTER_MAP	1
 #undef		CONFIG_IFINDEX_FILTER_MAP
+
+/* Allows to compile-time disable PID filter map as it is very large */
+//#define	CONFIG_PID_FILTER_MAP	1
+#undef		CONFIG_PID_FILTER_MAP
 
 /*
  * Alternative definition of sk_buff to handle renaming of the field
@@ -61,12 +65,14 @@ struct {
 	__type(value, u64);
 } netstack_latency_seconds SEC(".maps");
 
+#ifdef CONFIG_PID_FILTER_MAP
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
 	__uint(max_entries, PID_MAX_LIMIT);
 	__type(key, u32);
 	__type(value, u64);
 } netstack_pidfilter SEC(".maps");
+#endif
 
 #ifdef CONFIG_IFINDEX_FILTER_MAP
 struct {
@@ -260,6 +266,7 @@ static void record_skb_latency(struct sk_buff *skb, struct sock *sk, enum netsta
 }
 #endif
 
+#ifdef CONFIG_PID_FILTER_MAP
 static bool filter_pid(u32 pid)
 {
 	u64 *pid_ok;
@@ -273,7 +280,9 @@ static bool filter_pid(u32 pid)
 		return false;
 
 	return *pid_ok > 0;
+
 }
+#endif /* CONFIG_PID_FILTER_MAP */
 
 static bool filter_cgroup(u64 cgroup_id)
 {
@@ -287,13 +296,15 @@ static bool filter_cgroup(u64 cgroup_id)
 static bool filter_current_task(u64 cgroup)
 {
 	bool ok = true;
+
+#ifdef CONFIG_PID_FILTER_MAP
 	__u32 tgid;
 
 	if (user_config.filter_pid) {
 		tgid = bpf_get_current_pid_tgid() >> 32;
 		ok = ok && filter_pid(tgid);
 	}
-
+#endif
 	if (user_config.filter_cgroup)
 		ok = ok && filter_cgroup(cgroup);
 
