@@ -16,7 +16,7 @@ volatile const __s64 TAI_OFFSET = (0LL * NS_PER_S);
 volatile const struct netstacklat_bpf_config user_config = {
 	.network_ns = 0,
 	.filter_pid = false,
-	.filter_ifindex = false,
+	.filter_ifindex = true,
 	.filter_cgroup = true,
 	.filter_nonempty_sockqueue = false,
 	.groupby_ifindex = true,
@@ -29,6 +29,11 @@ volatile const struct netstacklat_bpf_config user_config = {
 //#define	CONFIG_HOOKS_ENQUEUE	1
 #undef		CONFIG_HOOKS_ENQUEUE
 #define CONFIG_HOOKS_DEQUEUE	1
+
+/* Allows to compile-time disable ifindex map as it is large */
+//#define	CONFIG_IFINDEX_FILTER_MAP	1
+#undef		CONFIG_IFINDEX_FILTER_MAP
+
 /*
  * Alternative definition of sk_buff to handle renaming of the field
  * mono_delivery_time to tstamp_type. See
@@ -63,12 +68,14 @@ struct {
 	__type(value, u64);
 } netstack_pidfilter SEC(".maps");
 
+#ifdef CONFIG_IFINDEX_FILTER_MAP
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
 	__uint(max_entries, IFINDEX_MAX);
 	__type(key, u32);
 	__type(value, u64);
 } netstack_ifindexfilter SEC(".maps");
+#endif
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -165,17 +172,28 @@ static void record_latency_since(ktime_t tstamp, const struct hist_key *key)
 
 static bool filter_ifindex(u32 ifindex)
 {
-	u64 *ifindex_ok;
-
 	if (!user_config.filter_ifindex)
 		// No ifindex filter - all ok
 		return true;
+
+#ifdef CONFIG_IFINDEX_FILTER_MAP
+	u64 *ifindex_ok;
 
 	ifindex_ok = bpf_map_lookup_elem(&netstack_ifindexfilter, &ifindex);
 	if (!ifindex_ok)
 		return false;
 
 	return *ifindex_ok > 0;
+#else
+	/* Hack for production:
+	 * - We want to exclude 'lo' which have ifindex==1.
+	 * - We want to filter on ext0 (ifindex 2) and vlan100@ext0 (ifindex 5)
+	 */
+	if (ifindex > 1 && ifindex < 6)
+		return true;
+
+	return false;
+#endif
 }
 
 static bool filter_network_ns(u32 ns)
