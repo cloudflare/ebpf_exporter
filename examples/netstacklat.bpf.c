@@ -17,12 +17,18 @@ volatile const struct netstacklat_bpf_config user_config = {
 	.network_ns = 0,
 	.filter_pid = false,
 	.filter_ifindex = false,
-	.filter_cgroup = false,
+	.filter_cgroup = true,
 	.filter_nonempty_sockqueue = false,
 	.groupby_ifindex = true,
 	.groupby_cgroup = true,
 };
 
+/* This provide easy way compile-time to disable some hooks */
+//#define	CONFIG_HOOKS_EARLY_RCV	1
+#undef 	CONFIG_HOOKS_EARLY_RCV
+//#define	CONFIG_HOOKS_ENQUEUE	1
+#undef		CONFIG_HOOKS_ENQUEUE
+#define CONFIG_HOOKS_DEQUEUE	1
 /*
  * Alternative definition of sk_buff to handle renaming of the field
  * mono_delivery_time to tstamp_type. See
@@ -193,6 +199,7 @@ static __u64 get_network_ns(struct sk_buff *skb, struct sock *sk)
 	return 0;
 }
 
+#if (CONFIG_HOOKS_EARLY_RCV && CONFIG_HOOKS_ENQUEUE)
 static void record_skb_latency(struct sk_buff *skb, struct sock *sk, enum netstacklat_hook hook)
 {
 	struct hist_key key = { .hook = hook };
@@ -233,6 +240,7 @@ static void record_skb_latency(struct sk_buff *skb, struct sock *sk, enum netsta
 
 	record_latency_since(skb->tstamp, &key);
 }
+#endif
 
 static bool filter_pid(u32 pid)
 {
@@ -327,6 +335,7 @@ static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
 	record_latency_since(tstamp, &key);
 }
 
+#ifdef CONFIG_HOOKS_EARLY_RCV
 SEC("fentry/ip_rcv_core")
 int BPF_PROG(netstacklat_ip_rcv_core, struct sk_buff *skb, void *block,
 	     void *tp, void *res, bool compat_mode)
@@ -370,7 +379,9 @@ int BPF_PROG(netstacklat_udpv6_rcv, struct sk_buff *skb)
 	record_skb_latency(skb, NULL, NETSTACKLAT_HOOK_UDP_START);
 	return 0;
 }
+#endif /* CONFIG_HOOKS_EARLY_RCV */
 
+#ifdef CONFIG_HOOKS_ENQUEUE
 SEC("fexit/tcp_queue_rcv")
 int BPF_PROG(netstacklat_tcp_queue_rcv, struct sock *sk, struct sk_buff *skb)
 {
@@ -386,7 +397,9 @@ int BPF_PROG(netstacklat_udp_enqueue_schedule_skb, struct sock *sk,
 		record_skb_latency(skb, sk, NETSTACKLAT_HOOK_UDP_SOCK_ENQUEUED);
 	return 0;
 }
+#endif /* CONFIG_HOOKS_ENQUEUE */
 
+#ifdef CONFIG_HOOKS_DEQUEUE
 SEC("fentry/tcp_recv_timestamp")
 int BPF_PROG(netstacklat_tcp_recv_timestamp, void *msg, struct sock *sk,
 	     struct scm_timestamping_internal *tss)
@@ -406,3 +419,4 @@ int BPF_PROG(netstacklat_skb_consume_udp, struct sock *sk, struct sk_buff *skb,
 			      NETSTACKLAT_HOOK_UDP_SOCK_READ);
 	return 0;
 }
+#endif /* CONFIG_HOOKS_DEQUEUE */
