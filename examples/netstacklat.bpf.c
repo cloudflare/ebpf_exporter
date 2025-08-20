@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
-#include "vmlinux_local.h"
-#include <linux/bpf.h>
+#include <vmlinux.h>
+//#include <linux/bpf.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
