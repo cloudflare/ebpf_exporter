@@ -42,4 +42,5 @@ cgroup_id_map:
   type: hash
   regexps:
     - ^.*(system.slice/.*)$
+    - ^.*(user.slice/.*)$
 

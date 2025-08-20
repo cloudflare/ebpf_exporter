@@ -11,16 +11,16 @@
 
 char LICENSE[] SEC("license") = "GPL";
 
-
-volatile const __s64 TAI_OFFSET = (37LL * NS_PER_S);
+// Strange: TAI offset is zero on my test system
+volatile const __s64 TAI_OFFSET = (0LL * NS_PER_S);
 volatile const struct netstacklat_bpf_config user_config = {
 	.network_ns = 0,
 	.filter_pid = false,
 	.filter_ifindex = false,
 	.filter_cgroup = false,
 	.filter_nonempty_sockqueue = false,
-	.groupby_ifindex = false,
-	.groupby_cgroup = false,
+	.groupby_ifindex = true,
+	.groupby_cgroup = true,
 };
 
 /*
@@ -36,9 +36,16 @@ struct sk_buff___old {
 	__u8 mono_delivery_time: 1;
 } __attribute__((preserve_access_index));
 
+/* NOTICE: max_entries need to be adjusted based on maximum
+ *  number of cgroups and ifindex (that are "groupby" collecting)
+ *  and "enabled" hooks (as we want to disable some)
+ */
+#define N_CGROUPS	2 /* depend on cgroup_id_map matches in YAML config*/
+#define N_HOOKS	NETSTACKLAT_N_HOOKS  /* Keep it same until we disable some */
+#define N_IFACES	64 /* On prod only interested in ext0 and vlan100@ext0 */
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
-	__uint(max_entries, HIST_NBUCKETS * NETSTACKLAT_N_HOOKS * 64);
+	__uint(max_entries, HIST_NBUCKETS * N_HOOKS * N_CGROUPS * N_IFACES * 64);
 	__type(key, struct hist_key);
 	__type(value, u64);
 } netstack_latency_seconds SEC(".maps");
@@ -295,6 +302,7 @@ static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
 	u64 cgroup = 0;
 	u32 ifindex;
 
+	// XXX: TODO evaluate if this feature can make overhead acceptable
 	if (!filter_nonempty_sockqueue(sk))
 		return;
 
