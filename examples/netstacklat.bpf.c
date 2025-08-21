@@ -89,6 +89,34 @@ struct {
 	__type(value, u64);
 } netstack_cgroupfilter SEC(".maps");
 
+static ktime_t time_since(ktime_t tstamp)
+{
+	ktime_t now;
+
+	if (tstamp <= 0)
+		return -1;
+
+	now = bpf_ktime_get_tai_ns() - TAI_OFFSET;
+	if (tstamp > now)
+		return -1;
+
+	return now - tstamp;
+}
+
+/* Determine if ebpf_exporter macro or local C implementation is used */
+#define CONFIG_MAP_MACROS	1
+#ifdef  CONFIG_MAP_MACROS
+#include "maps.bpf.h"
+#define _record_latency_since(tstamp, key)					\
+	ktime_t latency = time_since(tstamp);					\
+	if (latency >= 0)							\
+		increment_exp2_histogram_nosync(&netstack_latency_seconds,	\
+						key, latency,			\
+						HIST_MAX_LATENCY_SLOT);
+#else /* !CONFIG_MAP_MACROS */
+#define _record_latency_since(tstamp, key)	\
+	record_latency_since(tstamp, &key)
+
 static u64 *lookup_or_zeroinit_histentry(void *map, const struct hist_key *key)
 {
 	u64 zero = 0;
@@ -148,32 +176,18 @@ static void increment_exp2_histogram_nosync(void *map, struct hist_key key,
 		*bucket_count += value;
 }
 
-static ktime_t time_since(ktime_t tstamp)
-{
-	ktime_t now;
-
-	if (tstamp <= 0)
-		return -1;
-
-	now = bpf_ktime_get_tai_ns() - TAI_OFFSET;
-	if (tstamp > now)
-		return -1;
-
-	return now - tstamp;
-}
-
 static void record_latency(ktime_t latency, const struct hist_key *key)
 {
 	increment_exp2_histogram_nosync(&netstack_latency_seconds, *key, latency,
 					HIST_MAX_LATENCY_SLOT);
 }
-
 static void record_latency_since(ktime_t tstamp, const struct hist_key *key)
 {
 	ktime_t latency = time_since(tstamp);
 	if (latency >= 0)
 		record_latency(latency, key);
 }
+#endif /* !CONFIG_MAP_MACROS */
 
 static bool filter_ifindex(u32 ifindex)
 {
@@ -261,7 +275,7 @@ static void record_skb_latency(struct sk_buff *skb, struct sock *sk, enum netsta
 	if (user_config.groupby_ifindex)
 		key.ifindex = ifindex;
 
-	record_latency_since(skb->tstamp, &key);
+	_record_latency_since(skb->tstamp, key);
 }
 #endif
 
@@ -374,7 +388,7 @@ static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
 	if (user_config.groupby_cgroup)
 		key.cgroup = cgroup;
 
-	record_latency_since(tstamp, &key);
+	_record_latency_since(tstamp, key);
 }
 
 #ifdef CONFIG_HOOKS_EARLY_RCV
