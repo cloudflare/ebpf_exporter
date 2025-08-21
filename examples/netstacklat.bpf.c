@@ -18,7 +18,7 @@ volatile const struct netstacklat_bpf_config user_config = {
 	.filter_pid = false,
 	.filter_ifindex = true,
 	.filter_cgroup = true,
-	.filter_nonempty_sockqueue = true,
+	.filter_nonempty_sockqueue = false,
 	.groupby_ifindex = true,
 	.groupby_cgroup = true,
 };
