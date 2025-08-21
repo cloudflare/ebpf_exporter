@@ -324,6 +324,18 @@ static inline int skb_queue_empty(const struct sk_buff_head *list)
 	return list->next == (const struct sk_buff *)list;
 }
 
+/* IDEA: To lower runtime overhead, we could skip recording timestamps for
+ *  sockets with very few packets.
+ *
+ * sk_buff_head->qlen could be used to see if e.g. queue have more than 2 elements
+ *
+ *
+static inline __u32 skb_queue_len(const struct sk_buff_head *list_)
+{
+	return list_->qlen;
+}
+*/
+
 static bool filter_nonempty_sockqueue(struct sock *sk)
 {
 	if (!user_config.filter_nonempty_sockqueue)
