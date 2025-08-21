@@ -340,18 +340,6 @@ static inline int skb_queue_empty(const struct sk_buff_head *list)
 	return READ_ONCE(list->next) == (const struct sk_buff *)list;
 }
 
-/* IDEA: To lower runtime overhead, we could skip recording timestamps for
- *  sockets with very few packets.
- *
- * sk_buff_head->qlen could be used to see if e.g. queue have more than 2 elements
- *
- *
-static inline __u32 skb_queue_len(const struct sk_buff_head *list_)
-{
-	return list_->qlen;
-}
-*/
-
 static bool filter_nonempty_sockqueue(struct sock *sk)
 {
 #ifndef CONFIG_FILTER_NONEMPTY_SOCKQUEUE
@@ -360,6 +348,22 @@ static bool filter_nonempty_sockqueue(struct sock *sk)
 #endif
 
 	return !skb_queue_empty(&sk->sk_receive_queue);
+}
+
+/* To lower runtime overhead, skip recording timestamps for sockets with very
+ * few packets. Use sk_buff_head->qlen to see if e.g. queue have more than 2
+ * elements
+ */
+static inline __u32 sk_queue_len(const struct sk_buff_head *list_)
+{
+	return READ_ONCE(list_->qlen);
+}
+
+static bool filter_queue_len(struct sock *sk, const __u32 above_len)
+{
+	if (sk_queue_len(&sk->sk_receive_queue) > above_len)
+		return true;
+	return false;
 }
 
 static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
@@ -460,6 +464,9 @@ int BPF_PROG(netstacklat_tcp_recv_timestamp, void *msg, struct sock *sk,
 	     struct scm_timestamping_internal *tss)
 {
 	if (!filter_nonempty_sockqueue(sk))
+		return 0;
+
+	if (!filter_queue_len(sk, 3))
 		return 0;
 
 	struct timespec64 *ts = &tss->ts[0];
