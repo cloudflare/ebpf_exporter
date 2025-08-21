@@ -18,6 +18,7 @@ volatile const struct netstacklat_bpf_config user_config = {
 	.filter_ifindex = true,
 	.filter_cgroup = true,
 	.filter_nonempty_sockqueue = true,
+#define CONFIG_FILTER_NONEMPTY_SOCKQUEUE	1
 	.groupby_ifindex = true,
 	.groupby_cgroup = true,
 };
@@ -353,8 +354,10 @@ static inline __u32 skb_queue_len(const struct sk_buff_head *list_)
 
 static bool filter_nonempty_sockqueue(struct sock *sk)
 {
+#ifndef CONFIG_FILTER_NONEMPTY_SOCKQUEUE
 	if (!user_config.filter_nonempty_sockqueue)
 		return true;
+#endif
 
 	return !skb_queue_empty(&sk->sk_receive_queue);
 }
