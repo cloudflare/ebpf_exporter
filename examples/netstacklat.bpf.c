@@ -17,7 +17,7 @@ volatile const struct netstacklat_bpf_config user_config = {
 	.filter_pid = false,
 	.filter_ifindex = true,
 	.filter_cgroup = true,
-	.filter_nonempty_sockqueue = false,
+	.filter_nonempty_sockqueue = true,
 	.groupby_ifindex = true,
 	.groupby_cgroup = true,
 };
@@ -366,10 +366,6 @@ static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
 	u64 cgroup = 0;
 	u32 ifindex;
 
-	// XXX: TODO evaluate if this feature can make overhead acceptable
-	if (!filter_nonempty_sockqueue(sk))
-		return;
-
 	if (user_config.filter_cgroup || user_config.groupby_cgroup)
 		cgroup = bpf_get_current_cgroup_id();
 
@@ -460,6 +456,9 @@ SEC("fentry/tcp_recv_timestamp")
 int BPF_PROG(netstacklat_tcp_recv_timestamp, void *msg, struct sock *sk,
 	     struct scm_timestamping_internal *tss)
 {
+	if (!filter_nonempty_sockqueue(sk))
+		return 0;
+
 	struct timespec64 *ts = &tss->ts[0];
 	record_socket_latency(sk, NULL,
 			      (ktime_t)ts->tv_sec * NS_PER_S + ts->tv_nsec,
@@ -471,6 +470,9 @@ SEC("fentry/skb_consume_udp")
 int BPF_PROG(netstacklat_skb_consume_udp, struct sock *sk, struct sk_buff *skb,
 	     int len)
 {
+	if (!filter_nonempty_sockqueue(sk))
+		return 0;
+
 	record_socket_latency(sk, skb, skb->tstamp,
 			      NETSTACKLAT_HOOK_UDP_SOCK_READ);
 	return 0;
