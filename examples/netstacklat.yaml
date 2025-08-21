@@ -41,6 +41,9 @@ cgroup_id_map:
   name: netstack_cgroupfilter
   type: hash
   regexps:
-    - ^.*(system.slice/.*)$
-    - ^.*(user.slice/.*)$
-
+    - ^(/sys/fs/cgroup/production.slice/.*/nginx-cache.service).*$
+    - ^(/sys/fs/cgroup/production.slice/.*/nginx-ssl.service).*$
+#    - ^(/sys/fs/cgroup/production.slice/.*/pingora-backend-router.service).*$
+#    - ^(/sys/fs/cgroup/production.slice/.*/pingora-origin.service).*$
+#    - ^.*(system.slice/.*)$
+#    - ^.*(user.slice/.*)$
