@@ -18,7 +18,7 @@ volatile const struct netstacklat_bpf_config user_config = {
 	.filter_pid = false,
 	.filter_ifindex = true,
 	.filter_cgroup = true,
-	.filter_nonempty_sockqueue = false,
+	.filter_nonempty_sockqueue = true,
 	.groupby_ifindex = true,
 	.groupby_cgroup = true,
 };
@@ -311,6 +311,8 @@ static bool filter_current_task(u64 cgroup)
 	return ok;
 }
 
+#define READ_ONCE(x) (*(volatile typeof(x) *)&(x))
+
 /**
  * skb_queue_empty - check if a queue is empty
  * @list: queue head
@@ -321,7 +323,7 @@ static bool filter_current_task(u64 cgroup)
  */
 static inline int skb_queue_empty(const struct sk_buff_head *list)
 {
-	return list->next == (const struct sk_buff *)list;
+	return READ_ONCE(list->next) == (const struct sk_buff *)list;
 }
 
 /* IDEA: To lower runtime overhead, we could skip recording timestamps for
