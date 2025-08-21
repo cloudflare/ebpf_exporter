@@ -11,8 +11,7 @@
 
 char LICENSE[] SEC("license") = "GPL";
 
-// Strange: TAI offset is zero on my test system
-volatile const __s64 TAI_OFFSET = (0LL * NS_PER_S);
+volatile const __s64 TAI_OFFSET = (37LL * NS_PER_S);
 volatile const struct netstacklat_bpf_config user_config = {
 	.network_ns = 0,
 	.filter_pid = false,
