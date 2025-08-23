@@ -89,7 +89,7 @@ jobs:
           path: ebpf_exporter_with_examples.${{ matrix.arch.name }}.tar.gz
           if-no-files-found: error
 
-  build-ebpf-exporter-static-system-libbpf:
+  build-ebpf-exporter:
     strategy:
       matrix:
         arch:
@@ -97,7 +97,19 @@ jobs:
             image: ubuntu-24.04
           - name: aarch64
             image: ubuntu-24.04-arm
-    name: Build ebpf_exporter (${{ matrix.arch.name }}, statically linked, system libbpf)
+        linkage:
+            - name: static
+              make_target: build
+            - name: dynamic
+              make_target: build-dynamic
+        libbpf:
+            - name: system
+              make_flag: BUILD_LIBBPF=0
+              ld_library_path: ''
+            - name: built-in
+              make_flag: BUILD_LIBBPF=1
+              ld_library_path: libbpf/dest/usr/lib
+    name: Build ebpf_exporter (${{ matrix.arch.name }}, ${{ matrix.linkage.name }} linkage, ${{ matrix.libbpf.name }} libbpf)
     needs: build-libbpf
     runs-on: ${{ matrix.arch.image }}
     steps:
@@ -111,9 +123,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: libbpf.${{ matrix.arch.name }}.tar.gz
+        if: matrix.libbpf.name == 'system'
 
-      - name: Install libbpf
+      - name: Install libbpf as a system one for system libbpf builds
         run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
+        if: matrix.libbpf.name == 'system'
 
       - name: Run apt-get update
         run: sudo apt-get update
@@ -122,94 +136,20 @@ jobs:
         run: sudo apt-get install -y libelf-dev
 
       - name: Build
-        run: make -j $(nproc) build BUILD_LIBBPF=0
+        run: make -j $(nproc) ${{ matrix.linkage.make_target }} ${{ matrix.libbpf.make_flag }}
 
-      - name: Check static linkage
-        run: (ldd --verbose ./ebpf_exporter 2>&1 || true) | grep 'not a dynamic executable'
-
-      - name: Check for nss presence
+      - name: Check for nss presence for static linkage
         run: if [[ $(objdump -tT ebpf_exporter | grep 'hidden _nss') ]]; then echo "unexpected nss symbols found"; exit 1; fi
+        if: matrix.linkage.name == 'static'
 
-      - name: Check that it runs
-        run: ./ebpf_exporter --version
-
-  build-ebpf-exporter-static-built-in-libbpf:
-    strategy:
-      matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Build ebpf_exporter (${{ matrix.arch.name }}, statically linked, built-in libbpf)
-    runs-on: ${{ matrix.arch.image }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ^1.24
-
-      - name: Run apt-get update
-        run: sudo apt-get update
-
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
-
-      - name: Build
-        run: make -j $(nproc) build
-
-      - name: Check static linkage
-        run: (ldd --verbose ./ebpf_exporter 2>&1 || true) | grep 'not a dynamic executable'
-
-      - name: Check for nss presence
-        run: if [[ $(objdump -tT ebpf_exporter | grep 'hidden _nss') ]]; then echo "unexpected nss symbols found"; exit 1; fi
-
-      - name: Check that it runs
-        run: ./ebpf_exporter --version
-
-  build-ebpf-exporter-dynamic-system-libbpf:
-    strategy:
-      matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Build ebpf_exporter (${{ matrix.arch.name }}, dynamically linked, system libbpf)
-    needs: build-libbpf
-    runs-on: ${{ matrix.arch.image }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ^1.24
-
-      - name: Download libbpf.tar.gz
-        uses: actions/download-artifact@v4
-        with:
-          name: libbpf.${{ matrix.arch.name }}.tar.gz
-
-      - name: Install libbpf
-        run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
-
-      - name: Run apt-get update
-        run: sudo apt-get update
-
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
-
-      - name: Build
-        run: make -j $(nproc) build-dynamic BUILD_LIBBPF=0
-
-      - name: Check dynamic linkage
+      - name: Check ldd for static linkage
         run: ldd --verbose ./ebpf_exporter
+        if: matrix.linkage.name == 'dynamic'
 
       - name: Check that it runs
-        run: ./ebpf_exporter --version
+        run: LD_LIBRARY_PATH=${{ matrix.libbpf.ld_library_path }} ./ebpf_exporter --version
 
-  build-ebpf-exporter-dynamic-built-in-libbpf:
+  test-ebpf-exporter:
     strategy:
       matrix:
         arch:
@@ -217,39 +157,14 @@ jobs:
             image: ubuntu-24.04
           - name: aarch64
             image: ubuntu-24.04-arm
-    name: Build ebpf_exporter (${{ matrix.arch.name }}, dynamically linked, built-in libbpf)
-    runs-on: ${{ matrix.arch.image }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ^1.24
-
-      - name: Run apt-get update
-        run: sudo apt-get update
-
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
-
-      - name: Build
-        run: make -j $(nproc) build-dynamic
-
-      - name: Check dynamic linkage
-        run: ldd --verbose ./ebpf_exporter
-
-      - name: Check that it runs
-        run: LD_LIBRARY_PATH=libbpf/dest/usr/lib ./ebpf_exporter --version
-
-  test-ebpf-exporter-system-libbpf:
-    strategy:
-      matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Test ebpf_exporter (x86_64, system libbpf)
+        libbpf:
+            - name: system
+              make_flag: BUILD_LIBBPF=0
+              ld_library_path: ''
+            - name: built-in
+              make_flag: BUILD_LIBBPF=1
+              ld_library_path: libbpf/dest/usr/lib
+    name: Test ebpf_exporter (${{ matrix.arch.name }}, ${{ matrix.libbpf.name }} libbpf)
     needs: build-libbpf
     runs-on: ${{ matrix.arch.image }}
     steps:
@@ -272,9 +187,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: libbpf.${{ matrix.arch.name }}.tar.gz
+        if: matrix.libbpf.name == 'system'
 
       - name: Install libbpf
         run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
+        if: matrix.libbpf.name == 'system'
 
       - name: Update pci.ids
         run: |
@@ -282,49 +199,12 @@ jobs:
           sudo mv /tmp/pci.ids /usr/share/misc/pci.ids
 
       - name: Test
-        run: make -j $(nproc) test BUILD_LIBBPF=0
+        run: make -j $(nproc) test ${{ matrix.libbpf.make_flag }}
 
       - name: Test privileged
-        run: make -j $(nproc) test-privileged BUILD_LIBBPF=0
+        run: make -j $(nproc) test-privileged ${{ matrix.libbpf.make_flag }}
 
-  test-ebpf-exporter-built-in-libbpf:
-    strategy:
-      matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Test ebpf_exporter (${{ matrix.arch.name }}, built-in libbpf)
-    runs-on: ${{ matrix.arch.image }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ^1.24
-
-      - name: Run apt-get update
-        run: sudo apt-get update
-
-      - name: Install systemtap-sdt-dev
-        run: sudo apt-get install -y systemtap-sdt-dev
-
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
-
-      - name: Update pci.ids
-        run: |
-          curl -o /tmp/pci.ids https://raw.githubusercontent.com/pciutils/pciids/master/pci.ids
-          sudo mv /tmp/pci.ids /usr/share/misc/pci.ids
-
-      - name: Test
-        run: make -j $(nproc) test
-
-      - name: Test privileged
-        run: make -j $(nproc) test-privileged
-
-  lint-ebpf-exporter-built-in-libbpf:
+  lint-ebpf-exporter:
     strategy:
       matrix:
         arch:
@@ -364,7 +244,7 @@ jobs:
         env:
           CGO_CFLAGS: "-I${{ github.workspace }}/libbpf/dest/usr/include"
 
-  build-examples-system-libbpf:
+  build-examples:
     strategy:
       matrix:
         arch:
@@ -372,7 +252,14 @@ jobs:
             image: ubuntu-24.04
           - name: aarch64
             image: ubuntu-24.04-arm
-    name: Build examples (${{ matrix.arch.name }}, system libbpf)
+        libbpf:
+            - name: system
+              make_flag: BUILD_LIBBPF=0
+              ld_library_path: ''
+            - name: built-in
+              make_flag: BUILD_LIBBPF=1
+              ld_library_path: libbpf/dest/usr/lib
+    name: Build examples (${{ matrix.arch.name }}, ${{ matrix.libbpf.name }} libbpf)
     needs: build-libbpf
     runs-on: ${{ matrix.arch.image }}
     steps:
@@ -382,9 +269,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: libbpf.${{ matrix.arch.name }}.tar.gz
+        if: matrix.libbpf.name == 'system'
 
       - name: Install libbpf
         run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
+        if: matrix.libbpf.name == 'system'
 
       - name: Run apt-get update
         run: sudo apt-get update
@@ -396,38 +285,10 @@ jobs:
         run: sudo apt-get install -y clang
 
       - name: Build benchmark bpf probes
-        run: make -j $(nproc) -C benchmark build BUILD_LIBBPF=0
+        run: make -j $(nproc) -C benchmark build ${{ matrix.libbpf.make_flag }}
 
       - name: Build example bpf probes
-        run: make -j $(nproc) -C examples build BUILD_LIBBPF=0
-
-  build-examples-built-in-libbpf:
-    strategy:
-      matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Build examples (${{ matrix.arch.name }}, built-in libbpf)
-    runs-on: ${{ matrix.arch.image }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run apt-get update
-        run: sudo apt-get update
-
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
-
-      - name: Install clang
-        run: sudo apt-get install -y clang
-
-      - name: Build benchmark bpf probes
-        run: make -j $(nproc) -C benchmark build
-
-      - name: Build example bpf probes
-        run: make -j $(nproc) -C examples build
+        run: make -j $(nproc) -C examples build ${{ matrix.libbpf.make_flag }}
 
   build-tracing-demos:
     strategy:
