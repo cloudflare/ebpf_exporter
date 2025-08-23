@@ -815,7 +815,7 @@ Here `tag` can be used for tracing and performance analysis with two conditions:
 Newer kernels allow `--kallsyms` to `perf top` as well,
 in the future it may not be required at all:
 
-* https://www.spinics.net/lists/linux-perf-users/msg07216.html
+* https://github.com/torvalds/linux/commit/1b3aae90c6abd
 
 ### `ebpf_exporter_ebpf_program_attached`
 
