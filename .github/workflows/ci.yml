@@ -12,15 +12,17 @@ jobs:
   build-libbpf:
     strategy:
       matrix:
-        arch:
+        arch: &arch-matrix
           - name: x86_64
-            image: ubuntu-24.04
+            image: &ubuntu-x86_64 ubuntu-24.04
+            docker_platform: linux/amd64
           - name: aarch64
             image: ubuntu-24.04-arm
+            docker_platform: linux/arm64
     name: Build libbpf in Docker (${{ matrix.arch.name }})
     runs-on: ${{ matrix.arch.image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: &checkout actions/checkout@v4
 
       - name: Build libbpf
         run: |
@@ -38,15 +40,11 @@ jobs:
   build-ebpf-exporter-docker:
     strategy:
       matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
+        arch: *arch-matrix
     name: Build ebpf_exporter in Docker (${{ matrix.arch.name }}, built-in libbpf)
     runs-on: ${{ matrix.arch.image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: *checkout
         with:
           fetch-depth: 0 # Fetch with tags to have the build version attached
 
@@ -89,192 +87,91 @@ jobs:
           path: ebpf_exporter_with_examples.${{ matrix.arch.name }}.tar.gz
           if-no-files-found: error
 
-  build-ebpf-exporter-static-system-libbpf:
+  build-ebpf-exporter:
     strategy:
       matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Build ebpf_exporter (${{ matrix.arch.name }}, statically linked, system libbpf)
+        arch: *arch-matrix
+        linkage:
+            - name: static
+              make_target: build
+            - name: dynamic
+              make_target: build-dynamic
+        libbpf: &libbpf-matrix
+            - name: system
+              make_flag: BUILD_LIBBPF=0
+              ld_library_path: ''
+            - name: built-in
+              make_flag: BUILD_LIBBPF=1
+              ld_library_path: libbpf/dest/usr/lib
+    name: Build ebpf_exporter (${{ matrix.arch.name }}, ${{ matrix.linkage.name }} linkage, ${{ matrix.libbpf.name }} libbpf)
     needs: build-libbpf
     runs-on: ${{ matrix.arch.image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: *checkout
 
-      - uses: actions/setup-go@v5
+      - &setup-go
+        uses: actions/setup-go@v5
         with:
           go-version: ^1.24
 
-      - name: Download libbpf.tar.gz
+      - &download-libbpf
+        name: Download libbpf.tar.gz
         uses: actions/download-artifact@v4
         with:
           name: libbpf.${{ matrix.arch.name }}.tar.gz
+        if: matrix.libbpf.name == 'system'
 
-      - name: Install libbpf
+      - &install-libbpf
+        name: Install libbpf as a system one for system libbpf builds
         run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
+        if: matrix.libbpf.name == 'system'
 
-      - name: Run apt-get update
+      - &apt-get-update
+        name: Run apt-get update
         run: sudo apt-get update
 
-      - name: Install libelf-dev
+      - &install-libelf-dev
+        name: Install libelf-dev
         run: sudo apt-get install -y libelf-dev
 
       - name: Build
-        run: make -j $(nproc) build BUILD_LIBBPF=0
+        run: make -j $(nproc) ${{ matrix.linkage.make_target }} ${{ matrix.libbpf.make_flag }}
 
-      - name: Check static linkage
-        run: (ldd --verbose ./ebpf_exporter 2>&1 || true) | grep 'not a dynamic executable'
-
-      - name: Check for nss presence
+      - name: Check for nss presence for static linkage
         run: if [[ $(objdump -tT ebpf_exporter | grep 'hidden _nss') ]]; then echo "unexpected nss symbols found"; exit 1; fi
+        if: matrix.linkage.name == 'static'
+
+      - name: Check ldd for static linkage
+        run: ldd --verbose ./ebpf_exporter
+        if: matrix.linkage.name == 'dynamic'
 
       - name: Check that it runs
-        run: ./ebpf_exporter --version
+        run: LD_LIBRARY_PATH=${{ matrix.libbpf.ld_library_path }} ./ebpf_exporter --version
 
-  build-ebpf-exporter-static-built-in-libbpf:
+  test-ebpf-exporter:
     strategy:
       matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Build ebpf_exporter (${{ matrix.arch.name }}, statically linked, built-in libbpf)
-    runs-on: ${{ matrix.arch.image }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ^1.24
-
-      - name: Run apt-get update
-        run: sudo apt-get update
-
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
-
-      - name: Build
-        run: make -j $(nproc) build
-
-      - name: Check static linkage
-        run: (ldd --verbose ./ebpf_exporter 2>&1 || true) | grep 'not a dynamic executable'
-
-      - name: Check for nss presence
-        run: if [[ $(objdump -tT ebpf_exporter | grep 'hidden _nss') ]]; then echo "unexpected nss symbols found"; exit 1; fi
-
-      - name: Check that it runs
-        run: ./ebpf_exporter --version
-
-  build-ebpf-exporter-dynamic-system-libbpf:
-    strategy:
-      matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Build ebpf_exporter (${{ matrix.arch.name }}, dynamically linked, system libbpf)
+        arch: *arch-matrix
+        libbpf: *libbpf-matrix
+    name: Test ebpf_exporter (${{ matrix.arch.name }}, ${{ matrix.libbpf.name }} libbpf)
     needs: build-libbpf
     runs-on: ${{ matrix.arch.image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: *checkout
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ^1.24
+      - *setup-go
 
-      - name: Download libbpf.tar.gz
-        uses: actions/download-artifact@v4
-        with:
-          name: libbpf.${{ matrix.arch.name }}.tar.gz
+      - *apt-get-update
 
-      - name: Install libbpf
-        run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
-
-      - name: Run apt-get update
-        run: sudo apt-get update
-
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
-
-      - name: Build
-        run: make -j $(nproc) build-dynamic BUILD_LIBBPF=0
-
-      - name: Check dynamic linkage
-        run: ldd --verbose ./ebpf_exporter
-
-      - name: Check that it runs
-        run: ./ebpf_exporter --version
-
-  build-ebpf-exporter-dynamic-built-in-libbpf:
-    strategy:
-      matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Build ebpf_exporter (${{ matrix.arch.name }}, dynamically linked, built-in libbpf)
-    runs-on: ${{ matrix.arch.image }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ^1.24
-
-      - name: Run apt-get update
-        run: sudo apt-get update
-
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
-
-      - name: Build
-        run: make -j $(nproc) build-dynamic
-
-      - name: Check dynamic linkage
-        run: ldd --verbose ./ebpf_exporter
-
-      - name: Check that it runs
-        run: LD_LIBRARY_PATH=libbpf/dest/usr/lib ./ebpf_exporter --version
-
-  test-ebpf-exporter-system-libbpf:
-    strategy:
-      matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Test ebpf_exporter (x86_64, system libbpf)
-    needs: build-libbpf
-    runs-on: ${{ matrix.arch.image }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ^1.24
-
-      - name: Run apt-get update
-        run: sudo apt-get update
-
-      - name: Install systemtap-sdt-dev
+      - &install-systemtap-sdt-dev
+        name: Install systemtap-sdt-dev
         run: sudo apt-get install -y systemtap-sdt-dev
 
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
+      - *install-libelf-dev
 
-      - name: Download libbpf.tar.gz
-        uses: actions/download-artifact@v4
-        with:
-          name: libbpf.${{ matrix.arch.name }}.tar.gz
+      - *download-libbpf
 
-      - name: Install libbpf
-        run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
+      - *install-libbpf
 
       - name: Update pci.ids
         run: |
@@ -282,74 +179,27 @@ jobs:
           sudo mv /tmp/pci.ids /usr/share/misc/pci.ids
 
       - name: Test
-        run: make -j $(nproc) test BUILD_LIBBPF=0
+        run: make -j $(nproc) test ${{ matrix.libbpf.make_flag }}
 
       - name: Test privileged
-        run: make -j $(nproc) test-privileged BUILD_LIBBPF=0
+        run: make -j $(nproc) test-privileged ${{ matrix.libbpf.make_flag }}
 
-  test-ebpf-exporter-built-in-libbpf:
+  lint-ebpf-exporter:
     strategy:
       matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Test ebpf_exporter (${{ matrix.arch.name }}, built-in libbpf)
-    runs-on: ${{ matrix.arch.image }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ^1.24
-
-      - name: Run apt-get update
-        run: sudo apt-get update
-
-      - name: Install systemtap-sdt-dev
-        run: sudo apt-get install -y systemtap-sdt-dev
-
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
-
-      - name: Update pci.ids
-        run: |
-          curl -o /tmp/pci.ids https://raw.githubusercontent.com/pciutils/pciids/master/pci.ids
-          sudo mv /tmp/pci.ids /usr/share/misc/pci.ids
-
-      - name: Test
-        run: make -j $(nproc) test
-
-      - name: Test privileged
-        run: make -j $(nproc) test-privileged
-
-  lint-ebpf-exporter-built-in-libbpf:
-    strategy:
-      matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
+        arch: *arch-matrix
     name: Lint ebpf_exporter (${{ matrix.arch.name }}, built-in libbpf)
     runs-on: ${{ matrix.arch.image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: *checkout
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ^1.24
-          cache: false # https://github.com/golangci/golangci-lint-action/issues/807
+      - *setup-go
 
-      - name: Run apt-get update
-        run: sudo apt-get update
+      - *apt-get-update
 
-      - name: Install systemtap-sdt-dev
-        run: sudo apt-get install -y systemtap-sdt-dev
+      - *install-systemtap-sdt-dev
 
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
+      - *install-libelf-dev
 
       - name: Build libbpf
         run: make -j $(nproc) libbpf.a
@@ -364,93 +214,48 @@ jobs:
         env:
           CGO_CFLAGS: "-I${{ github.workspace }}/libbpf/dest/usr/include"
 
-  build-examples-system-libbpf:
+  build-examples:
     strategy:
       matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Build examples (${{ matrix.arch.name }}, system libbpf)
+        arch: *arch-matrix
+        libbpf: *libbpf-matrix
+    name: Build examples (${{ matrix.arch.name }}, ${{ matrix.libbpf.name }} libbpf)
     needs: build-libbpf
     runs-on: ${{ matrix.arch.image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: *checkout
 
-      - name: Download libbpf.tar.gz
-        uses: actions/download-artifact@v4
-        with:
-          name: libbpf.${{ matrix.arch.name }}.tar.gz
+      - *download-libbpf
 
-      - name: Install libbpf
-        run: sudo tar -C / -xvvf libbpf.${{ matrix.arch.name }}.tar.gz
+      - *install-libbpf
 
-      - name: Run apt-get update
-        run: sudo apt-get update
+      - *apt-get-update
 
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
+      - *install-libelf-dev
 
       - name: Install clang
         run: sudo apt-get install -y clang
 
       - name: Build benchmark bpf probes
-        run: make -j $(nproc) -C benchmark build BUILD_LIBBPF=0
+        run: make -j $(nproc) -C benchmark build ${{ matrix.libbpf.make_flag }}
 
       - name: Build example bpf probes
-        run: make -j $(nproc) -C examples build BUILD_LIBBPF=0
-
-  build-examples-built-in-libbpf:
-    strategy:
-      matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
-    name: Build examples (${{ matrix.arch.name }}, built-in libbpf)
-    runs-on: ${{ matrix.arch.image }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run apt-get update
-        run: sudo apt-get update
-
-      - name: Install libelf-dev
-        run: sudo apt-get install -y libelf-dev
-
-      - name: Install clang
-        run: sudo apt-get install -y clang
-
-      - name: Build benchmark bpf probes
-        run: make -j $(nproc) -C benchmark build
-
-      - name: Build example bpf probes
-        run: make -j $(nproc) -C examples build
+        run: make -j $(nproc) -C examples build ${{ matrix.libbpf.make_flag }}
 
   build-tracing-demos:
     strategy:
       matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
+        arch: *arch-matrix
     name: Build tracing demos (${{ matrix.arch.name }})
     runs-on: ${{ matrix.arch.image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: *checkout
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ^1.24
+      - *setup-go
 
-      - name: Run apt-get update
-        run: sudo apt-get update
+      - *apt-get-update
 
-      - name: Install systemtap-sdt-dev
-        run: sudo apt-get install -y systemtap-sdt-dev
+      - *install-systemtap-sdt-dev
 
       - name: Build
         run: make -j $(nproc) tracing-demos
@@ -469,18 +274,14 @@ jobs:
   check-configs:
     strategy:
       matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-          - name: aarch64
-            image: ubuntu-24.04-arm
+        arch: *arch-matrix
     name: Check examples (${{ matrix.arch.name }})
     runs-on: ${{ matrix.arch.image }}
     needs:
       - build-ebpf-exporter-docker
       - build-tracing-demos
     steps:
-      - uses: actions/checkout@v4
+      - uses: *checkout
 
       - name: Download ebpf_exporter_with_examples.${{ matrix.arch.name }}.tar.gz
         uses: actions/download-artifact@v4
@@ -517,12 +318,11 @@ jobs:
 
   clang-format:
     name: Run clang-format check
-    runs-on: ubuntu-24.04
+    runs-on: *ubuntu-x86_64
     steps:
-      - uses: actions/checkout@v4
+      - uses: *checkout
 
-      - name: Run apt-get update
-        run: sudo apt-get update
+      - *apt-get-update
 
       - name: Install clang-format
         run: sudo apt-get install -y clang-format make
@@ -532,21 +332,20 @@ jobs:
 
   markdown-links:
     name: Run markdown-links-check
-    runs-on: ubuntu-24.04
+    runs-on: *ubuntu-x86_64
     steps:
-      - uses: actions/checkout@v4
+      - uses: *checkout
 
       - name: Run markdown-links-check
         run: make markdown-link-check
 
   jsonschema:
     name: Run jsonschema checks
-    runs-on: ubuntu-24.04
+    runs-on: *ubuntu-x86_64
     steps:
-      - uses: actions/checkout@v4
+      - uses: *checkout
 
-      - name: Run apt-get update
-        run: sudo apt-get update
+      - *apt-get-update
 
       - name: Install jsonschema dependencies
         run: sudo apt-get install -y python3-jsonschema make
@@ -560,20 +359,14 @@ jobs:
   publish-docker-images:
     strategy:
       matrix:
-        arch:
-          - name: x86_64
-            image: ubuntu-24.04
-            docker_platform: linux/amd64
-          - name: aarch64
-            image: ubuntu-24.04-arm
-            docker_platform: linux/arm64
+        arch: *arch-matrix
     name: Publish Docker images (${{ matrix.arch.name }})
     runs-on: ${{ matrix.arch.image }}
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: *checkout
         with:
           fetch-depth: 0 # Fetch with tags to have the build version attached
 
@@ -621,7 +414,7 @@ jobs:
 
   publish-docker-images-digest:
     name: Publish Docker image digest
-    runs-on: ubuntu-24.04
+    runs-on: *ubuntu-x86_64
     needs:
       - publish-docker-images
     steps:
