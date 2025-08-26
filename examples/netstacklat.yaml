@@ -39,7 +39,7 @@ metrics:
 
 cgroup_id_map:
   name: netstack_cgroupfilter
-  type: cgrp_storage
+  type: hash
   regexps:
     - ^(/sys/fs/cgroup/production.slice/.*/nginx-cache.service).*$
     - ^(/sys/fs/cgroup/production.slice/.*/nginx-ssl.service).*$

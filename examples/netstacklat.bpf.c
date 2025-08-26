@@ -87,7 +87,7 @@ struct {
 #endif
 
 /* Eval two different cgroup_id_map types*/
-#define CONFIG_CGRP_STORAGE	1
+//#define CONFIG_CGRP_STORAGE	1
 #ifdef CONFIG_CGRP_STORAGE
 struct {
 	__uint(type, BPF_MAP_TYPE_CGRP_STORAGE);  /* type: cgrp_storage */
