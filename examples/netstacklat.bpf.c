@@ -83,12 +83,23 @@ struct {
 } netstack_ifindexfilter SEC(".maps");
 #endif
 
+/* Eval two different cgroup_id_map types*/
+#define CONFIG_CGRP_STORAGE	1
+#ifdef CONFIG_CGRP_STORAGE
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(type, BPF_MAP_TYPE_CGRP_STORAGE);  /* type: cgrp_storage */
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+	__type(key, u32);
+	__type(value, u64);
+} netstack_cgroupfilter SEC(".maps");
+#else
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH); /* type: hash */
 	__uint(max_entries, MAX_TRACKED_CGROUPS);
 	__type(key, u64);
 	__type(value, u64);
 } netstack_cgroupfilter SEC(".maps");
+#endif
 
 static ktime_t time_since(ktime_t tstamp)
 {
@@ -298,6 +309,19 @@ static bool filter_pid(u32 pid)
 }
 #endif /* CONFIG_PID_FILTER_MAP */
 
+#ifdef CONFIG_CGRP_STORAGE
+static bool filter_cgroup(u64 unused)
+{
+	if (!user_config.filter_cgroup)
+		// No cgroup filter - all cgroups ok
+		return true;
+
+	struct task_struct *task = bpf_get_current_task_btf();
+	struct cgroup *cgrp = task->cgroups->dfl_cgrp;
+
+	return bpf_cgrp_storage_get(&netstack_cgroupfilter, cgrp, 0, 0) != NULL;
+}
+#else /* !CONFIG_CGRP_STORAGE */
 static bool filter_cgroup(u64 cgroup_id)
 {
 	if (!user_config.filter_cgroup)
@@ -306,8 +330,9 @@ static bool filter_cgroup(u64 cgroup_id)
 
 	return bpf_map_lookup_elem(&netstack_cgroupfilter, &cgroup_id) != NULL;
 }
+#endif /* !CONFIG_CGRP_STORAGE */
 
-static bool filter_current_task(u64 cgroup)
+static bool filter_current_task()
 {
 	bool ok = true;
 
@@ -319,9 +344,6 @@ static bool filter_current_task(u64 cgroup)
 		ok = ok && filter_pid(tgid);
 	}
 #endif
-	if (user_config.filter_cgroup)
-		ok = ok && filter_cgroup(cgroup);
-
 	return ok;
 }
 
@@ -376,7 +398,10 @@ static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
 	if (user_config.filter_cgroup || user_config.groupby_cgroup)
 		cgroup = bpf_get_current_cgroup_id();
 
-	if (!filter_current_task(cgroup))
+	if (!filter_cgroup(cgroup))
+		return;
+
+	if (!filter_current_task())
 		return;
 
 	ifindex = skb ? skb->skb_iif : sk->sk_rx_dst_ifindex;
