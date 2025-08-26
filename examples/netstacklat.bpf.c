@@ -230,14 +230,6 @@ static bool filter_ifindex(u32 ifindex)
 #endif
 }
 
-static bool filter_network_ns(u32 ns)
-{
-	if (user_config.network_ns == 0)
-		return true;
-
-	return ns == user_config.network_ns;
-}
-
 static __u64 get_network_ns(struct sk_buff *skb, struct sock *sk)
 {
 	/*
@@ -249,6 +241,16 @@ static __u64 get_network_ns(struct sk_buff *skb, struct sock *sk)
 	else if (skb)
 		return BPF_CORE_READ(skb->dev, nd_net.net, ns.inum);
 	return 0;
+}
+
+static bool filter_network_ns(struct sk_buff *skb, struct sock *sk)
+{
+	if (user_config.network_ns == 0)
+		return true;
+
+	u32 ns = get_network_ns(skb, sk);
+
+	return ns == user_config.network_ns;
 }
 
 #if (CONFIG_HOOKS_EARLY_RCV && CONFIG_HOOKS_ENQUEUE)
@@ -284,7 +286,7 @@ static void record_skb_latency(struct sk_buff *skb, struct sock *sk, enum netsta
 	if (!filter_ifindex(ifindex))
 		return;
 
-	if (!filter_network_ns(get_network_ns(skb, sk)))
+	if (!filter_network_ns(skb, sk))
 		return;
 
 	if (user_config.groupby_ifindex)
@@ -417,7 +419,7 @@ static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
 	if (!filter_ifindex(ifindex))
 		return;
 
-	if (!filter_network_ns(get_network_ns(skb, sk)))
+	if (!filter_network_ns(skb, sk))
 		return;
 
 	if (user_config.groupby_ifindex)
