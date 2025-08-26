@@ -313,25 +313,36 @@ static bool filter_pid(u32 pid)
 #endif /* CONFIG_PID_FILTER_MAP */
 
 #ifdef CONFIG_CGRP_STORAGE
-static bool filter_cgroup(u64 unused)
+static bool filter_cgroup(u64 *cgroup_id)
 {
-	if (!user_config.filter_cgroup)
+	if (!user_config.filter_cgroup) {
+		if (user_config.groupby_cgroup)
+			*cgroup_id = bpf_get_current_cgroup_id();
 		// No cgroup filter - all cgroups ok
 		return true;
+	}
 
 	struct task_struct *task = bpf_get_current_task_btf();
 	struct cgroup *cgrp = task->cgroups->dfl_cgrp;
 
+	if (user_config.groupby_cgroup)
+		/* no need to call bpf_get_current_cgroup_id() */
+		*cgroup_id = BPF_CORE_READ(cgrp, kn, id);
+
 	return bpf_cgrp_storage_get(&netstack_cgroupfilter, cgrp, 0, 0) != NULL;
 }
 #else /* !CONFIG_CGRP_STORAGE */
-static bool filter_cgroup(u64 cgroup_id)
+static bool filter_cgroup(u64 *cgroup_id)
 {
-	if (!user_config.filter_cgroup)
+	if (!user_config.filter_cgroup) {
+		if (user_config.groupby_cgroup)
+			*cgroup_id = bpf_get_current_cgroup_id();
 		// No cgroup filter - all cgroups ok
 		return true;
+	}
+	*cgroup_id = bpf_get_current_cgroup_id();
 
-	return bpf_map_lookup_elem(&netstack_cgroupfilter, &cgroup_id) != NULL;
+	return bpf_map_lookup_elem(&netstack_cgroupfilter, cgroup_id) != NULL;
 }
 #endif /* !CONFIG_CGRP_STORAGE */
 
@@ -393,17 +404,11 @@ static bool filter_queue_len(struct sock *sk, const __u32 above_len)
 }
 
 static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
-				  ktime_t tstamp, enum netstacklat_hook hook)
+				  ktime_t tstamp, enum netstacklat_hook hook,
+				  u64 cgroup_id)
 {
 	struct hist_key key = { .hook = hook };
-	u64 cgroup = 0;
 	u32 ifindex;
-
-	if (user_config.filter_cgroup || user_config.groupby_cgroup)
-		cgroup = bpf_get_current_cgroup_id();
-
-	if (!filter_cgroup(cgroup))
-		return;
 
 	if (!filter_current_task())
 		return;
@@ -418,7 +423,7 @@ static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
 	if (user_config.groupby_ifindex)
 		key.ifindex = ifindex;
 	if (user_config.groupby_cgroup)
-		key.cgroup = cgroup;
+		key.cgroup = cgroup_id;
 
 	_record_latency_since(tstamp, key);
 }
@@ -492,6 +497,11 @@ SEC("fentry/tcp_recv_timestamp")
 int BPF_PROG(netstacklat_tcp_recv_timestamp, void *msg, struct sock *sk,
 	     struct scm_timestamping_internal *tss)
 {
+	u64 cgroup_id = 0;
+
+	if (!filter_cgroup(&cgroup_id))
+		return 0;
+
 	if (!filter_nonempty_sockqueue(sk))
 		return 0;
 
@@ -501,7 +511,7 @@ int BPF_PROG(netstacklat_tcp_recv_timestamp, void *msg, struct sock *sk,
 	struct timespec64 *ts = &tss->ts[0];
 	record_socket_latency(sk, NULL,
 			      (ktime_t)ts->tv_sec * NS_PER_S + ts->tv_nsec,
-			      NETSTACKLAT_HOOK_TCP_SOCK_READ);
+			      NETSTACKLAT_HOOK_TCP_SOCK_READ, cgroup_id);
 	return 0;
 }
 
@@ -509,11 +519,16 @@ SEC("fentry/skb_consume_udp")
 int BPF_PROG(netstacklat_skb_consume_udp, struct sock *sk, struct sk_buff *skb,
 	     int len)
 {
+	u64 cgroup_id = 0;
+
+	if (!filter_cgroup(&cgroup_id))
+		return 0;
+
 	if (!filter_nonempty_sockqueue(sk))
 		return 0;
 
 	record_socket_latency(sk, skb, skb->tstamp,
-			      NETSTACKLAT_HOOK_UDP_SOCK_READ);
+			      NETSTACKLAT_HOOK_UDP_SOCK_READ, cgroup_id);
 	return 0;
 }
 #endif /* CONFIG_HOOKS_DEQUEUE */
