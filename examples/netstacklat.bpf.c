@@ -18,6 +18,7 @@ char LICENSE[] SEC("license") = "GPL";
 const __s64 TAI_OFFSET = (37LL * NS_PER_S);
 const struct netstacklat_bpf_config user_config = {
 	.network_ns = 0,
+	.filter_queue_len = 3, /* zero means filter is inactive */
 	.filter_pid = false,
 	.filter_ifindex = true,
 	.filter_cgroup = true,
@@ -395,9 +396,11 @@ static inline __u32 sk_queue_len(const struct sk_buff_head *list_)
 	return READ_ONCE(list_->qlen);
 }
 
-static bool filter_queue_len(struct sock *sk, const __u32 above_len)
+static bool filter_queue_len(struct sock *sk)
 {
-	if (!user_config.filter_nonempty_sockqueue)
+	const u32 above_len = user_config.filter_queue_len;
+
+	if (above_len == 0)
 		return true;
 
 	if (sk_queue_len(&sk->sk_receive_queue) > above_len)
@@ -507,7 +510,7 @@ int BPF_PROG(netstacklat_tcp_recv_timestamp, void *msg, struct sock *sk,
 	if (!filter_nonempty_sockqueue(sk))
 		return 0;
 
-	if (!filter_queue_len(sk, 3))
+	if (!filter_queue_len(sk))
 		return 0;
 
 	struct timespec64 *ts = &tss->ts[0];
@@ -527,6 +530,9 @@ int BPF_PROG(netstacklat_skb_consume_udp, struct sock *sk, struct sk_buff *skb,
 		return 0;
 
 	if (!filter_nonempty_sockqueue(sk))
+		return 0;
+
+	if (!filter_queue_len(sk))
 		return 0;
 
 	record_socket_latency(sk, skb, skb->tstamp,
