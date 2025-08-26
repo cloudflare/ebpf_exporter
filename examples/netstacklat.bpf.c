@@ -11,14 +11,17 @@
 
 char LICENSE[] SEC("license") = "GPL";
 
-volatile const __s64 TAI_OFFSET = (37LL * NS_PER_S);
-volatile const struct netstacklat_bpf_config user_config = {
+/* The ebpf_exporter variant of netstacklat is not runtime configurable at
+ * BPF-load time. Thus, below user_config isn't define as 'volatile', instead
+ * the 'const' allows the compiler to do dead-code elimination.
+ */
+const __s64 TAI_OFFSET = (37LL * NS_PER_S);
+const struct netstacklat_bpf_config user_config = {
 	.network_ns = 0,
 	.filter_pid = false,
 	.filter_ifindex = true,
 	.filter_cgroup = true,
-	.filter_nonempty_sockqueue = true,
-#define CONFIG_FILTER_NONEMPTY_SOCKQUEUE	1
+	.filter_nonempty_sockqueue = false,
 	.groupby_ifindex = true,
 	.groupby_cgroup = true,
 };
@@ -364,10 +367,8 @@ static inline int skb_queue_empty(const struct sk_buff_head *list)
 
 static bool filter_nonempty_sockqueue(struct sock *sk)
 {
-#ifndef CONFIG_FILTER_NONEMPTY_SOCKQUEUE
 	if (!user_config.filter_nonempty_sockqueue)
 		return true;
-#endif
 
 	return !skb_queue_empty(&sk->sk_receive_queue);
 }
@@ -383,6 +384,9 @@ static inline __u32 sk_queue_len(const struct sk_buff_head *list_)
 
 static bool filter_queue_len(struct sock *sk, const __u32 above_len)
 {
+	if (!user_config.filter_nonempty_sockqueue)
+		return true;
+
 	if (sk_queue_len(&sk->sk_receive_queue) > above_len)
 		return true;
 	return false;
