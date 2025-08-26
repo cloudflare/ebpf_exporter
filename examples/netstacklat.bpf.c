@@ -412,13 +412,13 @@ static bool filter_queue_len(struct sock *sk)
 static __always_inline bool filter_socket(struct sock *sk, struct sk_buff *skb,
 					  u64 *cgroup_id)
 {
-	if (!filter_cgroup(cgroup_id))
-		return false;
-
 	if (!filter_nonempty_sockqueue(sk))
 		return false;
 
 	if (!filter_queue_len(sk))
+		return false;
+
+	if (!filter_cgroup(cgroup_id))
 		return false;
 
 	return true;
