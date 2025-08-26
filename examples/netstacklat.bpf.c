@@ -254,7 +254,7 @@ static bool filter_network_ns(struct sk_buff *skb, struct sock *sk)
 	return ns == user_config.network_ns;
 }
 
-#if (CONFIG_HOOKS_EARLY_RCV && CONFIG_HOOKS_ENQUEUE)
+#if (CONFIG_HOOKS_EARLY_RCV || CONFIG_HOOKS_ENQUEUE)
 static void record_skb_latency(struct sk_buff *skb, struct sock *sk, enum netstacklat_hook hook)
 {
 	struct hist_key key = { .hook = hook };
@@ -408,6 +408,23 @@ static bool filter_queue_len(struct sock *sk)
 	return false;
 }
 
+#if (CONFIG_HOOKS_DEQUEUE || CONFIG_HOOKS_ENQUEUE)
+static __always_inline bool filter_socket(struct sock *sk, struct sk_buff *skb,
+					  u64 *cgroup_id)
+{
+	if (!filter_cgroup(cgroup_id))
+		return false;
+
+	if (!filter_nonempty_sockqueue(sk))
+		return false;
+
+	if (!filter_queue_len(sk))
+		return false;
+
+	return true;
+}
+#endif
+
 static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
 				  ktime_t tstamp, enum netstacklat_hook hook,
 				  u64 cgroup_id)
@@ -498,19 +515,14 @@ int BPF_PROG(netstacklat_udp_enqueue_schedule_skb, struct sock *sk,
 #endif /* CONFIG_HOOKS_ENQUEUE */
 
 #ifdef CONFIG_HOOKS_DEQUEUE
+
 SEC("fentry/tcp_recv_timestamp")
 int BPF_PROG(netstacklat_tcp_recv_timestamp, void *msg, struct sock *sk,
 	     struct scm_timestamping_internal *tss)
 {
 	u64 cgroup_id = 0;
 
-	if (!filter_cgroup(&cgroup_id))
-		return 0;
-
-	if (!filter_nonempty_sockqueue(sk))
-		return 0;
-
-	if (!filter_queue_len(sk))
+	if (!filter_socket(sk, NULL, &cgroup_id))
 		return 0;
 
 	struct timespec64 *ts = &tss->ts[0];
@@ -526,13 +538,7 @@ int BPF_PROG(netstacklat_skb_consume_udp, struct sock *sk, struct sk_buff *skb,
 {
 	u64 cgroup_id = 0;
 
-	if (!filter_cgroup(&cgroup_id))
-		return 0;
-
-	if (!filter_nonempty_sockqueue(sk))
-		return 0;
-
-	if (!filter_queue_len(sk))
+	if (!filter_socket(sk, skb, &cgroup_id))
 		return 0;
 
 	record_socket_latency(sk, skb, skb->tstamp,
