@@ -1,4 +1,15 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
+/*
+ * This is a ebpf_exporter variant of the netstacklat tool
+ *
+ * Netstacklat - is a tool that "Monitor RX latency within the network stack"
+ *  - https://github.com/xdp-project/bpf-examples/tree/main/netstacklat
+ *  - Developed by Simon Sundberg <simon.sundberg@kau.se>
+ *
+ * This variant have been code optimized heavily towards Cloudflare's use-case.
+ * Many hooks and features have been disabled, via constructs that lets both the
+ * compiler and BPF verifier do dead-code elimination.
+ */
 #include <vmlinux.h>
 //#include <linux/bpf.h>
 
