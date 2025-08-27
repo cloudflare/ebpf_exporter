@@ -45,6 +45,10 @@ const struct netstacklat_bpf_config user_config = {
 //#define	CONFIG_HOOKS_ENQUEUE	1
 #undef		CONFIG_HOOKS_ENQUEUE
 #define CONFIG_HOOKS_DEQUEUE	1
+#define CONFIG_ENABLE_IP_HOOKS	1
+#define CONFIG_ENABLE_TCP_HOOKS	1
+//#define CONFIG_ENABLE_UDP_HOOKS	1
+
 
 /* Allows to compile-time disable ifindex map as YAML cannot conf this */
 //#define	CONFIG_IFINDEX_FILTER_MAP	1
@@ -517,6 +521,7 @@ static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
 }
 
 #ifdef CONFIG_HOOKS_EARLY_RCV
+# ifdef CONFIG_ENABLE_IP_HOOKS
 SEC("fentry/ip_rcv_core")
 int BPF_PROG(netstacklat_ip_rcv_core, struct sk_buff *skb, void *block,
 	     void *tp, void *res, bool compat_mode)
@@ -532,7 +537,9 @@ int BPF_PROG(netstacklat_ip6_rcv_core, struct sk_buff *skb, void *block,
 	record_skb_latency(skb, NULL, NETSTACKLAT_HOOK_IP_RCV);
 	return 0;
 }
+# endif /* CONFIG_ENABLE_IP_HOOKS */
 
+# ifdef CONFIG_ENABLE_TCP_HOOKS
 SEC("fentry/tcp_v4_rcv")
 int BPF_PROG(netstacklat_tcp_v4_rcv, struct sk_buff *skb)
 {
@@ -546,7 +553,9 @@ int BPF_PROG(netstacklat_tcp_v6_rcv, struct sk_buff *skb)
 	record_skb_latency(skb, NULL, NETSTACKLAT_HOOK_TCP_START);
 	return 0;
 }
+# endif /* CONFIG_ENABLE_TCP_HOOKS */
 
+# ifdef CONFIG_ENABLE_UDP_HOOKS
 SEC("fentry/udp_rcv")
 int BPF_PROG(netstacklat_udp_rcv, struct sk_buff *skb)
 {
@@ -560,16 +569,20 @@ int BPF_PROG(netstacklat_udpv6_rcv, struct sk_buff *skb)
 	record_skb_latency(skb, NULL, NETSTACKLAT_HOOK_UDP_START);
 	return 0;
 }
+# endif /* CONFIG_ENABLE_UDP_HOOKS */
 #endif /* CONFIG_HOOKS_EARLY_RCV */
 
 #ifdef CONFIG_HOOKS_ENQUEUE
+# ifdef CONFIG_ENABLE_TCP_HOOKS
 SEC("fexit/tcp_queue_rcv")
 int BPF_PROG(netstacklat_tcp_queue_rcv, struct sock *sk, struct sk_buff *skb)
 {
 	record_skb_latency(skb, sk, NETSTACKLAT_HOOK_TCP_SOCK_ENQUEUED);
 	return 0;
 }
+# endif /* CONFIG_ENABLE_TCP_HOOKS */
 
+# ifdef CONFIG_ENABLE_UDP_HOOKS
 SEC("fexit/__udp_enqueue_schedule_skb")
 int BPF_PROG(netstacklat_udp_enqueue_schedule_skb, struct sock *sk,
 	     struct sk_buff *skb, int retval)
@@ -578,9 +591,11 @@ int BPF_PROG(netstacklat_udp_enqueue_schedule_skb, struct sock *sk,
 		record_skb_latency(skb, sk, NETSTACKLAT_HOOK_UDP_SOCK_ENQUEUED);
 	return 0;
 }
+# endif /* CONFIG_ENABLE_UDP_HOOKS */
 #endif /* CONFIG_HOOKS_ENQUEUE */
 
 #ifdef CONFIG_HOOKS_DEQUEUE
+# ifdef CONFIG_ENABLE_TCP_HOOKS
 SEC("fentry/tcp_recv_timestamp")
 int BPF_PROG(netstacklat_tcp_recv_timestamp, void *msg, struct sock *sk,
 	     struct scm_timestamping_internal *tss)
@@ -597,7 +612,9 @@ int BPF_PROG(netstacklat_tcp_recv_timestamp, void *msg, struct sock *sk,
 			      hook, cgroup_id);
 	return 0;
 }
+# endif /* CONFIG_ENABLE_TCP_HOOKS */
 
+# ifdef CONFIG_ENABLE_UDP_HOOKS
 SEC("fentry/skb_consume_udp")
 int BPF_PROG(netstacklat_skb_consume_udp, struct sock *sk, struct sk_buff *skb,
 	     int len)
@@ -611,4 +628,5 @@ int BPF_PROG(netstacklat_skb_consume_udp, struct sock *sk, struct sk_buff *skb,
 	record_socket_latency(sk, skb, skb->tstamp, hook, cgroup_id);
 	return 0;
 }
+# endif /* CONFIG_ENABLE_UDP_HOOKS */
 #endif /* CONFIG_HOOKS_DEQUEUE */
