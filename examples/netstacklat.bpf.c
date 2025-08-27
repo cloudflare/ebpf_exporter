@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * This is a ebpf_exporter variant of the netstacklat tool
+ * This is an ebpf_exporter variant of the netstacklat tool
  *
  * Netstacklat - is a tool that "Monitor RX latency within the network stack"
  *  - https://github.com/xdp-project/bpf-examples/tree/main/netstacklat
@@ -29,7 +29,7 @@ char LICENSE[] SEC("license") = "GPL";
 const __s64 TAI_OFFSET = (37LL * NS_PER_S);
 const struct netstacklat_bpf_config user_config = {
 	.network_ns = 0,
-	.filter_queue_len = 3, /* zero means filter is inactive */
+	.filter_queue_len = 1, /* zero means filter is inactive */
 	.filter_pid = false,
 	.filter_ifindex = true,
 	.filter_cgroup = true,
@@ -390,12 +390,24 @@ static inline int skb_queue_empty(const struct sk_buff_head *list)
 	return READ_ONCE(list->next) == (const struct sk_buff *)list;
 }
 
+static inline bool sk_backlog_empty(const struct sock *sk)
+{
+	return READ_ONCE(sk->sk_backlog.tail) == NULL;
+}
+
 static bool filter_nonempty_sockqueue(struct sock *sk)
 {
 	if (!user_config.filter_nonempty_sockqueue)
 		return true;
 
-	return !skb_queue_empty(&sk->sk_receive_queue);
+	if (!skb_queue_empty(&sk->sk_receive_queue))
+		return true;
+
+	/* Packets can also be on the sk_backlog */
+	if (!sk_backlog_empty(sk))
+		return true;
+
+	return false;
 }
 
 /* To lower runtime overhead, skip recording timestamps for sockets with very
@@ -416,6 +428,14 @@ static bool filter_queue_len(struct sock *sk)
 
 	if (sk_queue_len(&sk->sk_receive_queue) > above_len)
 		return true;
+
+	/* Packets can also be on the sk_backlog, but we don't know the number
+	 * of SKBs on the queue, because sk_backlog.len is in bytes (based on
+	 * skb->truesize).  Thus, if any backlog exists we don't filter.
+	 */
+	if (!sk_backlog_empty(sk))
+		return true;
+
 	return false;
 }
 
@@ -526,7 +546,6 @@ int BPF_PROG(netstacklat_udp_enqueue_schedule_skb, struct sock *sk,
 #endif /* CONFIG_HOOKS_ENQUEUE */
 
 #ifdef CONFIG_HOOKS_DEQUEUE
-
 SEC("fentry/tcp_recv_timestamp")
 int BPF_PROG(netstacklat_tcp_recv_timestamp, void *msg, struct sock *sk,
 	     struct scm_timestamping_internal *tss)
