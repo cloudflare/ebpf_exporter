@@ -30,7 +30,7 @@ const __s64 TAI_OFFSET = (37LL * NS_PER_S);
 const struct netstacklat_bpf_config user_config = {
 	.network_ns = 0,
 	.filter_min_queue_len = 0, /* zero means filter is inactive */
-	.filter_nth_packet = 10, /* reduce recorded event to every nth packet */
+	.filter_nth_packet = 32, /* reduce recorded event to every nth packet, use power-of-2 */
 	.filter_pid = false,
 	.filter_ifindex = true,
 	.filter_cgroup = true,
@@ -117,14 +117,13 @@ struct {
 } netstack_cgroupfilter SEC(".maps");
 #endif
 
-/* Down sample the recorded events to every nth event */
+/* Per-CPU counter for down sampling the recorded events to every nth event */
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __uint(max_entries, 1);
+    __uint(max_entries, NETSTACKLAT_N_HOOKS);
     __type(key, u32);
     __type(value, u64);
 } netstack_nth_filter SEC(".maps");
-
 
 static ktime_t time_since(ktime_t tstamp)
 {
@@ -226,6 +225,26 @@ static void record_latency_since(ktime_t tstamp, const struct hist_key *key)
 }
 #endif /* !CONFIG_MAP_MACROS */
 
+static inline bool filter_nth_packet(const enum netstacklat_hook hook)
+{
+	u32 key = hook;
+	u64 *nth;
+
+	/* Zero and one means disabled */
+	if (user_config.filter_nth_packet <= 1)
+		return true;
+
+	nth = bpf_map_lookup_elem(&netstack_nth_filter, &key);
+	if (!nth)
+		return false;
+
+	*nth += 1;
+	if ((*nth % user_config.filter_nth_packet) == 0) {
+		return true;
+	}
+	return false;
+}
+
 static bool filter_ifindex(u32 ifindex)
 {
 	if (!user_config.filter_ifindex)
@@ -309,6 +328,9 @@ static void record_skb_latency(struct sk_buff *skb, struct sock *sk, enum netsta
 		return;
 
 	if (!filter_network_ns(skb, sk))
+		return;
+
+	if (!filter_nth_packet(hook))
 		return;
 
 	if (user_config.groupby_ifindex)
@@ -449,29 +471,9 @@ static bool filter_min_queue_len(struct sock *sk)
 	return false;
 }
 
-static inline bool filter_nth_packet()
-{
-	u32 key = 0;
-	u64 *nth;
-
-	/* Zero and one means disabled */
-	if (user_config.filter_nth_packet <= 1)
-		return true;
-
-	nth = bpf_map_lookup_elem(&netstack_nth_filter, &key);
-	if (!nth)
-		return false;
-
-	*nth += 1;
-	if ((*nth % user_config.filter_nth_packet) == 0) {
-		return true;
-	}
-	return false;
-}
-
 #if (CONFIG_HOOKS_DEQUEUE || CONFIG_HOOKS_ENQUEUE)
 static __always_inline bool filter_socket(struct sock *sk, struct sk_buff *skb,
-					  u64 *cgroup_id)
+					  u64 *cgroup_id, const enum netstacklat_hook hook)
 {
 	if (!filter_nonempty_sockqueue(sk))
 		return false;
@@ -482,7 +484,7 @@ static __always_inline bool filter_socket(struct sock *sk, struct sk_buff *skb,
 	if (!filter_cgroup(cgroup_id))
 		return false;
 
-	if (!filter_nth_packet())
+	if (!filter_nth_packet(hook))
 		return false;
 
 	return true;
@@ -583,15 +585,16 @@ SEC("fentry/tcp_recv_timestamp")
 int BPF_PROG(netstacklat_tcp_recv_timestamp, void *msg, struct sock *sk,
 	     struct scm_timestamping_internal *tss)
 {
+	const enum netstacklat_hook hook = NETSTACKLAT_HOOK_TCP_SOCK_READ;
 	u64 cgroup_id = 0;
 
-	if (!filter_socket(sk, NULL, &cgroup_id))
+	if (!filter_socket(sk, NULL, &cgroup_id, hook))
 		return 0;
 
 	struct timespec64 *ts = &tss->ts[0];
 	record_socket_latency(sk, NULL,
 			      (ktime_t)ts->tv_sec * NS_PER_S + ts->tv_nsec,
-			      NETSTACKLAT_HOOK_TCP_SOCK_READ, cgroup_id);
+			      hook, cgroup_id);
 	return 0;
 }
 
@@ -599,13 +602,13 @@ SEC("fentry/skb_consume_udp")
 int BPF_PROG(netstacklat_skb_consume_udp, struct sock *sk, struct sk_buff *skb,
 	     int len)
 {
+	const enum netstacklat_hook hook = NETSTACKLAT_HOOK_UDP_SOCK_READ;
 	u64 cgroup_id = 0;
 
-	if (!filter_socket(sk, skb, &cgroup_id))
+	if (!filter_socket(sk, skb, &cgroup_id, hook))
 		return 0;
 
-	record_socket_latency(sk, skb, skb->tstamp,
-			      NETSTACKLAT_HOOK_UDP_SOCK_READ, cgroup_id);
+	record_socket_latency(sk, skb, skb->tstamp, hook, cgroup_id);
 	return 0;
 }
 #endif /* CONFIG_HOOKS_DEQUEUE */
