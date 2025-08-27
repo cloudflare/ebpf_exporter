@@ -29,7 +29,8 @@ char LICENSE[] SEC("license") = "GPL";
 const __s64 TAI_OFFSET = (37LL * NS_PER_S);
 const struct netstacklat_bpf_config user_config = {
 	.network_ns = 0,
-	.filter_min_queue_len = 1, /* zero means filter is inactive */
+	.filter_min_queue_len = 0, /* zero means filter is inactive */
+	.filter_nth_packet = 10, /* reduce recorded event to every nth packet */
 	.filter_pid = false,
 	.filter_ifindex = true,
 	.filter_cgroup = true,
@@ -115,6 +116,15 @@ struct {
 	__type(value, u64);
 } netstack_cgroupfilter SEC(".maps");
 #endif
+
+/* Down sample the recorded events to every nth event */
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __uint(max_entries, 1);
+    __type(key, u32);
+    __type(value, u64);
+} netstack_nth_filter SEC(".maps");
+
 
 static ktime_t time_since(ktime_t tstamp)
 {
@@ -439,6 +449,26 @@ static bool filter_min_queue_len(struct sock *sk)
 	return false;
 }
 
+static inline bool filter_nth_packet()
+{
+	u32 key = 0;
+	u64 *nth;
+
+	/* Zero and one means disabled */
+	if (user_config.filter_nth_packet <= 1)
+		return true;
+
+	nth = bpf_map_lookup_elem(&netstack_nth_filter, &key);
+	if (!nth)
+		return false;
+
+	*nth += 1;
+	if ((*nth % user_config.filter_nth_packet) == 0) {
+		return true;
+	}
+	return false;
+}
+
 #if (CONFIG_HOOKS_DEQUEUE || CONFIG_HOOKS_ENQUEUE)
 static __always_inline bool filter_socket(struct sock *sk, struct sk_buff *skb,
 					  u64 *cgroup_id)
@@ -450,6 +480,9 @@ static __always_inline bool filter_socket(struct sock *sk, struct sk_buff *skb,
 		return false;
 
 	if (!filter_cgroup(cgroup_id))
+		return false;
+
+	if (!filter_nth_packet())
 		return false;
 
 	return true;
