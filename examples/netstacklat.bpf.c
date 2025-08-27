@@ -29,7 +29,7 @@ char LICENSE[] SEC("license") = "GPL";
 const __s64 TAI_OFFSET = (37LL * NS_PER_S);
 const struct netstacklat_bpf_config user_config = {
 	.network_ns = 0,
-	.filter_queue_len = 1, /* zero means filter is inactive */
+	.filter_min_queue_len = 1, /* zero means filter is inactive */
 	.filter_pid = false,
 	.filter_ifindex = true,
 	.filter_cgroup = true,
@@ -419,14 +419,14 @@ static inline __u32 sk_queue_len(const struct sk_buff_head *list_)
 	return READ_ONCE(list_->qlen);
 }
 
-static bool filter_queue_len(struct sock *sk)
+static bool filter_min_queue_len(struct sock *sk)
 {
-	const u32 above_len = user_config.filter_queue_len;
+	const u32 min_qlen = user_config.filter_min_queue_len;
 
-	if (above_len == 0)
+	if (min_qlen == 0)
 		return true;
 
-	if (sk_queue_len(&sk->sk_receive_queue) > above_len)
+	if (sk_queue_len(&sk->sk_receive_queue) >= min_qlen)
 		return true;
 
 	/* Packets can also be on the sk_backlog, but we don't know the number
@@ -446,7 +446,7 @@ static __always_inline bool filter_socket(struct sock *sk, struct sk_buff *skb,
 	if (!filter_nonempty_sockqueue(sk))
 		return false;
 
-	if (!filter_queue_len(sk))
+	if (!filter_min_queue_len(sk))
 		return false;
 
 	if (!filter_cgroup(cgroup_id))
