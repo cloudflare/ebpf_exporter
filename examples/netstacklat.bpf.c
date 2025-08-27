@@ -11,7 +11,6 @@
  * compiler and BPF verifier do dead-code elimination.
  */
 #include <vmlinux.h>
-//#include <linux/bpf.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
@@ -40,23 +39,23 @@ const struct netstacklat_bpf_config user_config = {
 };
 
 /* This provide easy way compile-time to disable some hooks */
-//#define	CONFIG_HOOKS_EARLY_RCV	1
-#undef 	CONFIG_HOOKS_EARLY_RCV
-//#define	CONFIG_HOOKS_ENQUEUE	1
-#undef		CONFIG_HOOKS_ENQUEUE
-#define CONFIG_HOOKS_DEQUEUE	1
-#define CONFIG_ENABLE_IP_HOOKS	1
-#define CONFIG_ENABLE_TCP_HOOKS	1
-//#define CONFIG_ENABLE_UDP_HOOKS	1
+/* #define CONFIG_HOOKS_EARLY_RCV 1 */
+#undef CONFIG_HOOKS_EARLY_RCV
+/* #define CONFIG_HOOKS_ENQUEUE 1 */
+#undef CONFIG_HOOKS_ENQUEUE
+#define CONFIG_HOOKS_DEQUEUE 1
+#define CONFIG_ENABLE_IP_HOOKS 1
+#define CONFIG_ENABLE_TCP_HOOKS 1
+/* #define CONFIG_ENABLE_UDP_HOOKS 1 */
 
 
 /* Allows to compile-time disable ifindex map as YAML cannot conf this */
-//#define	CONFIG_IFINDEX_FILTER_MAP	1
-#undef		CONFIG_IFINDEX_FILTER_MAP
+/* #define CONFIG_IFINDEX_FILTER_MAP 1 */
+#undef CONFIG_IFINDEX_FILTER_MAP
 
 /* Allows to compile-time disable PID filter map as it is very large */
-//#define	CONFIG_PID_FILTER_MAP	1
-#undef		CONFIG_PID_FILTER_MAP
+/* #define CONFIG_PID_FILTER_MAP 1 */
+#undef CONFIG_PID_FILTER_MAP
 
 /*
  * Alternative definition of sk_buff to handle renaming of the field
@@ -104,7 +103,7 @@ struct {
 #endif
 
 /* Eval two different cgroup_id_map types*/
-//#define CONFIG_CGRP_STORAGE	1
+/* #define CONFIG_CGRP_STORAGE 1 */
 #ifdef CONFIG_CGRP_STORAGE
 struct {
 	__uint(type, BPF_MAP_TYPE_CGRP_STORAGE);  /* type: cgrp_storage */
