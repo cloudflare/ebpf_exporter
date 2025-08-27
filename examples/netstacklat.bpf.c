@@ -140,7 +140,7 @@ static ktime_t time_since(ktime_t tstamp)
 	if (tstamp > now)
 		return -1;
 
-	return now - tstamp;
+	return (now - tstamp) / LATENCY_SCALE;
 }
 
 /* Determine if ebpf_exporter macro or local C implementation is used */

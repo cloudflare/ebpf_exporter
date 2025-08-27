@@ -4,8 +4,8 @@ metrics:
       help: Latency for packets (skbs) to reach various points in the kernel network stack
       bucket_type: exp2
       bucket_min: 0
-      bucket_max: 34
-      bucket_multiplier: 0.000000001 # nanoseconds to seconds
+      bucket_max: 24
+      bucket_multiplier: 0.000001 # microseconds to seconds
       labels:
         - name: cgroup
           size: 8

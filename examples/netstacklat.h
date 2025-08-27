@@ -2,7 +2,12 @@
 #ifndef NETSTACKLAT_H
 #define NETSTACKLAT_H
 
-#define HIST_MAX_LATENCY_SLOT 34 // 2^34 ns -> ~17s
+/* To reduce Prometheus buckets metric reduce/scale latency time resolution.
+ * This LATENCY_SCALE is connected to the YAML bucket_multiplier config.
+ */
+#define LATENCY_SCALE 1000UL
+
+#define HIST_MAX_LATENCY_SLOT 24 // ( 2^24 ns / 1000) usecs -> ~16.7s
 /*
  * MAX_LATENCY_SLOT + 1 buckets for hist, + 1 "bucket" for the "sum key"
  * (https://github.com/cloudflare/ebpf_exporter?tab=readme-ov-file#sum-keys)
