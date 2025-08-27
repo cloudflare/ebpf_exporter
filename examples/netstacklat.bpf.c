@@ -77,10 +77,10 @@ struct sk_buff___old {
  */
 #define N_CGROUPS	2 /* depend on cgroup_id_map matches in YAML config*/
 #define N_HOOKS	NETSTACKLAT_N_HOOKS  /* Keep it same until we disable some */
-#define N_IFACES	64 /* On prod only interested in ext0 and vlan100@ext0 */
+#define N_IFACES	6 /* On prod only interested in ext0 and vlan100@ext0 */
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
-	__uint(max_entries, HIST_NBUCKETS * N_HOOKS * N_CGROUPS * N_IFACES * 64);
+	__uint(max_entries, HIST_NBUCKETS * N_HOOKS * N_CGROUPS * N_IFACES);
 	__type(key, struct hist_key);
 	__type(value, u64);
 } netstack_latency_seconds SEC(".maps");
