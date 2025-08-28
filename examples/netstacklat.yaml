@@ -37,6 +37,7 @@ metrics:
           decoders:
             - name: uint
 
+# Remember to update #define N_CGROUPS in code when adding more matches
 cgroup_id_map:
   name: netstack_cgroupfilter
   type: hash
