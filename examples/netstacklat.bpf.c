@@ -48,7 +48,6 @@ const struct netstacklat_bpf_config user_config = {
 #define CONFIG_ENABLE_TCP_HOOKS 1
 /* #define CONFIG_ENABLE_UDP_HOOKS 1 */
 
-
 /* Allows to compile-time disable ifindex map as YAML cannot conf this */
 /* #define CONFIG_IFINDEX_FILTER_MAP 1 */
 #undef CONFIG_IFINDEX_FILTER_MAP
@@ -72,11 +71,15 @@ struct sk_buff___old {
 
 /* NOTICE: max_entries need to be adjusted based on maximum
  *  number of cgroups and ifindex (that are "groupby" collecting)
- *  and "enabled" hooks (as we want to disable some)
+ *  and "enabled" hooks.
  */
 #define N_CGROUPS	2 /* depend on cgroup_id_map matches in YAML config*/
-#define N_HOOKS	NETSTACKLAT_N_HOOKS  /* Keep it same until we disable some */
 #define N_IFACES	6 /* On prod only interested in ext0 and vlan100@ext0 */
+#define N_HOOKS	1
+#if (CONFIG_HOOKS_EARLY_RCV || CONFIG_HOOKS_ENQUEUE || CONFIG_ENABLE_UDP_HOOKS)
+#err "Please update N_HOOKS"
+#endif
+
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
 	__uint(max_entries, HIST_NBUCKETS * N_HOOKS * N_CGROUPS * N_IFACES);
