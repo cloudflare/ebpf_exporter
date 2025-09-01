@@ -9,7 +9,7 @@ require (
 	github.com/elastic/go-perf v0.0.0-20191212140718-9c656876f595
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/iovisor/gobpf v0.2.0
-	github.com/jaypipes/pcidb v1.0.1
+	github.com/jaypipes/pcidb v1.1.1
 	github.com/mdlayher/sdnotify v1.0.0
 	github.com/prometheus/client_golang v1.23.0
 	github.com/prometheus/common v0.65.0
@@ -32,7 +32,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1 // indirect
-	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/otlptranslator v0.0.0-20250717125610-8549f4ab4f8f // indirect
