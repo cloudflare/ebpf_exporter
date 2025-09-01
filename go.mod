@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
-	github.com/aquasecurity/libbpfgo v0.9.1-libbpf-1.5.1
+	github.com/aquasecurity/libbpfgo v0.9.2-libbpf-1.5.1
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/elastic/go-perf v0.0.0-20191212140718-9c656876f595
 	github.com/hashicorp/golang-lru/v2 v2.0.7
