@@ -34,7 +34,7 @@ const struct netstacklat_bpf_config user_config = {
 	.filter_ifindex = true,
 	.filter_cgroup = true,
 	.filter_nonempty_sockqueue = false,
-	.groupby_ifindex = true,
+	.groupby_ifindex = false, /* If true also define CONFIG_GROUPBY_IFINDEX */
 	.groupby_cgroup = true,
 };
 
@@ -74,8 +74,13 @@ struct sk_buff___old {
  *  and "enabled" hooks.
  */
 #define N_CGROUPS	2 /* depend on cgroup_id_map matches in YAML config*/
+#ifdef CONFIG_GROUPBY_IFINDEX
 #define N_IFACES	6 /* On prod only interested in ext0 and vlan100@ext0 */
+#else
+#define N_IFACES	1 /* With groupby_ifindex==false */
+#endif
 #define N_HOOKS	1
+
 #if (CONFIG_HOOKS_EARLY_RCV || CONFIG_HOOKS_ENQUEUE || CONFIG_ENABLE_UDP_HOOKS)
 #err "Please update N_HOOKS"
 #endif
@@ -344,8 +349,10 @@ static void record_skb_latency(struct sk_buff *skb, struct sock *sk, enum netsta
 	if (!filter_nth_packet(hook))
 		return;
 
+#ifdef CONFIG_GROUPBY_IFINDEX
 	if (user_config.groupby_ifindex)
 		key.ifindex = ifindex;
+#endif
 
 	_record_latency_since(skb->tstamp, key);
 }
@@ -519,8 +526,10 @@ static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
 	if (!filter_network_ns(skb, sk))
 		return;
 
+#ifdef CONFIG_GROUPBY_IFINDEX
 	if (user_config.groupby_ifindex)
 		key.ifindex = ifindex;
+#endif
 	if (user_config.groupby_cgroup)
 		key.cgroup = cgroup_id;
 

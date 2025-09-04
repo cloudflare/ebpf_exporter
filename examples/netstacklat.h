@@ -59,6 +59,11 @@ enum netstacklat_hook {
 	NETSTACKLAT_N_HOOKS,
 };
 
+/* Disabling user_config.groupby_ifindex requires modifying hist_key and YAML
+ */
+//#define CONFIG_GROUPBY_IFINDEX 1
+#undef CONFIG_GROUPBY_IFINDEX
+
 /*
  * Key used for the histogram map
  * To be compatible with ebpf-exporter, all histograms need a key struct whose final
@@ -66,10 +71,12 @@ enum netstacklat_hook {
  */
 struct hist_key {
 	__u64 cgroup;
+#ifdef CONFIG_GROUPBY_IFINDEX
 	__u32 ifindex;
+#endif
 	__u16 hook; // need well defined size for ebpf-exporter to decode
 	__u16 bucket; // needs to be last to be compatible with ebpf-exporter
-};
+} __attribute__((packed));
 
 struct netstacklat_bpf_config {
 	__u32 network_ns;
