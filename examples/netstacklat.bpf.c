@@ -234,6 +234,7 @@ static void record_latency_since(ktime_t tstamp, const struct hist_key *key)
 static inline bool filter_nth_packet(const enum netstacklat_hook hook)
 {
 	u32 key = hook;
+	u64 pkt_cnt;
 	u64 *nth;
 
 	/* Zero and one means disabled */
@@ -244,8 +245,12 @@ static inline bool filter_nth_packet(const enum netstacklat_hook hook)
 	if (!nth)
 		return false;
 
-	*nth += 1;
-	if ((*nth % user_config.filter_nth_packet) == 0) {
+	/* The hooks (like tcp-socket-read) runs outside the socket lock in a
+	 * preempt/migrate-able user context. Thus, atomic updates are needed
+	 * for correctness, but keep PERCPU map to limit cache-line bouncing.
+	 */
+	pkt_cnt = __sync_fetch_and_add(nth, 1);
+	if ((pkt_cnt % user_config.filter_nth_packet) == 0) {
 		return true;
 	}
 	return false;
