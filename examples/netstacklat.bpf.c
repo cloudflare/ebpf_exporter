@@ -35,7 +35,6 @@ const struct netstacklat_bpf_config user_config = {
 	.filter_pid = false,
 	.filter_ifindex = true,
 	.filter_cgroup = true,
-	.filter_nonempty_sockqueue = false,
 	.groupby_ifindex = false, /* If true also define CONFIG_GROUPBY_IFINDEX */
 	.groupby_cgroup = true,
 };
@@ -424,37 +423,9 @@ static bool filter_current_task()
 	return ok;
 }
 
-/**
- * skb_queue_empty - check if a queue is empty
- * @list: queue head
- *
- * Returns true if the queue is empty, false otherwise.
- *
- * Copied from /include/linux/skbuff.h
- */
-static inline int skb_queue_empty(const struct sk_buff_head *list)
-{
-	return READ_ONCE(list->next) == (const struct sk_buff *)list;
-}
-
 static inline bool sk_backlog_empty(const struct sock *sk)
 {
 	return READ_ONCE(sk->sk_backlog.tail) == NULL;
-}
-
-static bool filter_nonempty_sockqueue(struct sock *sk)
-{
-	if (!user_config.filter_nonempty_sockqueue)
-		return true;
-
-	if (!skb_queue_empty(&sk->sk_receive_queue))
-		return true;
-
-	/* Packets can also be on the sk_backlog */
-	if (!sk_backlog_empty(sk))
-		return true;
-
-	return false;
 }
 
 /* To lower runtime overhead, skip recording timestamps for sockets with very
@@ -490,9 +461,6 @@ static bool filter_min_sockqueue_len(struct sock *sk)
 static __always_inline bool filter_socket(struct sock *sk, struct sk_buff *skb,
 					  u64 *cgroup_id, const enum netstacklat_hook hook)
 {
-	if (!filter_nonempty_sockqueue(sk))
-		return false;
-
 	if (!filter_min_sockqueue_len(sk))
 		return false;
 
