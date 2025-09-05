@@ -23,7 +23,7 @@
 // The highest ifindex we expect to encounter
 #define IFINDEX_MAX 16384
 // The maximum number of different cgroups we can filter for
-#define MAX_TRACKED_CGROUPS 4096
+#define MAX_PARSED_CGROUPS 4096
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
@@ -80,7 +80,7 @@ struct hist_key {
 
 struct netstacklat_bpf_config {
 	__u32 network_ns;
-	__u32 filter_min_queue_len;
+	__u32 filter_min_sockqueue_len;
 	__u64 filter_nth_packet;
 	bool filter_pid;
 	bool filter_ifindex;

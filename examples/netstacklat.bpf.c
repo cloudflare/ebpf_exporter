@@ -19,6 +19,8 @@
 #include "netstacklat.h"
 #include "bits.bpf.h"
 
+#define READ_ONCE(x) (*(volatile typeof(x) *)&(x))
+
 char LICENSE[] SEC("license") = "GPL";
 
 /* The ebpf_exporter variant of netstacklat is not runtime configurable at
@@ -28,7 +30,7 @@ char LICENSE[] SEC("license") = "GPL";
 const __s64 TAI_OFFSET = (37LL * NS_PER_S);
 const struct netstacklat_bpf_config user_config = {
 	.network_ns = 0,
-	.filter_min_queue_len = 0, /* zero means filter is inactive */
+	.filter_min_sockqueue_len = 0, /* zero means filter is inactive */
 	.filter_nth_packet = 0, /* reduce recorded event to every nth packet, use power-of-2 */
 	.filter_pid = false,
 	.filter_ifindex = true,
@@ -122,7 +124,7 @@ struct {
 #else
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH); /* type: hash */
-	__uint(max_entries, MAX_TRACKED_CGROUPS);
+	__uint(max_entries, MAX_PARSED_CGROUPS);
 	__type(key, u64);
 	__type(value, u64);
 } netstack_cgroupfilter SEC(".maps");
@@ -305,9 +307,7 @@ static bool filter_network_ns(struct sk_buff *skb, struct sock *sk)
 	if (user_config.network_ns == 0)
 		return true;
 
-	u32 ns = get_network_ns(skb, sk);
-
-	return ns == user_config.network_ns;
+	return get_network_ns(skb, sk) == user_config.network_ns;
 }
 
 #if (CONFIG_HOOKS_EARLY_RCV || CONFIG_HOOKS_ENQUEUE)
@@ -372,7 +372,6 @@ static bool filter_pid(u32 pid)
 		return false;
 
 	return *pid_ok > 0;
-
 }
 #endif /* CONFIG_PID_FILTER_MAP */
 
@@ -425,8 +424,6 @@ static bool filter_current_task()
 	return ok;
 }
 
-#define READ_ONCE(x) (*(volatile typeof(x) *)&(x))
-
 /**
  * skb_queue_empty - check if a queue is empty
  * @list: queue head
@@ -469,9 +466,9 @@ static inline __u32 sk_queue_len(const struct sk_buff_head *list_)
 	return READ_ONCE(list_->qlen);
 }
 
-static bool filter_min_queue_len(struct sock *sk)
+static bool filter_min_sockqueue_len(struct sock *sk)
 {
-	const u32 min_qlen = user_config.filter_min_queue_len;
+	const u32 min_qlen = user_config.filter_min_sockqueue_len;
 
 	if (min_qlen == 0)
 		return true;
@@ -496,7 +493,7 @@ static __always_inline bool filter_socket(struct sock *sk, struct sk_buff *skb,
 	if (!filter_nonempty_sockqueue(sk))
 		return false;
 
-	if (!filter_min_queue_len(sk))
+	if (!filter_min_sockqueue_len(sk))
 		return false;
 
 	if (!filter_cgroup(cgroup_id))
