@@ -61,7 +61,7 @@ enum netstacklat_hook {
 
 /* Disabling user_config.groupby_ifindex requires modifying hist_key and YAML
  */
-//#define CONFIG_GROUPBY_IFINDEX 1
+/* #define CONFIG_GROUPBY_IFINDEX 1 */
 #undef CONFIG_GROUPBY_IFINDEX
 
 /*
