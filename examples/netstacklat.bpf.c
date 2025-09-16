@@ -280,8 +280,10 @@ static bool filter_ifindex(u32 ifindex)
 	/* Hack for production:
 	 * - We want to exclude 'lo' which have ifindex==1.
 	 * - We want to filter on ext0 (ifindex 2) and vlan100@ext0 (ifindex 5)
+	 *   unfortunately ifindex'es are not stable, some production metals have
+	 *   ifindex==6 for vlan100@link0. Relax filter until adding YAML config.
 	 */
-	if (ifindex > 1 && ifindex < 6)
+	if (ifindex > 1 && ifindex < 12)
 		return true;
 
 	return false;
