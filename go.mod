@@ -1,6 +1,6 @@
 module github.com/cloudflare/ebpf_exporter/v2
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
@@ -17,7 +17,7 @@ require (
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/sdk v1.38.0
 	go.opentelemetry.io/otel/trace v1.38.0
-	golang.org/x/sys v0.35.0
+	golang.org/x/sys v0.36.0
 	gopkg.in/yaml.v2 v2.4.0
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.76
 )
@@ -55,8 +55,8 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
-	golang.org/x/net v0.43.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/net v0.44.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250825161204-c5933d9347a5 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250825161204-c5933d9347a5 // indirect
 	google.golang.org/grpc v1.75.1 // indirect
