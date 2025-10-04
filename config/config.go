@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v2"
 )
 
 // Config describes how to configure and extract metrics
