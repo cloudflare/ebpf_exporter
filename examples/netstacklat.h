@@ -87,6 +87,7 @@ struct netstacklat_bpf_config {
 	bool filter_cgroup;
 	bool groupby_ifindex;
 	bool groupby_cgroup;
+	bool include_hol_blocked;
 };
 
 #endif

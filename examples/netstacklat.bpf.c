@@ -21,6 +21,10 @@
 
 #define READ_ONCE(x) (*(volatile typeof(x) *)&(x))
 
+// Mimic macros from /include/net/tcp.h
+#define tcp_sk(ptr) container_of(ptr, struct tcp_sock, inet_conn.icsk_inet.sk)
+#define TCP_SKB_CB(__skb)	((struct tcp_skb_cb *)&((__skb)->cb[0]))
+
 char LICENSE[] SEC("license") = "GPL";
 
 /* The ebpf_exporter variant of netstacklat is not runtime configurable at
@@ -37,6 +41,7 @@ const struct netstacklat_bpf_config user_config = {
 	.filter_cgroup = true,
 	.groupby_ifindex = false, /* If true also define CONFIG_GROUPBY_IFINDEX */
 	.groupby_cgroup = true,
+	.include_hol_blocked = false,
 };
 
 /* This provide easy way compile-time to disable some hooks */
@@ -85,6 +90,13 @@ struct sk_buff___old {
 #if (CONFIG_HOOKS_EARLY_RCV || CONFIG_HOOKS_ENQUEUE || CONFIG_ENABLE_UDP_HOOKS)
 #err "Please update N_HOOKS"
 #endif
+
+struct tcp_sock_ooo_range {
+	u32 prev_n_ooopkts;
+	u32 ooo_seq_end;
+	/* indicates if ooo_seq_end is still valid (as 0 can be valid seq) */
+	bool active;
+};
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
@@ -150,6 +162,22 @@ static ktime_t time_since(ktime_t tstamp)
 
 	return (now - tstamp) / LATENCY_SCALE;
 }
+
+/*
+ * Is a < b considering u32 wrap around?
+ * Based on the before() function in /include/net/tcp.h
+ */
+static bool u32_lt(u32 a, u32 b)
+{
+	return (s32)(a - b) < 0;
+}
+
+struct {
+	__uint(type, BPF_MAP_TYPE_SK_STORAGE);
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+	__type(key, int);
+	__type(value, struct tcp_sock_ooo_range);
+} netstack_tcp_ooo_range SEC(".maps");
 
 /* Determine if ebpf_exporter macro or local C implementation is used */
 #define CONFIG_MAP_MACROS	1
@@ -476,6 +504,102 @@ static __always_inline bool filter_socket(struct sock *sk, struct sk_buff *skb,
 }
 #endif
 
+static int current_max_possible_ooo_seq(struct tcp_sock *tp, u32 *seq)
+{
+	struct tcp_skb_cb cb;
+	u32 max_seq = 0;
+	int err = 0;
+
+	if (BPF_CORE_READ(tp, out_of_order_queue.rb_node) == NULL) {
+		/* No ooo-segments currently in ooo-queue
+		 * Any ooo-segments must already have been merged to the
+		 * receive queue. Current rcv_nxt must therefore be ahead
+		 * of all ooo-segments that have arrived until now.
+		 */
+		err = bpf_core_read(&max_seq, sizeof(max_seq), &tp->rcv_nxt);
+		if (err)
+			bpf_printk("failed to read tcp_sock->rcv_nxt, err=%d",
+				   err);
+	} else {
+		/*
+		 * Some ooo-segments currently in ooo-queue
+		 * Max out-of-order seq is given by the seq_end of the tail
+		 * skb in the ooo-queue.
+		 */
+		err = BPF_CORE_READ_INTO(&cb, tp, ooo_last_skb, cb);
+		if (err)
+			bpf_printk(
+				"failed to read tcp_sock->ooo_last_skb->cb, err=%d",
+				err);
+		max_seq = cb.end_seq;
+	}
+
+	*seq = max_seq;
+	return err;
+}
+
+static bool tcp_read_in_ooo_range(struct tcp_sock *tp,
+				  struct tcp_sock_ooo_range *ooo_range)
+{
+	u32 read_seq;
+	int err;
+
+	if (!ooo_range->active)
+		return false;
+
+	err = bpf_core_read(&read_seq, sizeof(read_seq), &tp->copied_seq);
+	if (err) {
+		bpf_printk("failed to read tcp_sock->copied_seq, err=%d", err);
+		return true; // Assume we may be in ooo-range
+	}
+
+	if (u32_lt(ooo_range->ooo_seq_end, read_seq)) {
+		ooo_range->active = false;
+		return false;
+	} else {
+		return true;
+	}
+}
+
+static bool tcp_read_maybe_holblocked(struct sock *sk)
+{
+	struct tcp_sock_ooo_range *ooo_range;
+	struct tcp_sock *tp = tcp_sk(sk);
+	u32 n_ooopkts, nxt_seq;
+	int err;
+
+	err = bpf_core_read(&n_ooopkts, sizeof(n_ooopkts), &tp->rcv_ooopack);
+	if (err) {
+		bpf_printk("failed to read tcp_sock->rcv_ooopack, err=%d\n",
+			   err);
+		return true; // Assume we may be in ooo-range
+	}
+
+	if (n_ooopkts == 0)
+		return false;
+
+	ooo_range = bpf_sk_storage_get(&netstack_tcp_ooo_range, sk, NULL,
+				       BPF_SK_STORAGE_GET_F_CREATE);
+	if (!ooo_range) {
+		bpf_printk(
+			"failed getting ooo-range socket storage for tcp socket");
+		return true; // Assume we may be in ooo-range
+	}
+
+	// Increase in ooo-packets since last - figure out next safe seq
+	if (n_ooopkts > ooo_range->prev_n_ooopkts) {
+		ooo_range->prev_n_ooopkts = n_ooopkts;
+		err = current_max_possible_ooo_seq(tp, &nxt_seq);
+		if (!err) {
+			ooo_range->ooo_seq_end = nxt_seq;
+			ooo_range->active = true;
+		}
+		return true;
+	}
+
+	return tcp_read_in_ooo_range(tp, ooo_range);
+}
+
 static void record_socket_latency(struct sock *sk, struct sk_buff *skb,
 				  ktime_t tstamp, enum netstacklat_hook hook,
 				  u64 cgroup_id)
@@ -590,6 +714,10 @@ int BPF_PROG(netstacklat_tcp_recv_timestamp, void *msg, struct sock *sk,
 		return 0;
 
 	struct timespec64 *ts = &tss->ts[0];
+
+	if (!user_config.include_hol_blocked && tcp_read_maybe_holblocked(sk))
+		return 0;
+
 	record_socket_latency(sk, NULL,
 			      (ktime_t)ts->tv_sec * NS_PER_S + ts->tv_nsec,
 			      hook, cgroup_id);
