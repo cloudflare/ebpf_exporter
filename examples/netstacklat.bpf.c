@@ -504,11 +504,48 @@ static __always_inline bool filter_socket(struct sock *sk, struct sk_buff *skb,
 }
 #endif
 
+/* Get the current receive window end sequence for tp
+ * In the kernel receive window checks are done against
+ * tp->rcv_nxt + tcp_receive_window(tp). This function should give a compareable
+ * result, i.e. rcv_wup + rcv_wnd or rcv_nxt, whichever is higher
+ */
+static int get_current_rcv_wnd_seq(struct tcp_sock *tp, u32 rcv_nxt, u32 *seq)
+{
+	u32 rcv_wup, rcv_wnd, window = 0;
+	int err;
+
+	err = bpf_core_read(&rcv_wup, sizeof(rcv_wup), &tp->rcv_wup);
+	if (err) {
+		bpf_printk("failed to read tcp_sock->rcv_wup, err=%d", err);
+		goto exit;
+	}
+
+	err = bpf_core_read(&rcv_wnd, sizeof(rcv_wnd), &tp->rcv_wnd);
+	if (err) {
+		bpf_printk("failed to read tcp_sock->rcv_wnd, err=%d", err);
+		goto exit;
+	}
+
+	window = rcv_wup + rcv_wnd;
+	if (u32_lt(window, rcv_nxt))
+		window = rcv_nxt;
+
+exit:
+	*seq = window;
+	return err;
+}
+
 static int current_max_possible_ooo_seq(struct tcp_sock *tp, u32 *seq)
 {
+	u32 rcv_nxt, cur_rcv_window, max_seq = 0;
 	struct tcp_skb_cb cb;
-	u32 max_seq = 0;
 	int err = 0;
+
+	err = bpf_core_read(&rcv_nxt, sizeof(rcv_nxt), &tp->rcv_nxt);
+	if (err) {
+		bpf_printk("failed reading tcp_sock->rcv_nxt, err=%d", err);
+		goto exit;
+	}
 
 	if (BPF_CORE_READ(tp, out_of_order_queue.rb_node) == NULL) {
 		/* No ooo-segments currently in ooo-queue
@@ -516,10 +553,7 @@ static int current_max_possible_ooo_seq(struct tcp_sock *tp, u32 *seq)
 		 * receive queue. Current rcv_nxt must therefore be ahead
 		 * of all ooo-segments that have arrived until now.
 		 */
-		err = bpf_core_read(&max_seq, sizeof(max_seq), &tp->rcv_nxt);
-		if (err)
-			bpf_printk("failed to read tcp_sock->rcv_nxt, err=%d",
-				   err);
+		max_seq = rcv_nxt;
 	} else {
 		/*
 		 * Some ooo-segments currently in ooo-queue
@@ -527,13 +561,28 @@ static int current_max_possible_ooo_seq(struct tcp_sock *tp, u32 *seq)
 		 * skb in the ooo-queue.
 		 */
 		err = BPF_CORE_READ_INTO(&cb, tp, ooo_last_skb, cb);
-		if (err)
+		if (err) {
 			bpf_printk(
 				"failed to read tcp_sock->ooo_last_skb->cb, err=%d",
 				err);
-		max_seq = cb.end_seq;
+			goto exit;
+		}
+
+		// Sanity check - ooo_last_skb->cb.end_seq within the receive window?
+		err = get_current_rcv_wnd_seq(tp, rcv_nxt, &cur_rcv_window);
+		if (err)
+			goto exit;
+
+		/* While seq 0 can be a valid seq, consider it more likely to
+		 * be the result of reading from an invalid SKB pointer
+		 */
+		if (cb.end_seq == 0 || u32_lt(cur_rcv_window, cb.end_seq))
+			max_seq = cur_rcv_window;
+		else
+			max_seq = cb.end_seq;
 	}
 
+exit:
 	*seq = max_seq;
 	return err;
 }
