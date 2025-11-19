@@ -2,6 +2,7 @@ struct span_parent_t {
     u64 trace_id_hi;
     u64 trace_id_lo;
     u64 span_id;
+    u64 tag_id;
 };
 
 struct span_base_t {
