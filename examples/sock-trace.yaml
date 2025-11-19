@@ -11,6 +11,10 @@ tracing:
           size: 8
           decoders:
             - name: hex
+        - name: tag_id
+          size: 8
+          decoders:
+            - name: uint
         - name: span_id
           size: 8
           decoders:
@@ -39,6 +43,10 @@ tracing:
           size: 8
           decoders:
             - name: hex
+        - name: tag_id
+          size: 8
+          decoders:
+            - name: uint
         - name: span_id
           size: 8
           decoders:
@@ -48,6 +56,10 @@ tracing:
           decoders:
             - name: uint
         - name: span_duration_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: tag_id
           size: 8
           decoders:
             - name: uint
@@ -63,6 +75,10 @@ tracing:
           size: 8
           decoders:
             - name: hex
+        - name: tag_id
+          size: 8
+          decoders:
+            - name: uint
         - name: span_id
           size: 8
           decoders:
@@ -91,6 +107,10 @@ tracing:
           size: 8
           decoders:
             - name: hex
+        - name: tag_id
+          size: 8
+          decoders:
+            - name: uint
         - name: span_id
           size: 8
           decoders:
