@@ -59,9 +59,13 @@ struct {
 } traced_socket_cookies SEC(".maps");
 
 SEC("usdt/./tracing/demos/sock/demo:ebpf_exporter:sock_set_parent_span")
-int BPF_USDT(sock_set_parent_span, u64 socket_cookie, u64 trace_id_hi, u64 trace_id_lo, u64 span_id)
+int BPF_USDT(sock_set_parent_span, u64 socket_cookie, u64 trace_id_hi, u64 trace_id_lo, u64 span_id,
+             u64 example_userspace_tag)
 {
-    struct span_parent_t parent = { .trace_id_hi = trace_id_hi, .trace_id_lo = trace_id_lo, .span_id = span_id };
+    struct span_parent_t parent = { .trace_id_hi = trace_id_hi,
+                                    .trace_id_lo = trace_id_lo,
+                                    .span_id = span_id,
+                                    .example_userspace_tag = example_userspace_tag };
 
     bpf_map_update_elem(&traced_socket_cookies, &socket_cookie, &parent, BPF_ANY);
 

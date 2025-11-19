@@ -4,9 +4,9 @@ package main
 #include <stdint.h>
 #include <sys/sdt.h>
 
-void sock_set_parent_span(uint64_t socket_cookie, uint64_t trace_id_hi, uint64_t trace_id_lo, uint64_t span_id)
+void sock_set_parent_span(uint64_t socket_cookie, uint64_t trace_id_hi, uint64_t trace_id_lo, uint64_t span_id, uint64_t example_userspace_tag)
 {
-	DTRACE_PROBE4(ebpf_exporter, sock_set_parent_span, socket_cookie, trace_id_hi, trace_id_lo, span_id);
+	DTRACE_PROBE5(ebpf_exporter, sock_set_parent_span, socket_cookie, trace_id_hi, trace_id_lo, span_id, example_userspace_tag);
 }
 */
 import "C"
@@ -29,5 +29,6 @@ func sockSentParentSpan(fd uintptr, span trace.Span) {
 		C.uint64_t(traceIDHi),
 		C.uint64_t(traceIDLo),
 		C.uint64_t(spanID),
+		C.uint64_t(666),
 	)
 }
