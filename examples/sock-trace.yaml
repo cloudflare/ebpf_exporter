@@ -11,6 +11,10 @@ tracing:
           size: 8
           decoders:
             - name: hex
+        - name: example_userspace_tag
+          size: 8
+          decoders:
+            - name: uint
         - name: span_id
           size: 8
           decoders:
@@ -39,6 +43,10 @@ tracing:
           size: 8
           decoders:
             - name: hex
+        - name: example_userspace_tag
+          size: 8
+          decoders:
+            - name: uint
         - name: span_id
           size: 8
           decoders:
@@ -63,6 +71,10 @@ tracing:
           size: 8
           decoders:
             - name: hex
+        - name: example_userspace_tag
+          size: 8
+          decoders:
+            - name: uint
         - name: span_id
           size: 8
           decoders:
@@ -91,6 +103,10 @@ tracing:
           size: 8
           decoders:
             - name: hex
+        - name: example_userspace_tag
+          size: 8
+          decoders:
+            - name: uint
         - name: span_id
           size: 8
           decoders:
