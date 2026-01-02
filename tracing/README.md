@@ -13,12 +13,10 @@ Tracing is configured with the `autoexport` package provided by OpenTelemetry:
 
 This means that you need to use env variables to configure where to send spans.
 
-For local testing the simplest way to get started is to run Jaeger all-in-one:
-
-* https://www.jaegertracing.io/docs/1.54/getting-started/#all-in-one
+For local testing the simplest way to get started is to run Jaeger locally:
 
 ```
-docker run --rm -it --net host jaegertracing/all-in-one:1.54.0
+docker run --rm -it --net host jaegertracing/jaeger:2.12.0
 ```
 
 The UI would be available at [http://localhost:16686/](http://localhost:16686/).
