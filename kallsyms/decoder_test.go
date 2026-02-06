@@ -61,10 +61,11 @@ func TestStack(t *testing.T) {
 
 func TestSymLookup(t *testing.T) {
 	addrs := []Addr{
-		{0xffffffeb19a8a478, ""},
+		{0xffffffeb19a8a478, "mm_release"},
 		{0xffffffeb19a8a480, "__pidfd_prepare"},
-		{0xffffffeb19a8a482, ""},
+		{0xffffffeb19a8a482, "__pidfd_prepare"},
 		{0xffffffeb19cadfc0, "mark_page_accessed"},
+		{0xffffffff8b704109, "srso_alias_safe_ret"},
 	}
 
 	d, err := NewDecoder("kallsyms.txt")

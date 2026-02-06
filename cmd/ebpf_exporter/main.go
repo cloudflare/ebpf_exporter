@@ -42,6 +42,7 @@ func main() {
 	capabilities := kingpin.Flag("capabilities.keep", "Comma separated list of capabilities to keep (cap_syslog, cap_bpf, etc.), 'all' or 'none'").Default("all").String()
 	btfPath := kingpin.Flag("btf.path", "Optional BTF file path.").Default("").String()
 	skipCacheSize := kingpin.Flag("config.skip-cache-size", "Size of the LRU skip cache").Int()
+	lbrEnable := kingpin.Flag("lbr.enable", "Enable LBR.").Bool()
 	kingpin.Version(version.Print("ebpf_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
@@ -74,6 +75,15 @@ func main() {
 	}
 
 	started := time.Now()
+
+	if *lbrEnable {
+		notify("enabling lbr...")
+
+		err := exporter.EnableLBR()
+		if err != nil {
+			log.Fatalf("Error enabling LBR: %v", err)
+		}
+	}
 
 	notify("parsing config...")
 
