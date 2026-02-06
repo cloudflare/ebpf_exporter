@@ -11,22 +11,22 @@
 extern int LINUX_KERNEL_VERSION __kconfig;
 
 struct stitch_span_t {
-    struct span_base_t span_base;
+    struct span_base_tagged_t span_base;
     u64 socket_cookie;
 };
 
 struct sock_release_span_t {
-    struct span_base_t span_base;
+    struct span_base_tagged_t span_base;
     u64 span_id;
 };
 
 struct sk_span_t {
-    struct span_base_t span_base;
+    struct span_base_tagged_t span_base;
     u64 ksym;
 };
 
 struct sk_error_report_span_t {
-    struct span_base_t span_base;
+    struct span_base_tagged_t span_base;
     u64 kstack[MAX_STACK_DEPTH];
     u32 sk_err;
 };
@@ -55,21 +55,21 @@ struct {
     __uint(type, BPF_MAP_TYPE_LRU_HASH);
     __uint(max_entries, 1024 * 10);
     __type(key, u64);
-    __type(value, struct span_parent_t);
+    __type(value, struct span_parent_tagged_t);
 } traced_socket_cookies SEC(".maps");
 
 SEC("usdt/./tracing/demos/sock/demo:ebpf_exporter:sock_set_parent_span")
 int BPF_USDT(sock_set_parent_span, u64 socket_cookie, u64 trace_id_hi, u64 trace_id_lo, u64 span_id,
              u64 example_userspace_tag)
 {
-    struct span_parent_t parent = { .trace_id_hi = trace_id_hi,
-                                    .trace_id_lo = trace_id_lo,
-                                    .span_id = span_id,
-                                    .example_userspace_tag = example_userspace_tag };
+    struct span_parent_tagged_t parent = { .trace_id_hi = trace_id_hi,
+                                           .trace_id_lo = trace_id_lo,
+                                           .span_id = span_id,
+                                           .example_userspace_tag = example_userspace_tag };
 
     bpf_map_update_elem(&traced_socket_cookies, &socket_cookie, &parent, BPF_ANY);
 
-    submit_span(&stitch_spans, struct stitch_span_t, &parent, { span->socket_cookie = socket_cookie; });
+    submit_span_tagged_base(&stitch_spans, struct stitch_span_t, &parent, { span->socket_cookie = socket_cookie; });
 
     return 0;
 }
@@ -78,13 +78,13 @@ SEC("fentry/__sock_release")
 int BPF_PROG(__sock_release, struct socket *sock)
 {
     u64 socket_cookie = bpf_get_socket_cookie(sock->sk);
-    struct span_parent_t *parent = bpf_map_lookup_elem(&traced_socket_cookies, &socket_cookie);
+    struct span_parent_tagged_t *parent = bpf_map_lookup_elem(&traced_socket_cookies, &socket_cookie);
 
     if (!parent) {
         return 0;
     }
 
-    submit_span(&sock_release_spans, struct sock_release_span_t, parent, { span->span_id = 0xdead; });
+    submit_span_tagged_base(&sock_release_spans, struct sock_release_span_t, parent, { span->span_id = 0xdead; });
 
     bpf_map_delete_elem(&traced_socket_cookies, &socket_cookie);
 
@@ -93,13 +93,13 @@ int BPF_PROG(__sock_release, struct socket *sock)
 
 static int handle_sk(struct pt_regs *ctx, u64 socket_cookie)
 {
-    struct span_parent_t *parent = bpf_map_lookup_elem(&traced_socket_cookies, &socket_cookie);
+    struct span_parent_tagged_t *parent = bpf_map_lookup_elem(&traced_socket_cookies, &socket_cookie);
 
     if (!parent) {
         return 0;
     }
 
-    submit_span(&sk_spans, struct sk_span_t, parent, {
+    submit_span_tagged_base(&sk_spans, struct sk_span_t, parent, {
         // FIXME: PT_REGS_IP_CORE(ctx) does not work for fentry, so we abuse kstack
         bpf_get_stack(ctx, &span->ksym, sizeof(span->ksym), SKIP_FRAMES);
         span->ksym -= 8;
@@ -173,13 +173,13 @@ SEC("fentry/sk_error_report")
 int BPF_PROG(sk_error_report, struct sock *sk)
 {
     u64 socket_cookie = bpf_get_socket_cookie(sk);
-    struct span_parent_t *parent = bpf_map_lookup_elem(&traced_socket_cookies, &socket_cookie);
+    struct span_parent_tagged_t *parent = bpf_map_lookup_elem(&traced_socket_cookies, &socket_cookie);
 
     if (!parent) {
         return 0;
     }
 
-    submit_span(&sk_error_report_spans, struct sk_error_report_span_t, parent, {
+    submit_span_tagged_base(&sk_error_report_spans, struct sk_error_report_span_t, parent, {
         bpf_get_stack(ctx, &span->kstack, sizeof(span->kstack), SKIP_FRAMES);
         span->sk_err = sk->sk_err;
     });
