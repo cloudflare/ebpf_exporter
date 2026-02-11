@@ -29,7 +29,7 @@ int BPF_PROG(sched_migrate_task, struct task_struct *task, int dest_cpu)
 {
     u64 *ok;
     struct cgroup *cgrp = task->cgroups->dfl_cgrp;
-    ok = bpf_cgrp_storage_get(&cgroup_id_map_cgrp_storage, cgrp, 0, BPF_LOCAL_STORAGE_GET_F_CREATE);
+    ok = bpf_cgrp_storage_get(&cgroup_id_map_cgrp_storage, cgrp, 0, 0);
     if (!ok) {
         return 1;
     }
