@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"strings"
 	"syscall"
 
 	"github.com/cloudflare/ebpf_exporter/v2/util"
@@ -17,49 +18,89 @@ import (
 	"kernel.org/pub/linux/libs/security/libcap/cap"
 )
 
+// mountEntry holds an open fd for a cgroup mount, keyed by device id for event handling.
+type mountEntry struct {
+	path string
+	file *os.File
+	dev  uint64
+}
+
 type fanotifyMonitor struct {
 	path      string
 	fanotify  io.Reader
-	mount     *os.File
+	mounts    []mountEntry
 	observer  *observer
 	byteOrder binary.ByteOrder
 }
 
-func newFanotifyMonitor(path string) (*fanotifyMonitor, error) {
-	fanotify, err := attachFanotify(path)
+func collectCgroupMountsByPrefix(prefix string) ([]string, error) {
+	f, err := os.Open("/proc/self/mountinfo")
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
-	mount, err := os.OpenFile(path, syscall.O_DIRECTORY, 0)
-	if err != nil {
-		return nil, fmt.Errorf("error opening %q: %w", path, err)
+	var out []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		i := strings.Index(line, " - ")
+		if i < 0 {
+			continue
+		}
+		fields := strings.Fields(line[:i])
+		if len(fields) < 5 {
+			continue
+		}
+		mountPoint := fields[4]
+		if mountPoint == prefix || strings.HasPrefix(mountPoint, prefix+"/") {
+			out = append(out, mountPoint)
+		}
 	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
 
+func newFanotifyMonitor(path string) (*fanotifyMonitor, error) {
 	dacAllowed, err := cap.GetProc().GetFlag(cap.Effective, cap.DAC_READ_SEARCH)
 	if err != nil {
 		return nil, err
 	}
-
 	if !dacAllowed {
 		return nil, errors.New("missing CAP_DAC_READ_SEARCH needed for open_by_handle_at in fanotify monitor")
 	}
 
+	mountPaths, err := collectCgroupMountsByPrefix(path)
+	if err != nil {
+		return nil, fmt.Errorf("discovering cgroup mounts under %q: %w", path, err)
+	}
+	if len(mountPaths) == 0 {
+		mountPaths = []string{path}
+	}
+
+	fanotify, mounts, err := attachFanotifyMultiple(mountPaths)
+	if err != nil {
+		return nil, err
+	}
+
 	initial, err := walk(path)
 	if err != nil {
+		for _, e := range mounts {
+			_ = e.file.Close()
+		}
 		return nil, err
 	}
 
 	observer := newObserver(initial)
 
-	byteOrder := util.GetHostByteOrder()
-
 	m := &fanotifyMonitor{
 		path:      path,
 		fanotify:  fanotify,
-		mount:     mount,
+		mounts:    mounts,
 		observer:  observer,
-		byteOrder: byteOrder,
+		byteOrder: util.GetHostByteOrder(),
 	}
 
 	go func() {
@@ -105,6 +146,8 @@ func (m *fanotifyMonitor) readFanotifyLoop() error {
 				return fmt.Errorf("error handling fanotify event: %w", err)
 			}
 		}
+		// Kernel requires the process to close the event fd (metadata.Fd).
+		_ = unix.Close(int(metadata.Fd))
 	}
 }
 
@@ -125,7 +168,24 @@ func (m *fanotifyMonitor) handleFanotify(metadata *unix.FanotifyEventMetadata, b
 		return fmt.Errorf("error reading file_handle: %w", err)
 	}
 
-	fd, err := unix.OpenByHandleAt(int(m.mount.Fd()), handle, 0)
+	// Event fd (metadata.Fd) is on the same filesystem as the directory; find that mount.
+	var st unix.Stat_t
+	if err := unix.Fstat(int(metadata.Fd), &st); err != nil {
+		return fmt.Errorf("error fstat on event fd: %w", err)
+	}
+	dev := uint64(st.Dev)
+	var mountFd int
+	for i := range m.mounts {
+		if m.mounts[i].dev == dev {
+			mountFd = int(m.mounts[i].file.Fd())
+			break
+		}
+	}
+	if mountFd == 0 {
+		return fmt.Errorf("no mount found for event device %d", dev)
+	}
+
+	fd, err := unix.OpenByHandleAt(mountFd, handle, 0)
 	if err != nil {
 		// This happens in tests when walkerMonitor runs after fanotify.
 		// No idea why it happens, so let's just ignore it for now.
@@ -204,18 +264,42 @@ func (m *fanotifyMonitor) SubscribeCgroupChange(ch chan<- ChangeNotification) er
 
 // The following kernel patch is required to take advantage of this (included in v6.6-rc1):
 // * https://git.kernel.org/torvalds/c/0ce7c12e88cf ("kernfs: attach uuid for every kernfs and report it in fsid")
-func attachFanotify(path string) (io.Reader, error) {
+func attachFanotifyMultiple(paths []string) (io.Reader, []mountEntry, error) {
 	fd, err := unix.FanotifyInit(unix.FAN_CLASS_NOTIF|unix.FAN_REPORT_DFID_NAME, uint(0))
 	if err != nil {
-		return nil, fmt.Errorf("error calling fanotify_init: %w", err)
+		return nil, nil, fmt.Errorf("error calling fanotify_init: %w", err)
 	}
 
-	err = unix.FanotifyMark(fd, unix.FAN_MARK_ADD|unix.FAN_MARK_ONLYDIR|unix.FAN_MARK_FILESYSTEM, unix.FAN_CREATE|unix.FAN_DELETE|unix.FAN_ONDIR, unix.AT_FDCWD, path)
-	if err != nil {
-		return nil, fmt.Errorf("error calling fanotify_mark for %q: %w", path, err)
+	var mounts []mountEntry
+	for _, p := range paths {
+		if err := unix.FanotifyMark(fd, unix.FAN_MARK_ADD|unix.FAN_MARK_ONLYDIR|unix.FAN_MARK_FILESYSTEM, unix.FAN_CREATE|unix.FAN_DELETE|unix.FAN_ONDIR, unix.AT_FDCWD, p); err != nil {
+			for _, e := range mounts {
+				_ = e.file.Close()
+			}
+			unix.Close(fd)
+			return nil, nil, fmt.Errorf("error calling fanotify_mark for %q: %w", p, err)
+		}
+		file, err := os.OpenFile(p, syscall.O_DIRECTORY, 0)
+		if err != nil {
+			for _, e := range mounts {
+				_ = e.file.Close()
+			}
+			unix.Close(fd)
+			return nil, nil, fmt.Errorf("error opening mount %q: %w", p, err)
+		}
+		var st unix.Stat_t
+		if err := unix.Fstat(int(file.Fd()), &st); err != nil {
+			file.Close()
+			for _, e := range mounts {
+				_ = e.file.Close()
+			}
+			unix.Close(fd)
+			return nil, nil, fmt.Errorf("error fstat on %q: %w", p, err)
+		}
+		mounts = append(mounts, mountEntry{path: p, file: file, dev: uint64(st.Dev)})
 	}
 
-	return bufio.NewReader(os.NewFile(uintptr(fd), "")), nil
+	return bufio.NewReader(os.NewFile(uintptr(fd), "")), mounts, nil
 }
 
 type fanotifyEventInfoFid struct {
