@@ -39,9 +39,14 @@ func collectCgroupMountsByPrefix(prefix string) ([]string, error) {
 		return nil, err
 	}
 	defer f.Close()
+	return parseMountinfoForPrefix(f, prefix)
+}
 
+// parseMountinfoForPrefix reads a mountinfo-formatted stream and returns mount points
+// that equal prefix or are under prefix (prefix/...).
+func parseMountinfoForPrefix(r io.Reader, prefix string) ([]string, error) {
 	var out []string
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 		i := strings.Index(line, " - ")
@@ -146,7 +151,6 @@ func (m *fanotifyMonitor) readFanotifyLoop() error {
 				return fmt.Errorf("error handling fanotify event: %w", err)
 			}
 		}
-		// Kernel requires the process to close the event fd (metadata.Fd).
 		_ = unix.Close(int(metadata.Fd))
 	}
 }
@@ -168,7 +172,6 @@ func (m *fanotifyMonitor) handleFanotify(metadata *unix.FanotifyEventMetadata, b
 		return fmt.Errorf("error reading file_handle: %w", err)
 	}
 
-	// Event fd (metadata.Fd) is on the same filesystem as the directory; find that mount.
 	var st unix.Stat_t
 	if err := unix.Fstat(int(metadata.Fd), &st); err != nil {
 		return fmt.Errorf("error fstat on event fd: %w", err)
@@ -271,29 +274,27 @@ func attachFanotifyMultiple(paths []string) (io.Reader, []mountEntry, error) {
 	}
 
 	var mounts []mountEntry
+	cleanup := func() {
+		for _, e := range mounts {
+			_ = e.file.Close()
+		}
+		unix.Close(fd)
+	}
+
 	for _, p := range paths {
 		if err := unix.FanotifyMark(fd, unix.FAN_MARK_ADD|unix.FAN_MARK_ONLYDIR|unix.FAN_MARK_FILESYSTEM, unix.FAN_CREATE|unix.FAN_DELETE|unix.FAN_ONDIR, unix.AT_FDCWD, p); err != nil {
-			for _, e := range mounts {
-				_ = e.file.Close()
-			}
-			unix.Close(fd)
+			cleanup()
 			return nil, nil, fmt.Errorf("error calling fanotify_mark for %q: %w", p, err)
 		}
 		file, err := os.OpenFile(p, syscall.O_DIRECTORY, 0)
 		if err != nil {
-			for _, e := range mounts {
-				_ = e.file.Close()
-			}
-			unix.Close(fd)
+			cleanup()
 			return nil, nil, fmt.Errorf("error opening mount %q: %w", p, err)
 		}
 		var st unix.Stat_t
 		if err := unix.Fstat(int(file.Fd()), &st); err != nil {
 			file.Close()
-			for _, e := range mounts {
-				_ = e.file.Close()
-			}
-			unix.Close(fd)
+			cleanup()
 			return nil, nil, fmt.Errorf("error fstat on %q: %w", p, err)
 		}
 		mounts = append(mounts, mountEntry{path: p, file: file, dev: uint64(st.Dev)})
