@@ -163,9 +163,9 @@ CapabilityBoundingSet=CAP_BPF CAP_PERFMON
 ```
 
 Prior to Linux v5.8 there was no dedicated `CAP_BPF` and `CAP_PERFMON`,
-but you can use `CAP_SYS_ADMIN` instead of your kernel is older.
+but you can use `CAP_SYS_ADMIN` if your kernel is older.
 
-If you pass `--capabilities.keep=none` flag to `ebpf_expoter`, then it drops
+If you pass `--capabilities.keep=none` flag to `ebpf_exporter`, then it drops
 all capabilities after attaching the probes, leaving it fully unprivileged.
 
 The following additional capabilities might be needed:
@@ -392,7 +392,7 @@ You can nicely plot this with Grafana:
 
 ## Configuration concepts
 
-The following concepts exists within `ebpf_exporter`.
+The following concepts exist within `ebpf_exporter`.
 
 ### Configs
 
@@ -549,7 +549,7 @@ include it in the label size:
 
 Decoders take a byte slice input of requested length and transform it into
 a byte slice representing a string. That byte slice can either be consumed
-by another decoder (for example `string` -> `regexp`) or or used as the final
+by another decoder (for example `string` -> `regexp`) or used as the final
 label value exporter to Prometheus.
 
 Below are decoders we have built in.
@@ -614,10 +614,10 @@ into human readable vendor names like `Intel Corporation`.
 
 ### `pci_device`
 
-With `pci_vendor` decoder you can transform PCI vendor IDs like 0x80861000
+With `pci_device` decoder you can transform PCI vendor IDs like 0x80861000
 into human readable names like `82542 Gigabit Ethernet Controller (Fiber)`.
 
-Note that the you need to concatenate vendor and device id together for this.
+Note that you need to concatenate vendor and device id together for this.
 
 ### `pci_class`
 
