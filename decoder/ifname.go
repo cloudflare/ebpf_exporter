@@ -32,7 +32,7 @@ func (i *IfName) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 		// written. Unfortunately, in case the interface index is not in use
 		// [net.InterfaceByIndex] does not return a unique error value that can
 		// be compared with.
-		return []byte(fmt.Sprintf("unknown:%d", idx)), nil
+		return fmt.Appendf(nil, "unknown:%d", idx), nil
 	}
 
 	name := []byte(iface.Name)

@@ -50,7 +50,7 @@ func (m *MajorMinor) Decode(in []byte, _ config.Decoder) ([]byte, error) {
 		name := []byte(majorMinorToName(major, minor, fd))
 
 		if len(name) == 0 {
-			return []byte(fmt.Sprintf("unknown:%d:%d", major, minor)), nil
+			return fmt.Appendf(nil, "unknown:%d:%d", major, minor), nil
 		}
 
 		m.cache[num] = name

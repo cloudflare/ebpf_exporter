@@ -65,7 +65,7 @@ func main() {
 
 	notifier, _ := sdnotify.New()
 
-	notify := func(format string, v ...interface{}) {
+	notify := func(format string, v ...any) {
 		if notifier == nil {
 			return
 		}
@@ -176,8 +176,8 @@ func main() {
 
 func listen(addr string) (net.Listener, error) {
 	log.Printf("Listening on %s", addr)
-	if strings.HasPrefix(addr, "fd://") {
-		fd, err := strconv.Atoi(strings.TrimPrefix(addr, "fd://"))
+	if after, ok := strings.CutPrefix(addr, "fd://"); ok {
+		fd, err := strconv.Atoi(after)
 		if err != nil {
 			return nil, fmt.Errorf("error extracting fd number from %q: %w", addr, err)
 		}
@@ -210,7 +210,7 @@ func ensureCapabilities(keep string) error {
 
 	values := []cap.Value{}
 	if keep != "none" {
-		for _, name := range strings.Split(keep, ",") {
+		for name := range strings.SplitSeq(keep, ",") {
 			value, err := cap.FromName(name)
 			if err != nil {
 				return fmt.Errorf("error parsing capability %q: %w", name, err)
