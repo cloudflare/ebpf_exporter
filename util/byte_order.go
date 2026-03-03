@@ -1,4 +1,7 @@
+//revive:disable:var-naming
 package util
+
+//revive:enable:var-naming
 
 import (
 	"encoding/binary"

@@ -45,5 +45,5 @@ func (p *provider) Tracer(service string) trace.Tracer {
 		)
 	}
 
-	return p.providers[service].Tracer(reflect.TypeOf(currentSpanIDKey).PkgPath())
+	return p.providers[service].Tracer(reflect.TypeFor[traceContextKeyType]().PkgPath())
 }

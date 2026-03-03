@@ -1,22 +1,21 @@
+version: "2"
 linters:
-  enable-all: true
+  default: all
   disable:
     - cyclop
     - depguard
     - dupword
     - err113
-    - execinquery # deprecated
     - exhaustruct
-    - exportloopref # deprecated
     - funlen
-    - gci
     - gochecknoglobals
     - gochecknoinits
     - gocritic
     - godot
-    - gofumpt
-    - gomnd # deprecated
     - gosec
+    - noinlineerr
+    - prealloc
+    - funcorder
     - ireturn
     - lll
     - mnd
@@ -33,8 +32,17 @@ linters:
     - wastedassign # https://github.com/sanposhiho/wastedassign/issues/39
     - wrapcheck
     - wsl
-issues:
-  exclude-use-default: false
-  exclude:
-    - Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*print(f|ln)?|os\.(Un)?Setenv). is not checked
-    - should have a package comment
+    - wsl_v5
+  settings:
+    staticcheck:
+      checks: ["ALL", "-QF1006"]
+  exclusions:
+    rules:
+      - path: (.+)\.go$
+        text: Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*print(f|ln)?|os\.(Un)?Setenv). is not checked
+      - path: (.+)\.go$
+        text: should have a package comment
+formatters:
+  enable:
+    - gofmt
+    - goimports

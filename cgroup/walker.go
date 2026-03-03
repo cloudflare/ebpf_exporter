@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/fs"
 	"log"
+	"maps"
 	"path/filepath"
 )
 
@@ -31,9 +32,7 @@ func (m *walkerMonitor) Resolve(id int) string {
 	if mapping, err := walk(m.path); err != nil {
 		log.Printf("Error refreshing mapping: %v", err)
 	} else {
-		for id, name := range mapping {
-			m.mapping[id] = name
-		}
+		maps.Copy(m.mapping, mapping)
 	}
 
 	// If no new cgroup appeared, cache negative resolution to prevent constant refreshes

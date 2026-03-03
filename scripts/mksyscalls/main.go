@@ -93,7 +93,7 @@ func generate(arch architecture) error {
 		return fmt.Errorf("error creating %q: %w", arch.path, err)
 	}
 
-	if _, err := file.WriteString(fmt.Sprintf("// Syscall table mapping id to name for %s\n", arch.name)); err != nil {
+	if _, err := fmt.Fprintf(file, "// Syscall table mapping id to name for %s\n", arch.name); err != nil {
 		return err
 	}
 
@@ -101,7 +101,7 @@ func generate(arch architecture) error {
 		return err
 	}
 
-	if _, err := file.WriteString(fmt.Sprintf("//go:build %s\n\n", arch.name)); err != nil {
+	if _, err := fmt.Fprintf(file, "//go:build %s\n\n", arch.name); err != nil {
 		return err
 	}
 
@@ -126,7 +126,7 @@ func generate(arch architecture) error {
 
 	for _, pair := range sorted {
 		number := fmt.Sprintf("%d:", pair.number)
-		if _, err := file.WriteString(fmt.Sprintf("\t%-4s %q,\n", number, pair.name)); err != nil {
+		if _, err := fmt.Fprintf(file, "\t%-4s %q,\n", number, pair.name); err != nil {
 			return err
 		}
 	}

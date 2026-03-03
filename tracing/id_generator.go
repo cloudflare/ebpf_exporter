@@ -17,6 +17,7 @@ const currentSpanIDKey traceContextKeyType = iota
 // but it also tries to get a predetermined span id from the context if present.
 type predeterminedIDGenerator struct {
 	sync.Mutex
+
 	randSource *rand.Rand
 }
 

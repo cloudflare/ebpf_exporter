@@ -50,7 +50,7 @@ func registerHandlers() error {
 func parseSectionConfig(section string) (*perf.Attr, []uint, error) {
 	attr := &perf.Attr{}
 
-	for _, item := range strings.Split(strings.TrimPrefix(section, "perf_event/"), ",") {
+	for item := range strings.SplitSeq(strings.TrimPrefix(section, "perf_event/"), ",") {
 		kv := strings.SplitN(item, "=", 2)
 		if len(kv) != 2 {
 			return nil, nil, fmt.Errorf("invalid perf_event item: %q", item)
