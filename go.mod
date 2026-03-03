@@ -1,6 +1,6 @@
 module github.com/cloudflare/ebpf_exporter/v2
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
@@ -34,7 +34,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
-	github.com/prometheus/procfs v0.19.2 // indirect
+	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/bridges/prometheus v0.66.0 // indirect
