@@ -19,7 +19,13 @@ func TestMonitor(t *testing.T) {
 		{
 			kind: "Monitor",
 			factory: func(path string) (monitor, error) {
-				return NewMonitor(path)
+				return NewMonitor(path, false)
+			},
+		},
+		{
+			kind: "Monitor (fanotify disabled)",
+			factory: func(path string) (monitor, error) {
+				return NewMonitor(path, true)
 			},
 		},
 		{
