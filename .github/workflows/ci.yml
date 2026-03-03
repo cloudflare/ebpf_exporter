@@ -92,17 +92,17 @@ jobs:
       matrix:
         arch: *arch-matrix
         linkage:
-            - name: static
-              make_target: build
-            - name: dynamic
-              make_target: build-dynamic
+          - name: static
+            make_target: build
+          - name: dynamic
+            make_target: build-dynamic
         libbpf: &libbpf-matrix
-            - name: system
-              make_flag: BUILD_LIBBPF=0
-              ld_library_path: ''
-            - name: built-in
-              make_flag: BUILD_LIBBPF=1
-              ld_library_path: libbpf/dest/usr/lib
+          - name: system
+            make_flag: BUILD_LIBBPF=0
+            ld_library_path: ""
+          - name: built-in
+            make_flag: BUILD_LIBBPF=1
+            ld_library_path: libbpf/dest/usr/lib
     name: Build ebpf_exporter (${{ matrix.arch.name }}, ${{ matrix.linkage.name }} linkage, ${{ matrix.libbpf.name }} libbpf)
     needs: build-libbpf
     runs-on: ${{ matrix.arch.image }}
@@ -208,7 +208,7 @@ jobs:
         run: go mod verify
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
         env:
