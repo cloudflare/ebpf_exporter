@@ -145,6 +145,7 @@ definitions:
                   - inet_ip
                   - kstack
                   - ksym
+                  - lbr
                   - majorminor
                   - pci_class
                   - pci_device

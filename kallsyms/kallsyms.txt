@@ -94,3 +94,15 @@ ffffffc0806499a8 t bpf_prog_ee0e253c78993a24_sd_devices	[bpf]
 ffffffc0801cedf4 t bpf_prog_9a4f2895a09f572a_mark_page_accessed	[bpf]
 ffffffc08012d000 t bpf_trampoline_6442507883	[bpf]
 ffffffc080b89000 t kprobe_insn_page	[__builtin__kprobes]
+--
+ffffffff8b601d30 T __pfx_nop_func
+ffffffff8b601d40 T nop_func
+ffffffff8b601d50 T __pfx_paravirt_ret0
+ffffffff8b601d60 T paravirt_ret0
+ffffffff8b601d6b T __entry_text_end
+ffffffff8b704104 T srso_alias_safe_ret
+ffffffff8b70410b T srso_alias_return_thunk
+ffffffff8b800000 T _etext
+ffffffff8b800000 d __func__.0
+ffffffff8b800000 D __start_rodata
+ffffffff8b800018 d __func__.1
