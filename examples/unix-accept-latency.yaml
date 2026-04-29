@@ -1,0 +1,23 @@
+metrics:
+  histograms:
+    - name: unix_accept_latency_seconds
+      help: UNIX stream socket connect-to-accept latency histogram
+      bucket_type: exp2
+      bucket_min: 0
+      bucket_max: 10
+      bucket_multiplier: 0.001 # milliseconds to seconds
+      labels:
+        - name: addr
+          size: 8
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                # Keep in sync with enum unix_addr in unix-accept-latency.bpf.c
+                0: /run/dbus/system_bus_socket
+                1: /run/systemd/journal/stdout
+                2: /var/run/mysqld/mysqld.sock
+        - name: bucket
+          size: 8
+          decoders:
+            - name: uint
