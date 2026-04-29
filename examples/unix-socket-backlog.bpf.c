@@ -44,7 +44,8 @@ static int do_count(enum unix_addr addr, u64 backlog)
 }
 
 SEC("fexit/unix_find_other")
-int BPF_PROG(unix_find_other, struct net *net, struct sockaddr_un *sunaddr, int addr_len, int type, struct sock *other)
+int BPF_PROG(unix_find_other, struct net *net, struct sockaddr_un *sunaddr, int addr_len, int type, int flags,
+             struct sock *other)
 {
     // Make sure to use clang-15, otherwise you might see:
     //   libbpf: failed to find BTF for extern 'memcmp': -2
