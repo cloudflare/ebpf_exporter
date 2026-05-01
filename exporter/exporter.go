@@ -59,7 +59,7 @@ type Exporter struct {
 }
 
 // New creates a new exporter with the provided config
-func New(configs []config.Config, skipCacheSize int, tracingProvider tracing.Provider, btfPath string) (*Exporter, error) {
+func New(configs []config.Config, skipCacheSize int, tracingProvider tracing.Provider, btfPath string, cgroupDisableFanotify bool) (*Exporter, error) {
 	enabledConfigsDesc := prometheus.NewDesc(
 		prometheus.BuildFQName(prometheusNamespace, "", "enabled_configs"),
 		"The set of enabled configs",
@@ -104,7 +104,7 @@ func New(configs []config.Config, skipCacheSize int, tracingProvider tracing.Pro
 		decoderErrorCount.WithLabelValues(config.Name).Add(0.0)
 	}
 
-	monitor, err := cgroup.NewMonitor("/sys/fs/cgroup")
+	monitor, err := cgroup.NewMonitor("/sys/fs/cgroup", cgroupDisableFanotify)
 	if err != nil {
 		return nil, fmt.Errorf("error creating cgroup monitor: %w", err)
 	}
