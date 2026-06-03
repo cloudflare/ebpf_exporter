@@ -28,7 +28,7 @@ func TestKsymDecoder(t *testing.T) {
 		},
 		{
 			in:  []byte{0x78, 0x08, 0xd9, 0x19, 0xeb, 0xff, 0xff, 0xff},
-			out: []byte("unknown_addr:0xffffffeb19d90878"),
+			out: []byte("pipe_unlock"),
 		},
 	}
 
