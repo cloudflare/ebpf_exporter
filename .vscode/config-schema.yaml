@@ -36,6 +36,19 @@ properties:
               type: string
             labels:
               $ref: "#/definitions/labels"
+            values:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                  - name
+                  - help
+                properties:
+                  name:
+                    type: string
+                  help:
+                    type: string
       histograms:
         type: array
         items:

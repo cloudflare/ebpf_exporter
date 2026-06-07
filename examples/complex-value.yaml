@@ -1,0 +1,14 @@
+metrics:
+  counters:
+    - name: block_rq_completions
+      help: Block request completions split into count and bytes
+      labels:
+        - name: device
+          size: 4
+          decoders:
+            - name: majorminor
+      values:
+        - name: block_rq_completions_total
+          help: Total number of block request completions
+        - name: block_rq_completed_bytes_total
+          help: Total number of bytes served by block requests completions
