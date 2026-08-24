@@ -42,6 +42,7 @@ func main() {
 	capabilities := kingpin.Flag("capabilities.keep", "Comma separated list of capabilities to keep (cap_syslog, cap_bpf, etc.), 'all' or 'none'").Default("all").String()
 	btfPath := kingpin.Flag("btf.path", "Optional BTF file path.").Default("").String()
 	skipCacheSize := kingpin.Flag("config.skip-cache-size", "Size of the LRU skip cache").Int()
+	cgroupDisableFanotify := kingpin.Flag("cgroup.disable-fanotify", "Disable fanotify-based cgroup discovery; use walk-based discovery only.").Default("false").Bool()
 	kingpin.Version(version.Print("ebpf_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
@@ -93,7 +94,7 @@ func main() {
 
 	notify("creating exporter...")
 
-	e, err := exporter.New(configs, *skipCacheSize, tracing.NewProvider(processor), *btfPath)
+	e, err := exporter.New(configs, *skipCacheSize, tracing.NewProvider(processor), *btfPath, *cgroupDisableFanotify)
 	if err != nil {
 		log.Fatalf("Error creating exporter: %s", err)
 	}

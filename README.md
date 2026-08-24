@@ -187,6 +187,11 @@ The following additional capabilities might be needed:
   which is the preferred way, but only available since Linux v6.6.
   See: https://github.com/torvalds/linux/commit/0ce7c12e88cf
 
+## Cgroup Discovery
+
+Use `--cgroup.disable-fanotify` to force walk-based cgroup discovery instead of
+fanotify; the exporter will then not require or use fanotify on the cgroup mount.
+
 ## External BTF Support
 
 Execution of eBPF programs requires kernel data types normally available

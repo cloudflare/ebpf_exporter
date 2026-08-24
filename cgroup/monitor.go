@@ -27,20 +27,21 @@ type Monitor struct {
 }
 
 // NewMonitor returns a new cgroup monitor for a given path
-func NewMonitor(path string) (*Monitor, error) {
-	fm, err := newFanotifyMonitor(path)
-	if err != nil {
-		log.Printf("Using on-demand resolution for cgroups (fanotify not available)")
-
-		wm, err := newWalkerMonitor(path)
-		if err != nil {
-			return nil, err
+func NewMonitor(path string, disableFanotify bool) (*Monitor, error) {
+	if !disableFanotify {
+		if fm, err := newFanotifyMonitor(path); err == nil {
+			return &Monitor{inner: fm}, nil
 		}
-
-		return &Monitor{inner: wm}, nil
+		log.Printf("Using on-demand resolution for cgroups (fanotify not available)")
+	} else {
+		log.Printf("Using on-demand resolution for cgroups (fanotify disabled by flag)")
 	}
 
-	return &Monitor{inner: fm}, nil
+	wm, err := newWalkerMonitor(path)
+	if err != nil {
+		return nil, err
+	}
+	return &Monitor{inner: wm}, nil
 }
 
 // Resolve resolves an id to a path for a cgroup
