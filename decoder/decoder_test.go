@@ -149,7 +149,7 @@ func TestDecodeLabels(t *testing.T) {
 	}
 
 	for i, c := range cases {
-		s, err := NewSet(0, nil)
+		s, err := NewSet(0, 0, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -255,7 +255,7 @@ func TestDecodeSkipLabels(t *testing.T) {
 	}
 
 	for i, c := range cases {
-		s, err := NewSet(100, nil)
+		s, err := NewSet(0, 100, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -322,7 +322,7 @@ func TestDecoderSetConcurrency(t *testing.T) {
 		},
 	}
 
-	s, err := NewSet(0, nil)
+	s, err := NewSet(0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -387,7 +387,7 @@ func TestDecoderSetCache(t *testing.T) {
 		},
 	}
 
-	s, err := NewSet(0, nil)
+	s, err := NewSet(0, 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,7 +458,7 @@ func BenchmarkCache(b *testing.B) {
 		},
 	}
 
-	s, err := NewSet(0, nil)
+	s, err := NewSet(0, 0, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -488,4 +488,44 @@ func zeroPaddedString(in string, size int) []byte {
 	}
 
 	return append([]byte(in), make([]byte, size-len(in))...)
+}
+
+func TestDecoderSetLabelCacheSize(t *testing.T) {
+	labels := []config.Label{
+		{
+			Name: "number",
+			Size: 4,
+			Decoders: []config.Decoder{
+				{
+					Name: "uint",
+				},
+			},
+		},
+	}
+
+	s, err := NewSet(1, 0, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	first := []byte{0x1, 0x0, 0x0, 0x0}
+	second := []byte{0x2, 0x0, 0x0, 0x0}
+
+	for _, in := range [][]byte{first, second} {
+		if _, err := s.DecodeLabelsForMetrics(in, "test", labels); err != nil {
+			t.Fatalf("Error decoding %#v: %s", in, err)
+		}
+	}
+
+	if got := s.lruCache["test"].Len(); got != 1 {
+		t.Errorf("Expected label cache to hold 1 entry, but it holds %d", got)
+	}
+
+	if _, ok := s.cacheGet("test", string(first)); ok {
+		t.Errorf("Expected input %#v to be evicted from the label cache", first)
+	}
+
+	if _, ok := s.cacheGet("test", string(second)); !ok {
+		t.Errorf("Expected input %#v to be in the label cache", second)
+	}
 }

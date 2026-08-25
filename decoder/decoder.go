@@ -26,11 +26,13 @@ type Set struct {
 	mu        sync.Mutex
 	decoders  map[string]Decoder
 	cache     map[string]map[string][]string
+	lruCache  map[string]*lru.Cache[string, []string]
+	cacheSize int
 	skipCache *lru.Cache[string, struct{}]
 }
 
 // NewSet creates a Set with all known decoders
-func NewSet(skipCacheSize int, monitor *cgroup.Monitor) (*Set, error) {
+func NewSet(cacheSize, skipCacheSize int, monitor *cgroup.Monitor) (*Set, error) {
 	ksym, err := kallsyms.NewDecoder("/proc/kallsyms")
 	if err != nil {
 		return nil, fmt.Errorf("error creating ksym decoder: %w", err)
@@ -57,7 +59,9 @@ func NewSet(skipCacheSize int, monitor *cgroup.Monitor) (*Set, error) {
 			"syscall":      &Syscall{},
 			"uint":         &UInt{},
 		},
-		cache: map[string]map[string][]string{},
+		cache:     map[string]map[string][]string{},
+		lruCache:  map[string]*lru.Cache[string, []string]{},
+		cacheSize: cacheSize,
 	}
 
 	if skipCacheSize > 0 {
@@ -104,15 +108,9 @@ func (s *Set) DecodeLabelsForMetrics(in []byte, name string, labels []config.Lab
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	cache, ok := s.cache[name]
-	if !ok {
-		cache = map[string][]string{}
-		s.cache[name] = cache
-	}
-
 	// string(in) must not be a variable to avoid allocation:
 	// * https://github.com/golang/go/commit/f5f5a8b6209f8
-	if cached, ok := cache[string(in)]; ok {
+	if cached, ok := s.cacheGet(name, string(in)); ok {
 		return cached, nil
 	}
 
@@ -129,9 +127,53 @@ func (s *Set) DecodeLabelsForMetrics(in []byte, name string, labels []config.Lab
 		return nil, err
 	}
 
-	cache[string(in)] = values
+	s.cacheAdd(name, string(in), values)
 
 	return values, nil
+}
+
+// cacheGet returns cached label values for the given metric name and raw key.
+func (s *Set) cacheGet(name, key string) ([]string, bool) {
+	if s.cacheSize > 0 {
+		cache, ok := s.lruCache[name]
+		if !ok {
+			return nil, false
+		}
+
+		return cache.Get(key)
+	}
+
+	values, ok := s.cache[name][key]
+
+	return values, ok
+}
+
+// cacheAdd stores decoded label values for the given metric name and raw key.
+func (s *Set) cacheAdd(name, key string, values []string) {
+	if s.cacheSize > 0 {
+		cache, ok := s.lruCache[name]
+		if !ok {
+			var err error
+			cache, err = lru.New[string, []string](s.cacheSize)
+			if err != nil {
+				return
+			}
+
+			s.lruCache[name] = cache
+		}
+
+		cache.Add(key, values)
+
+		return
+	}
+
+	cache, ok := s.cache[name]
+	if !ok {
+		cache = map[string][]string{}
+		s.cache[name] = cache
+	}
+
+	cache[key] = values
 }
 
 // DecodeLabelsForTracing transforms eBPF map key bytes into a list of label values
