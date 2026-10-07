@@ -145,7 +145,7 @@ func (d *Decoder) Stack(addrs []uintptr) []Addr {
 // saveSymLocked resolves the kernel symbol at the given address
 func (d *Decoder) saveSymLookupLocked(ptr uintptr) bool {
 	addr := d.findFirstBeforePtrLocked(ptr)
-	if addr.Ptr == ptr {
+	if addr.Ptr <= ptr {
 		d.found[ptr] = addr.Sym
 		return true
 	}

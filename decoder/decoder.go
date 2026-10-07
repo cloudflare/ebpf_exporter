@@ -48,6 +48,7 @@ func NewSet(cacheSize, skipCacheSize int, monitor *cgroup.Monitor) (*Set, error)
 			"inet_ip":      &InetIP{},
 			"kstack":       &KStack{ksym},
 			"ksym":         &KSym{ksym},
+			"lbr":          &LBR{ksym},
 			"majorminor":   &MajorMinor{},
 			"pci_class":    &PCIClass{},
 			"pci_device":   &PCIDevice{},
