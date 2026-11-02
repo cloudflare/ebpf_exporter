@@ -1,0 +1,35 @@
+tracing:
+  spans:
+    - name: failure
+      ringbuf: failure_spans
+      service: syscall-failures
+      labels:
+        - name: trace_id
+          size: 16
+          decoders:
+            - name: hex
+        - name: parent_span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_monotonic_timestamp_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: span_duration_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: data
+          size: 384
+          decoders:
+            - name: lbr
+        - name: errno
+          size: 4
+          decoders:
+            - name: uint
+            - name: errno
