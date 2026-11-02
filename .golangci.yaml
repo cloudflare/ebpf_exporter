@@ -27,6 +27,7 @@ linters:
     - noctx
     - nonamedreturns
     - paralleltest
+    - predeclared
     - tagliatelle
     - testpackage
     - thelper
