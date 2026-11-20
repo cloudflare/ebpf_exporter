@@ -561,6 +561,17 @@ into a human readable string representing cgroup path, like:
 
 * `/sys/fs/cgroup/system.slice/ssh.service`
 
+Cgroups that cannot be resolved are rendered as `unknown_cgroup_id:<id>`, which
+creates a new label value for every short lived cgroup. Set
+`collapse_unknown: true` on the decoder to render all of them as a single
+`unknown_cgroup` value instead and keep cardinality in check:
+
+```yaml
+decoders:
+  - name: cgroup
+    collapse_unknown: true
+```
+
 #### ifname
 
 Ifname decoder takes a network interface index and converts it into its

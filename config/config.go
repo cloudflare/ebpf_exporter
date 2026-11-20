@@ -96,6 +96,9 @@ type Decoder struct {
 	StaticMap    map[string]string `yaml:"static_map"`
 	Regexps      []string          `yaml:"regexps"`
 	AllowUnknown bool              `yaml:"allow_unknown"`
+	// CollapseUnknown makes the cgroup decoder emit a single "unknown_cgroup"
+	// label value for all cgroups it cannot resolve, instead of one per id
+	CollapseUnknown bool `yaml:"collapse_unknown"`
 }
 
 // HistogramBucketType is an enum to define how to interpret histogram
