@@ -159,6 +159,8 @@ definitions:
                 type: object
               allow_unknown:
                 type: boolean
+              collapse_unknown:
+                type: boolean
               regexps:
                 type: array
                 items:
