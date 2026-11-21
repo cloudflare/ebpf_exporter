@@ -86,9 +86,6 @@ func (s *Set) decode(in []byte, label config.Label) ([]byte, error) {
 		decoded, err := s.decoders[decoder.Name].Decode(result, decoder)
 		if err != nil {
 			if errors.Is(err, ErrSkipLabelSet) {
-				if s.skipCache != nil {
-					s.skipCache.Add(string(in), struct{}{})
-				}
 				return decoded, err
 			}
 
@@ -115,15 +112,21 @@ func (s *Set) DecodeLabelsForMetrics(in []byte, name string, labels []config.Lab
 	}
 
 	// Also check the skip cache if the input would have return ErrSkipLabelSet
-	// and return the error early.
+	// and return the error early. The skip cache is shared by all metrics,
+	// so the key includes the metric name: the same input can be skipped
+	// by one metric's decoders and kept by another's.
 	if s.skipCache != nil {
-		if _, ok := s.skipCache.Get(string(in)); ok {
+		if _, ok := s.skipCache.Get(name + "\x00" + string(in)); ok {
 			return nil, ErrSkipLabelSet
 		}
 	}
 
 	values, err := s.decodeLabels(in, labels)
 	if err != nil {
+		if s.skipCache != nil && errors.Is(err, ErrSkipLabelSet) {
+			s.skipCache.Add(name+"\x00"+string(in), struct{}{})
+		}
+
 		return nil, err
 	}
 
