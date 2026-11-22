@@ -181,15 +181,13 @@ func TestDecodeLabels(t *testing.T) {
 
 func TestDecodeSkipLabels(t *testing.T) {
 	cases := []struct {
-		in          []byte
-		skipCacheIn string
-		labels      []config.Label
-		out         []string
-		err         bool
+		in     []byte
+		labels []config.Label
+		out    []string
+		err    bool
 	}{
 		{
-			in:          append([]byte{0x8, 0x0, 0x0, 0x0}, zeroPaddedString("bananas", 32)...),
-			skipCacheIn: "",
+			in: append([]byte{0x8, 0x0, 0x0, 0x0}, zeroPaddedString("bananas", 32)...),
 			labels: []config.Label{
 				{
 					Name: "number",
@@ -221,8 +219,7 @@ func TestDecodeSkipLabels(t *testing.T) {
 			err: false,
 		},
 		{
-			in:          append([]byte{0x8, 0x0, 0x0, 0x0}, zeroPaddedString("bananas", 32)...),
-			skipCacheIn: string(zeroPaddedString("bananas", 32)),
+			in: append([]byte{0x8, 0x0, 0x0, 0x0}, zeroPaddedString("bananas", 32)...),
 			labels: []config.Label{
 				{
 					Name: "number",
@@ -260,15 +257,17 @@ func TestDecodeSkipLabels(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		out, err := s.DecodeLabelsForMetrics(c.in, fmt.Sprintf("test:%d", i), c.labels)
+		name := fmt.Sprintf("test:%d", i)
+
+		out, err := s.DecodeLabelsForMetrics(c.in, name, c.labels)
 		if c.err {
 			if err == nil {
 				t.Errorf("Expected error for input %#v and labels %#v, but did not receive it", c.in, c.labels)
 			}
 
 			if errors.Is(err, ErrSkipLabelSet) {
-				if !s.skipCache.Contains(c.skipCacheIn) {
-					t.Errorf("Expected skipCache to have input %#v", c.skipCacheIn)
+				if !s.skipCache.Contains(name + "\x00" + string(c.in)) {
+					t.Errorf("Expected skipCache to have input %#v for %q", c.in, name)
 				}
 			}
 
@@ -288,6 +287,58 @@ func TestDecodeSkipLabels(t *testing.T) {
 				t.Errorf("Output label %d for input %#v is wrong: expected %s, but received %s", i, c.in, c.out[i], out[i])
 			}
 		}
+	}
+}
+
+func TestDecodeSkipLabelsPerMetric(t *testing.T) {
+	in := zeroPaddedString("bananas", 32)
+
+	tomatoesOnly := []config.Label{
+		{
+			Name: "fruit",
+			Size: 32,
+			Decoders: []config.Decoder{
+				{
+					Name: "string",
+				},
+				{
+					Name:    "regexp",
+					Regexps: []string{"^tomato$"},
+				},
+			},
+		},
+	}
+
+	allFruit := []config.Label{
+		{
+			Name: "fruit",
+			Size: 32,
+			Decoders: []config.Decoder{
+				{
+					Name: "string",
+				},
+			},
+		},
+	}
+
+	s, err := NewSet(0, 100, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = s.DecodeLabelsForMetrics(in, "tomatoes_only", tomatoesOnly)
+	if !errors.Is(err, ErrSkipLabelSet) {
+		t.Fatalf("Expected %#v to be skipped for tomatoes_only, got %v", in, err)
+	}
+
+	// The same input must not be skipped for a metric that does not filter it.
+	out, err := s.DecodeLabelsForMetrics(in, "all_fruit", allFruit)
+	if err != nil {
+		t.Fatalf("Error decoding %#v for all_fruit: %v", in, err)
+	}
+
+	if len(out) != 1 || out[0] != "bananas" {
+		t.Errorf("Expected [bananas] for all_fruit, got %v", out)
 	}
 }
 
